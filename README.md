@@ -26,7 +26,7 @@ Read the specs before inventing policy:
 At the beginning of each implementation phase:
 
 - branch fresh from `main`
-- freshly load the `tdd`, `review`, and `simplify` skills before doing work
+- freshly load the `tdd`, `simplify`, and chosen reviewer skill before doing work
 - use TDD for the phase slice instead of writing the implementation in one lump
 
 At the end of each phase:
