@@ -29,11 +29,14 @@ Receive bounded source material or source descriptors and turn them into tracked
 - MySQL stores canonical intake records
 - `data/intake/` stores manifests and diagnostics
 - intake never becomes canonical source truth for imported content itself
+- API-backed intake records store the source descriptor and scope snapshot that defined the fetch, not just a vague pointer to "Gmail" or similar
 
 ## Processing rules
 
 - every intake gets a source type and scope
 - every intake records where the source actually lives
+- API-backed intake records must capture the access mode, account or connection identity, scope expression, and the timestamp or cursor boundary used for the fetch
+- intake must persist enough source-descriptor detail to replay or audit an incremental sync without guessing
 - external collections may be referenced without copying files
 - intake decides which importer owns the next step
 
@@ -48,6 +51,28 @@ Receive bounded source material or source descriptors and turn them into tracked
 - queueable intake action
 - importer dispatch contract
 - intake review manifest output
+
+### Importer dispatch contract
+
+The intake-to-import handoff payload must include:
+
+- intake record id
+- source type
+- access mode such as local-path, archive, api-scope, or heimdallr-fetch
+- concrete source locator or approved descriptor
+- scope snapshot
+- importer-local options
+
+For API-backed sources, the scope snapshot must include the replay unit for incremental work, such as a query string plus fetched-at boundary or a provider history cursor.
+
+### Intake review manifest output
+
+The review manifest must make it obvious:
+
+- what was requested
+- what source boundary was actually used
+- what importer will own the next step
+- what replay or incremental marker was recorded
 
 ## Validation and testing
 

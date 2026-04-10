@@ -17,6 +17,7 @@ Facebook export archive JSON.
 ## Output structure
 
 - canonical `facebook_*` tables
+- reviewable run mirrors under `data/runs/`
 - artifacts under `data/imports/facebook/`
 
 ## MySQL storage model

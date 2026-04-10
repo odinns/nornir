@@ -17,6 +17,7 @@ Gmail API results or an explicitly approved export equivalent.
 ## Output structure
 
 - canonical `gmail_*` tables
+- reviewable run mirrors under `data/runs/`
 - run artifacts under `data/imports/gmail/`
 
 ## MySQL storage model
@@ -36,6 +37,7 @@ Preserve Gmail message ids, thread ids, labels, normalized text, and attachment 
 - import by bounded scope
 - preserve headers and canonical ids
 - do not download large binaries by default
+- preserve the scope snapshot or history cursor that made the fetch replayable
 
 ## Incremental behavior
 

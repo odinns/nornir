@@ -36,6 +36,8 @@ Define how source-specific importers plug into Nornir without collapsing into on
 - source-specific flags stay local
 - reruns must be idempotent
 - logical identity and source occurrence identity must be distinguished where needed
+- importer-specific diagnostics belong under `data/imports/<source>/`
+- shared operational summaries and auditable run mirrors belong under `data/runs/`
 
 ## Forbidden behavior
 
@@ -49,6 +51,15 @@ Define how source-specific importers plug into Nornir without collapsing into on
 - shared run recorder
 - validation result contract
 - wiki handoff contract
+
+### Wiki handoff contract
+
+An importer handoff must identify:
+
+- source type
+- canonical row set or scope to compile from
+- whether the handoff is for source pages, evidence bundles, or both
+- the owning run id
 
 ## Validation and testing
 

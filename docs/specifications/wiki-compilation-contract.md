@@ -36,6 +36,7 @@ Define how canonical and derived data becomes generated markdown in `wiki/`.
 - Muninn pages stay evidence-first and chronology-first
 - Huginn pages may synthesize but must cite support
 - output pages are saved analyses worth keeping
+- page identity must be stable enough that reruns overwrite or version intentionally instead of spraying near-duplicate files
 
 ## Forbidden behavior
 
@@ -48,6 +49,35 @@ Define how canonical and derived data becomes generated markdown in `wiki/`.
 - page type contract
 - filename and slug contract
 - provenance embedding contract
+
+### Page type contract
+
+Each page must declare one of:
+
+- source
+- muninn
+- huginn
+- output
+
+That page type controls:
+
+- which `wiki/` subtree owns the file
+- which generation rules apply
+- whether interpretation is constrained or allowed
+
+### Filename and slug contract
+
+- slugs must be deterministic from page type plus stable source or subject identity
+- rerunning the same logical page must resolve to the same target path unless the generator is intentionally creating a versioned output page
+- filenames must avoid leaking temporary run ids into stable page identities
+- if a page is intentionally versioned, the version token must be explicit and derived from a durable policy, not an incidental timestamp
+
+### Provenance embedding contract
+
+- every generated page must point to its owning run id
+- every claim-bearing section must be traceable either through embedded metadata or through stable section identifiers linked in MySQL
+- provenance references must resolve to source rows or evidence bundles, not just free-text citations
+- missing provenance for any non-trivial section is a generation failure, not a warning
 
 ## Validation and testing
 

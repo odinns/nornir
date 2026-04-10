@@ -27,7 +27,7 @@ Define the MySQL layout for canonical imported truth, shared run tracking, and s
 Required shared tables:
 
 - `intake_records`
-- `import_runs`
+- `runs`
 - `run_events`
 - `run_artifacts`
 - `provenance_links`
@@ -46,6 +46,9 @@ Source-owned tables use stable prefixes:
 
 ## Processing rules
 
+- `runs` is the shared operational table for intake, import, Muninn, Huginn, wiki compilation, and bounded Heimdallr work
+- every run records a subsystem, operation name, status, started-at timestamp, and idempotency key or equivalent uniqueness input
+- child runs may point at a parent run when one operation fans out into source-specific or stage-specific work
 - use stable source identifiers where possible
 - keep derived tables visibly derived
 - never overwrite canonical raw-normalized fields with cleaned prose
@@ -62,6 +65,17 @@ Source-owned tables use stable prefixes:
 - importer upsert contract
 - provenance recording contract
 - run recording contract
+
+### Run recording contract
+
+Each run record must be able to answer:
+
+- what subsystem owned the work
+- what operation was attempted
+- what input scope or identity made this run distinct
+- whether the run is pending, running, succeeded, failed, cancelled, or partially completed
+- which parent run, if any, spawned it
+- which artifacts and provenance links came from it
 
 ## Validation and testing
 
