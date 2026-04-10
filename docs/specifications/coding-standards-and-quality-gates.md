@@ -16,6 +16,7 @@ Set the floor early so the codebase does not become a landfill that later needs 
 - prefer Laravel conventions over homemade frameworks
 - use clear names, not clever names
 - keep classes small and specific
+- add `declare(strict_types=1);` to owned PHP files
 - use DTOs or value objects at boundaries
 - avoid passing loose nested arrays through the system
 - use strict types in owned PHP files where practical
@@ -37,8 +38,14 @@ Set the floor early so the codebase does not become a landfill that later needs 
 ## Rector stance
 
 - use Rector to enforce safe modernization and consistency
+- include the rule that requires and fixes `declare(strict_types=1);`
 - do not enable giant speculative rulesets
 - every active rule must pay rent
+
+Working rule:
+
+- generated PHP code MUST include `declare(strict_types=1);` from the start
+- Rector may enforce this, but it is primarily a backstop, not the primary author
 
 ## Prompt and skill assets
 
@@ -48,7 +55,7 @@ Set the floor early so the codebase does not become a landfill that later needs 
 
 ## CI gates
 
-Every branch should pass:
+Every branch MUST pass:
 
 1. formatting
 2. static analysis

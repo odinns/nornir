@@ -4,7 +4,7 @@
 
 This repository currently holds the system and implementation specs for Nornir. Start with [docs/nornir-spec.md](/Users/odinn/Projects/odinns/nornir/docs/nornir-spec.md), then read [docs/specifications/README.md](/Users/odinn/Projects/odinns/nornir/docs/specifications/README.md). Detailed backend contracts live in `docs/specifications/`, including subsystem specs like `muninn-biography-pipeline.md` and source importer specs such as `chatgpt-to-nornir-importer.md`.
 
-Planned application code should follow Laravel conventions: `app/`, `config/`, `database/`, `resources/`, `routes/`, and `tests/`. Generated and source data must stay out of git: `data/` and `wiki/` are ignored. Use `data/sources/` for local non-versioned source material, from single files like CVs and personality tests to larger dumps such as a Tantraviking site snapshot.
+Planned application code MUST follow Laravel conventions: `app/`, `config/`, `database/`, `resources/`, `routes/`, and `tests/`. Generated and source data must stay out of git: `data/` and `wiki/` are ignored. Use `data/sources/` for local non-versioned source material, from single files like CVs and personality tests to larger dumps such as a Tantraviking site snapshot.
 
 ## Build, Test, and Development Commands
 
@@ -24,17 +24,17 @@ Once the app scaffold exists, use these defaults:
 
 ## Coding Style & Naming Conventions
 
-Follow Laravel conventions, 4-space indentation, and clear literal names. Prefer `Import` over `Ingest` in new code. Keep source-specific logic local to its importer; do not build giant switchboard commands. Prompt and skill assets should be versioned files, not inline strings in jobs or controllers.
+Follow Laravel conventions, 4-space indentation, and clear literal names. Prefer `Import` over `Ingest` in new code. Keep source-specific logic local to its importer; do not build giant switchboard commands. Prompt and skill assets MUST be versioned files, not inline strings in jobs or controllers.
 
 ## Testing Guidelines
 
-Pest is the default framework. Pest architecture tests are mandatory and should enforce subsystem boundaries, dependency direction, and forbidden cross-layer access. Name tests by behavior, for example `it_imports_chatgpt_conversations_idempotently` or `it_blocks_unbounded_heimdallr_access`.
+Pest is the default framework. Pest architecture tests are mandatory and MUST enforce subsystem boundaries, dependency direction, and forbidden cross-layer access. Name tests by behavior, for example `it_imports_chatgpt_conversations_idempotently` or `it_blocks_unbounded_heimdallr_access`.
 
 ## Commit & Pull Request Guidelines
 
 This repo has no commit history yet, so adopt Conventional Commits from the start: `docs: add importer specs`, `feat: scaffold import runs`, `test: add Muninn architecture rules`. Keep commits small and single-purpose.
 
-PRs should explain the change, name affected specs or modules, note testing performed, and call out boundary or storage-rule changes explicitly. Include screenshots only when Mimir UI work begins.
+PRs MUST explain the change, name affected specs or modules, note testing performed, and call out boundary or storage-rule changes explicitly. Include screenshots only when Mimir UI work begins.
 
 ## Architecture Notes
 
