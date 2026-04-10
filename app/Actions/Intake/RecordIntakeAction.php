@@ -16,6 +16,8 @@ class RecordIntakeAction
 {
     public function __invoke(RecordIntakeData $data): RecordIntakeResultData
     {
+        $data = $this->normalizeFilesystemPaths($data);
+
         $sourceConfig = config("intake.sources.{$data->sourceType}");
 
         if (! is_array($sourceConfig)) {
@@ -84,6 +86,41 @@ class RecordIntakeAction
                 throw new InvalidArgumentException('Source locator is not reachable.');
             }
         }
+    }
+
+    private function normalizeFilesystemPaths(RecordIntakeData $data): RecordIntakeData
+    {
+        $scopeSnapshot = $data->scopeSnapshot;
+
+        if (is_array($scopeSnapshot['accepted_root_paths'] ?? null)) {
+            $scopeSnapshot['accepted_root_paths'] = array_map(
+                fn (mixed $path): mixed => is_string($path) ? $this->expandPath($path) : $path,
+                $scopeSnapshot['accepted_root_paths'],
+            );
+        }
+
+        return new RecordIntakeData(
+            sourceType: $data->sourceType,
+            accessMode: $data->accessMode,
+            sourceLocator: $this->expandPath($data->sourceLocator),
+            scopeSnapshot: $scopeSnapshot,
+            importerOptions: $data->importerOptions,
+        );
+    }
+
+    private function expandPath(string $path): string
+    {
+        $expandedPath = realpath($path);
+
+        if ($expandedPath !== false) {
+            return $expandedPath;
+        }
+
+        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            return $path;
+        }
+
+        return base_path($path);
     }
 
     private function writeReviewManifest(
