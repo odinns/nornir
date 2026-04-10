@@ -46,6 +46,7 @@ class ImportChatGptConversationsAction
 
             return new ChatGptImportResultData(
                 run: $this->runRecorder->complete($run),
+                summary: $summary,
             );
         } catch (Throwable $throwable) {
             $this->runRecorder->fail($run, $throwable->getMessage());
