@@ -70,6 +70,44 @@ it('records a local path intake with an explicit list of bounded roots', functio
     ]);
 });
 
+it('normalizes persisted filesystem paths to absolute paths', function (): void {
+    $primaryRoot = makeTempDirectory('llm-wiki-chatgpt-relative-primary');
+    $secondaryRoot = makeTempDirectory('llm-wiki-chatgpt-relative-secondary');
+
+    $relativePrimaryRoot = relativeToBasePath($primaryRoot);
+    $relativeSecondaryRoot = relativeToBasePath($secondaryRoot);
+
+    $result = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $relativePrimaryRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$relativePrimaryRoot, $relativeSecondaryRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $manifest = json_decode((string) file_get_contents($result->reviewManifestPath), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($result->intakeRecord->source_locator)->toBe($primaryRoot);
+    expect($result->dispatchPayload->sourceLocator)->toBe($primaryRoot);
+    expect($result->intakeRecord->scope_snapshot['accepted_root_paths'])->toBe([
+        $primaryRoot,
+        $secondaryRoot,
+    ]);
+    expect($result->dispatchPayload->scopeSnapshot['accepted_root_paths'])->toBe([
+        $primaryRoot,
+        $secondaryRoot,
+    ]);
+    expect($manifest['requested']['source_locator'])->toBe($primaryRoot);
+    expect($manifest['boundary']['source_locator'])->toBe($primaryRoot);
+    expect($manifest['boundary']['scope_snapshot']['accepted_root_paths'])->toBe([
+        $primaryRoot,
+        $secondaryRoot,
+    ]);
+});
+
 it('rejects unsupported source types', function (): void {
     $path = makeTempDirectory('unsupported-source');
 
@@ -136,4 +174,9 @@ function makeTempDirectory(string $name): string
     File::ensureDirectoryExists($path);
 
     return $path;
+}
+
+function relativeToBasePath(string $path): string
+{
+    return ltrim(str_replace(base_path(), '', $path), DIRECTORY_SEPARATOR);
 }
