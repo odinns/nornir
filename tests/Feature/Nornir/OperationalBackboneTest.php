@@ -94,6 +94,27 @@ it('records failure and partial completion states without overwriting event hist
     ]);
 });
 
+it('bounds failure summaries so a giant exception does not break run recording', function (): void {
+    $recorder = app(RunRecorder::class);
+
+    $run = $recorder->start(new StartRunData(
+        subsystem: 'import',
+        operation: 'chatgpt-import',
+        inputScope: ['archive' => 'chatgpt-export-2026-04-10'],
+        idempotencyKey: 'chatgpt-import:oversized-failure',
+    ));
+
+    $failedRun = $recorder->fail($run, str_repeat('db blew up ', 300));
+
+    expect($failedRun->status)->toBe(Run::STATUS_FAILED);
+    expect($failedRun->failure_summary)->toHaveLength(1_000);
+    expect($failedRun->failure_summary)->toEndWith('...');
+    expect($failedRun->events()->latest('id')->value('payload'))->toMatchArray([
+        'status' => Run::STATUS_FAILED,
+        'failure_summary' => $failedRun->failure_summary,
+    ]);
+});
+
 it('records artifacts as discoverable children of a run', function (): void {
     $recorder = app(RunRecorder::class);
     $artifactRecorder = app(ArtifactRecorder::class);

@@ -156,6 +156,64 @@ it('records importer artifacts and provenance links for the imported rows', func
     expect($links->pluck('evidence_ref')->contains('conversations-000.json#message:assistant-1'))->toBeTrue();
 });
 
+it('keeps structural nodes even when the export has null messages', function (): void {
+    $conversation = buildChatGptConversation();
+    $conversation['mapping']['null-root'] = [
+        'id' => 'null-root',
+        'parent' => null,
+        'children' => ['root-node'],
+        'message' => null,
+    ];
+
+    $exportRoot = createChatGptExportDirectory([$conversation]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $exportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$exportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect(DB::table('chatgpt_nodes')->where('node_id', 'null-root')->exists())->toBeTrue();
+    expect(DB::table('chatgpt_messages')->where('message_id', 'null-root')->exists())->toBeFalse();
+});
+
+it('imports message parts longer than mysql text without truncation errors', function (): void {
+    $conversation = buildChatGptConversation();
+    $conversation['mapping']['assistant-1']['message']['content']['parts'][0] = str_repeat('A long answer. ', 6_000);
+
+    $exportRoot = createChatGptExportDirectory([$conversation]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $exportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$exportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+
+    $storedPart = DB::table('chatgpt_message_parts')
+        ->where('part_type', 'text')
+        ->orderByRaw('LENGTH(text_part) DESC')
+        ->value('text_part');
+
+    expect($storedPart)->toBe($conversation['mapping']['assistant-1']['message']['content']['parts'][0]);
+});
+
 function createChatGptExportDirectory(array $conversations): string
 {
     $path = storage_path('framework/testing/chatgpt-export-'.bin2hex(random_bytes(4)));
