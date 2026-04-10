@@ -64,13 +64,11 @@ return new class extends Migration
             $table->string('claim_key');
             $table->string('evidence_type');
             $table->string('evidence_ref');
+            $table->string('dedupe_key', 64);
             $table->json('metadata')->nullable();
             $table->timestamps();
 
-            $table->unique(
-                ['run_id', 'output_target', 'claim_key', 'evidence_type', 'evidence_ref'],
-                'provenance_links_unique'
-            );
+            $table->unique(['run_id', 'dedupe_key'], 'provenance_links_unique');
         });
     }
 

@@ -8,6 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $subsystem
+ * @property string $operation
+ * @property string $status
+ * @property array<string, mixed> $input_scope
+ * @property string $idempotency_key
+ * @property int|null $parent_run_id
+ * @property string|null $failure_summary
+ */
 class Run extends Model
 {
     public const STATUS_PENDING = 'pending';

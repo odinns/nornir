@@ -11,15 +11,24 @@ class ProvenanceWriter
 {
     public function link(WriteProvenanceLinkData $data): ProvenanceLink
     {
+        $dedupeKey = hash('sha256', implode('|', [
+            (string) $data->runId,
+            $data->outputTarget,
+            $data->claimKey,
+            $data->evidenceType,
+            $data->evidenceRef,
+        ]));
+
         $link = ProvenanceLink::query()->firstOrCreate(
             [
                 'run_id' => $data->runId,
+                'dedupe_key' => $dedupeKey,
+            ],
+            [
                 'output_target' => $data->outputTarget,
                 'claim_key' => $data->claimKey,
                 'evidence_type' => $data->evidenceType,
                 'evidence_ref' => $data->evidenceRef,
-            ],
-            [
                 'metadata' => $data->metadata,
             ],
         );
