@@ -27,7 +27,7 @@ class ImportChatGptConversationsAction
         private readonly ProvenanceWriter $provenanceWriter,
     ) {}
 
-    public function __invoke(ImporterDispatchData $dispatchPayload): ChatGptImportResultData
+    public function __invoke(ImporterDispatchData $dispatchPayload, ?callable $progress = null): ChatGptImportResultData
     {
         $run = $this->runRecorder->start(new StartRunData(
             subsystem: 'import',
@@ -40,7 +40,7 @@ class ImportChatGptConversationsAction
         ));
 
         try {
-            $summary = DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run));
+            $summary = DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run, $progress));
 
             $this->writeArtifacts($run, $dispatchPayload, $summary);
 
@@ -58,7 +58,7 @@ class ImportChatGptConversationsAction
     /**
      * @return array{source_file:string, conversations:int, messages:int}
      */
-    private function importFiles(ImporterDispatchData $dispatchPayload, Run $run): array
+    private function importFiles(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {
         $files = $this->resolveConversationFiles($dispatchPayload);
 
@@ -66,11 +66,26 @@ class ImportChatGptConversationsAction
             throw new InvalidArgumentException('Malformed ChatGPT conversation payload: no conversation files found.');
         }
 
+        $this->reportProgress($progress, 'files_resolved', [
+            'total_files' => count($files),
+        ]);
+
         $conversationCount = 0;
         $messageCount = 0;
         $firstFile = basename($files[0]);
 
-        foreach ($files as $file) {
+        foreach ($files as $index => $file) {
+            $this->reportProgress($progress, 'file_started', [
+                'file' => basename($file),
+                'current_file' => $index + 1,
+                'total_files' => count($files),
+                'conversations' => $conversationCount,
+                'messages' => $messageCount,
+            ]);
+
+            $conversationsBeforeFile = $conversationCount;
+            $messagesBeforeFile = $messageCount;
+
             $archive = DB::table('chatgpt_archives')->updateOrInsert(
                 [
                     'archive_key' => sha1($dispatchPayload->sourceLocator.'|'.basename($file)),
@@ -135,6 +150,16 @@ class ImportChatGptConversationsAction
                     ));
                 }
             }
+
+            $this->reportProgress($progress, 'file_completed', [
+                'file' => basename($file),
+                'current_file' => $index + 1,
+                'total_files' => count($files),
+                'file_conversations' => $conversationCount - $conversationsBeforeFile,
+                'file_messages' => $messageCount - $messagesBeforeFile,
+                'conversations' => $conversationCount,
+                'messages' => $messageCount,
+            ]);
         }
 
         return [
@@ -356,5 +381,17 @@ class ImportChatGptConversationsAction
             classification: 'diagnostic',
             metadata: $summary,
         ));
+    }
+
+    /**
+     * @param  array<string, int|string>  $payload
+     */
+    private function reportProgress(?callable $progress, string $event, array $payload): void
+    {
+        if ($progress === null) {
+            return;
+        }
+
+        $progress($event, $payload);
     }
 }

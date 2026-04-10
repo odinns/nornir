@@ -48,7 +48,33 @@ class ImportChatGptCommand extends Command
         $this->line("Review manifest: {$intakeResult->reviewManifestPath}");
         $this->info('Importing ChatGPT conversations');
 
-        $importResult = ($this->importChatGptConversationsAction)($intakeResult->dispatchPayload);
+        $importResult = ($this->importChatGptConversationsAction)(
+            $intakeResult->dispatchPayload,
+            function (string $event, array $payload): void {
+                if ($event === 'files_resolved') {
+                    $totalFiles = $payload['total_files'] ?? 0;
+                    $this->line("Found {$totalFiles} conversation files to import");
+
+                    return;
+                }
+
+                if ($event !== 'file_completed') {
+                    return;
+                }
+
+                $currentFile = $payload['current_file'] ?? '?';
+                $totalFiles = $payload['total_files'] ?? '?';
+                $file = $payload['file'] ?? 'unknown-file';
+                $fileConversations = $payload['file_conversations'] ?? 0;
+                $fileMessages = $payload['file_messages'] ?? 0;
+                $conversations = $payload['conversations'] ?? 0;
+                $messages = $payload['messages'] ?? 0;
+
+                $this->line("[{$currentFile}/{$totalFiles}] {$file}");
+                $this->line("Running totals: {$conversations} conversations, {$messages} messages");
+                $this->line("File totals: {$fileConversations} conversations, {$fileMessages} messages");
+            },
+        );
 
         $this->info('Import complete');
         $this->line("Run id: {$importResult->run->id}");
