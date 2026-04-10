@@ -11,6 +11,7 @@ ChatGPT export conversation JSON files.
 ## Inputs
 
 - export path
+- optional additional export roots when the source is split across an approved bounded list of local paths
 - optional archive label
 - dry-run or validate-only flags
 
@@ -39,6 +40,8 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 - preserve graph structure
 - preserve roles
 - derive visible transcript rows separately
+- read directly from approved bounded local paths when available instead of requiring a copied staging mirror inside Nornir
+- when multiple local roots are configured, treat them as an explicit allowlist and record which root supplied the imported archive or files
 
 ## Incremental behavior
 
@@ -58,6 +61,8 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 
 - no flattening by default
 - no summarization during import
+- no implicit filesystem wandering outside the accepted root path or path list
+- no mandatory raw-source copy into `data/` just to satisfy the importer
 
 ## Review checklist
 
