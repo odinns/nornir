@@ -8,9 +8,12 @@ use App\Data\Shared\StartRunData;
 use App\Models\Run;
 use App\Models\RunEvent;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class RunRecorder
 {
+    private const int FAILURE_SUMMARY_LIMIT = 1000;
+
     public function start(StartRunData $data): Run
     {
         $run = Run::query()->firstOrNew([
@@ -58,6 +61,8 @@ class RunRecorder
 
     public function fail(Run $run, string $failureSummary): Run
     {
+        $failureSummary = $this->summarizeFailure($failureSummary);
+
         $run->forceFill([
             'status' => Run::STATUS_FAILED,
             'finished_at' => Carbon::now(),
@@ -76,6 +81,8 @@ class RunRecorder
 
     public function markPartial(Run $run, ?string $summary = null): Run
     {
+        $summary = $this->summarizeFailure($summary);
+
         $run->forceFill([
             'status' => Run::STATUS_PARTIALLY_COMPLETED,
             'finished_at' => Carbon::now(),
@@ -106,5 +113,18 @@ class RunRecorder
         $run->events()->save($runEvent);
 
         return $runEvent;
+    }
+
+    private function summarizeFailure(?string $failureSummary): ?string
+    {
+        if ($failureSummary === null) {
+            return null;
+        }
+
+        if (Str::length($failureSummary) <= self::FAILURE_SUMMARY_LIMIT) {
+            return $failureSummary;
+        }
+
+        return Str::substr($failureSummary, 0, self::FAILURE_SUMMARY_LIMIT - 3).'...';
     }
 }

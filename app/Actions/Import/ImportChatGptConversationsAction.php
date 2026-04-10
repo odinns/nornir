@@ -113,6 +113,10 @@ class ImportChatGptConversationsAction
 
                     $message = $node['message'] ?? null;
 
+                    if ($message === null) {
+                        continue;
+                    }
+
                     if (! is_array($message) || ! isset($message['id']) || ! is_array($message['content'] ?? null)) {
                         throw new InvalidArgumentException('Malformed ChatGPT conversation payload: message is missing required keys.');
                     }
