@@ -1,0 +1,12 @@
+parameters:
+    level: 8
+    paths:
+        - app
+        - config
+        - database
+        - routes
+    tmpDir: storage/phpstan
+    treatPhpDocTypesAsCertain: true
+    excludePaths:
+        analyse:
+            - routes/console.php
