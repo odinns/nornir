@@ -21,6 +21,24 @@ Read the specs before inventing policy:
 - `./vendor/bin/rector process`
 - `./vendor/bin/phpstan analyse -vvv`
 
+## Phase workflow
+
+At the beginning of each implementation phase:
+
+- branch fresh from `main`
+- freshly load the `tdd`, `review`, and `simplify` skills before doing work
+- use TDD for the phase slice instead of writing the implementation in one lump
+
+At the end of each phase:
+
+- run `./vendor/bin/pint`
+- run `./vendor/bin/rector process`
+- run `./vendor/bin/phpstan analyse -vvv`
+- run `./vendor/bin/pest`
+- commit the phase
+- merge back to `main`
+- stop for manual review and testing before starting the next phase
+
 Operational state stays out of git:
 
 - `data/`
