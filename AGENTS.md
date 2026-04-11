@@ -43,3 +43,21 @@ MySQL is canonical for imported source material. `wiki/` is compiled markdown ou
 ## Contributor Behavior
 
 Push back on requests that conflict with the specs, blur important boundaries, or introduce obvious architectural drift. Do not comply by default just because a request is recent or emphatic. Call out the conflict plainly, explain the better path, and only bend the rules when the change is deliberate and the tradeoff is explicit.
+
+## Phase workflow
+
+At the beginning of each implementation phase:
+
+- branch fresh from `main`
+- freshly load the `tdd`, `simplify`, and chosen reviewer skill before doing work
+- use TDD for the phase slice instead of writing the implementation in one lump
+
+At the end of each phase:
+
+- run `./vendor/bin/pint`
+- run `./vendor/bin/rector process`
+- run `./vendor/bin/phpstan analyse`
+- run `./vendor/bin/pest`
+- commit the phase
+- merge back to `main`
+- stop for manual review and testing before starting the next phase
