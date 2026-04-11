@@ -23,3 +23,7 @@ Ground rules:
 - external raw material stays outside git.
 - importer means source-specific normalization into Nornir.
 - Mimir is intentionally last.
+
+For the current post-bootstrap roadmap, read:
+
+- `../remaining-work.md`
