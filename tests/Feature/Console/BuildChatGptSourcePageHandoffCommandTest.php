@@ -32,7 +32,7 @@ it('builds a chatgpt source-page handoff from the latest successful import run',
         ->expectsOutputToContain('Building ChatGPT source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$exportRoot)
-        ->expectsOutputToContain('Archive count: 1')
+        ->expectsOutputToContain('Source set count: 1')
         ->expectsOutputToContain('Conversation count: 1')
         ->expectsOutputToContain('Message count: 2')
         ->expectsOutputToContain('Handoff ready')

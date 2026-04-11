@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Actions\Import\BuildChatGptSourcePageHandoffAction;
-use App\Models\Run;
+use App\Console\Commands\Concerns\InteractsWithSourcePageHandoffConsole;
 use Illuminate\Console\Command;
-use InvalidArgumentException;
 
 class BuildChatGptSourcePageHandoffCommand extends Command
 {
+    use InteractsWithSourcePageHandoffConsole;
+
     protected $signature = 'handoff:chatgpt-source-pages
         {--run-id= : Explicit successful ChatGPT import run id to build from}';
 
@@ -26,22 +27,12 @@ class BuildChatGptSourcePageHandoffCommand extends Command
     {
         $runId = $this->resolveRunId();
 
-        $this->info('Building ChatGPT source-page handoff');
-        $this->line("Using run id: {$runId}");
-
         $handoff = ($this->buildChatGptSourcePageHandoffAction)($runId);
 
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $sourceLocator = $handoff->canonicalScope['source_locator'] ?? '';
 
-        if (is_string($sourceLocator) && $sourceLocator !== '') {
-            $this->line("Source locator: {$sourceLocator}");
-        }
-
-        $this->line('Archive count: '.($rowCounts['archives'] ?? 0));
-        $this->line('Conversation count: '.($rowCounts['conversations'] ?? 0));
-        $this->line('Message count: '.($rowCounts['messages'] ?? 0));
-        $this->info('Handoff ready');
+        $this->printHandoffSummary('ChatGPT', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
     }
@@ -54,17 +45,9 @@ class BuildChatGptSourcePageHandoffCommand extends Command
             return (int) $runId;
         }
 
-        $resolvedRunId = Run::query()
-            ->where('subsystem', 'import')
-            ->where('operation', 'chatgpt-import')
-            ->where('status', Run::STATUS_SUCCEEDED)
-            ->latest('id')
-            ->value('id');
-
-        if (! is_int($resolvedRunId)) {
-            throw new InvalidArgumentException('No successful ChatGPT import run is available for handoff.');
-        }
-
-        return $resolvedRunId;
+        return $this->resolveLatestSuccessfulRunId(
+            operation: 'chatgpt-import',
+            errorMessage: 'No successful ChatGPT import run is available for handoff.',
+        );
     }
 }

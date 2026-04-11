@@ -4,59 +4,64 @@ declare(strict_types=1);
 
 namespace App\Actions\Import;
 
+use App\Actions\Import\Support\ImportArtifactWriter;
+use App\Actions\Import\Support\ImportRunExecutor;
+use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\ChatGptImportResultData;
 use App\Data\Intake\ImporterDispatchData;
-use App\Data\Shared\RecordArtifactData;
-use App\Data\Shared\StartRunData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
-use App\Services\Nornir\ArtifactRecorder;
 use App\Services\Nornir\ProvenanceWriter;
-use App\Services\Nornir\RunRecorder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Throwable;
 
 class ImportChatGptConversationsAction
 {
     public function __construct(
-        private readonly RunRecorder $runRecorder,
-        private readonly ArtifactRecorder $artifactRecorder,
+        private readonly ImportRunExecutor $importRunExecutor,
+        private readonly ImportArtifactWriter $importArtifactWriter,
+        private readonly SourceObservationStore $sourceObservationStore,
         private readonly ProvenanceWriter $provenanceWriter,
     ) {}
 
     public function __invoke(ImporterDispatchData $dispatchPayload, ?callable $progress = null): ChatGptImportResultData
     {
-        $run = $this->runRecorder->start(new StartRunData(
-            subsystem: 'import',
+        $execution = $this->importRunExecutor->execute(
+            dispatchPayload: $dispatchPayload,
             operation: 'chatgpt-import',
-            inputScope: [
-                'source_locator' => $dispatchPayload->sourceLocator,
-                'scope_snapshot' => $dispatchPayload->scopeSnapshot,
-            ],
-            idempotencyKey: 'chatgpt-import:'.sha1($dispatchPayload->sourceLocator.'|'.json_encode($dispatchPayload->scopeSnapshot)),
-        ));
+            import: fn ($run): array => DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run, $progress)),
+            writeArtifacts: function ($run, array $summary) use ($dispatchPayload): void {
+                $this->writeArtifacts($run, $dispatchPayload, $summary);
+            },
+        );
+        /** @var array{
+         *     run:Run,
+         *     summary:array{
+         *         source_file:string,
+         *         source_set_id:int,
+         *         conversations:int,
+         *         messages:int,
+         *         inserted_messages:int,
+         *         reobserved_messages:int
+         *     }
+         * } $execution
+         */
 
-        try {
-            $summary = DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run, $progress));
-
-            $this->writeArtifacts($run, $dispatchPayload, $summary);
-
-            return new ChatGptImportResultData(
-                run: $this->runRecorder->complete($run),
-                summary: $summary,
-            );
-        } catch (Throwable $throwable) {
-            $this->runRecorder->fail($run, $throwable->getMessage());
-
-            throw $throwable;
-        }
+        return new ChatGptImportResultData(
+            run: $execution['run'],
+            summary: $execution['summary'],
+        );
     }
 
     /**
-     * @return array{source_file:string, conversations:int, messages:int}
+     * @return array{
+     *     source_file:string,
+     *     source_set_id:int,
+     *     conversations:int,
+     *     messages:int,
+     *     inserted_messages:int,
+     *     reobserved_messages:int
+     * }
      */
     private function importFiles(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {
@@ -70,9 +75,12 @@ class ImportChatGptConversationsAction
             'total_files' => count($files),
         ]);
 
+        $sourceSetId = $this->resolveSourceSetId($dispatchPayload);
         $conversationCount = 0;
         $messageCount = 0;
         $firstFile = basename($files[0]);
+        $insertedMessages = 0;
+        $reobservedMessages = 0;
 
         foreach ($files as $index => $file) {
             $this->reportProgress($progress, 'file_started', [
@@ -86,24 +94,7 @@ class ImportChatGptConversationsAction
             $conversationsBeforeFile = $conversationCount;
             $messagesBeforeFile = $messageCount;
 
-            $archive = DB::table('chatgpt_archives')->updateOrInsert(
-                [
-                    'archive_key' => sha1($dispatchPayload->sourceLocator.'|'.basename($file)),
-                ],
-                [
-                    'source_locator' => $dispatchPayload->sourceLocator,
-                    'source_file' => basename($file),
-                    'archive_label' => $dispatchPayload->scopeSnapshot['archive_label'] ?? null,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ],
-            );
-
-            unset($archive);
-
-            $archiveId = (int) DB::table('chatgpt_archives')
-                ->where('archive_key', sha1($dispatchPayload->sourceLocator.'|'.basename($file)))
-                ->value('id');
+            $archiveId = $this->resolveArchiveId($sourceSetId, $dispatchPayload, $file);
 
             $payload = json_decode((string) file_get_contents($file), true);
 
@@ -118,6 +109,7 @@ class ImportChatGptConversationsAction
 
                 $conversationId = $this->upsertConversation($archiveId, $conversation);
                 $conversationCount++;
+                $this->recordConversationObservation($conversationId, $sourceSetId, $archiveId);
 
                 foreach ($conversation['mapping'] as $node) {
                     if (! is_array($node) || ! isset($node['id']) || ! isset($node['children'])) {
@@ -136,10 +128,16 @@ class ImportChatGptConversationsAction
                         throw new InvalidArgumentException('Malformed ChatGPT conversation payload: message is missing required keys.');
                     }
 
-                    $messageRowId = $this->upsertMessage($conversationId, $nodeRowId, $message);
+                    $messageRow = $this->upsertMessage($conversationId, $nodeRowId, $message);
                     $messageCount++;
+                    if ($messageRow['wasRecentlyCreated']) {
+                        $insertedMessages++;
+                    } else {
+                        $reobservedMessages++;
+                    }
 
-                    $this->syncPartsAndAssets($messageRowId, $message);
+                    $this->syncPartsAndAssets($messageRow['id'], $message);
+                    $this->recordMessageObservation($messageRow['id'], $sourceSetId, $archiveId);
 
                     $this->provenanceWriter->link(new WriteProvenanceLinkData(
                         runId: $run->id,
@@ -164,9 +162,46 @@ class ImportChatGptConversationsAction
 
         return [
             'source_file' => $firstFile,
+            'source_set_id' => $sourceSetId,
             'conversations' => $conversationCount,
             'messages' => $messageCount,
+            'inserted_messages' => $insertedMessages,
+            'reobserved_messages' => $reobservedMessages,
         ];
+    }
+
+    private function resolveSourceSetId(ImporterDispatchData $dispatchPayload): int
+    {
+        $sourceKey = sha1($dispatchPayload->accessMode.'|'.$dispatchPayload->sourceLocator.'|'.json_encode($dispatchPayload->scopeSnapshot));
+
+        return $this->sourceObservationStore->upsertAndReturnId(
+            table: 'chatgpt_source_sets',
+            unique: [
+                'source_key' => $sourceKey,
+            ],
+            values: [
+                'source_locator' => $dispatchPayload->sourceLocator,
+                'access_mode' => $dispatchPayload->accessMode,
+            ],
+        );
+    }
+
+    private function resolveArchiveId(int $sourceSetId, ImporterDispatchData $dispatchPayload, string $file): int
+    {
+        $archiveKey = sha1($sourceSetId.'|'.basename($file));
+
+        return $this->sourceObservationStore->upsertAndReturnId(
+            table: 'chatgpt_archives',
+            unique: [
+                'archive_key' => $archiveKey,
+            ],
+            values: [
+                'chatgpt_source_set_id' => $sourceSetId,
+                'source_locator' => $dispatchPayload->sourceLocator,
+                'source_file' => basename($file),
+                'archive_label' => $dispatchPayload->scopeSnapshot['archive_label'] ?? null,
+            ],
+        );
     }
 
     /**
@@ -250,17 +285,23 @@ class ImportChatGptConversationsAction
 
     /**
      * @param  array<string, mixed>  $message
+     * @return array{id:int, wasRecentlyCreated:bool}
      */
-    private function upsertMessage(int $conversationId, int $nodeId, array $message): int
+    private function upsertMessage(int $conversationId, int $nodeId, array $message): array
     {
         $author = $message['author'] ?? [];
         $metadata = $message['metadata'] ?? [];
         $content = $message['content'] ?? [];
+        $messageId = (string) $message['id'];
+        $existingMessageId = DB::table('chatgpt_messages')
+            ->where('chatgpt_conversation_id', $conversationId)
+            ->where('message_id', $messageId)
+            ->value('id');
 
         DB::table('chatgpt_messages')->updateOrInsert(
             [
                 'chatgpt_conversation_id' => $conversationId,
-                'message_id' => (string) $message['id'],
+                'message_id' => $messageId,
             ],
             [
                 'chatgpt_node_id' => $nodeId,
@@ -279,10 +320,41 @@ class ImportChatGptConversationsAction
             ],
         );
 
-        return (int) DB::table('chatgpt_messages')
-            ->where('chatgpt_conversation_id', $conversationId)
-            ->where('message_id', (string) $message['id'])
-            ->value('id');
+        return [
+            'id' => (int) DB::table('chatgpt_messages')
+                ->where('chatgpt_conversation_id', $conversationId)
+                ->where('message_id', $messageId)
+                ->value('id'),
+            'wasRecentlyCreated' => $existingMessageId === null,
+        ];
+    }
+
+    private function recordConversationObservation(int $conversationId, int $sourceSetId, int $archiveId): void
+    {
+        $this->sourceObservationStore->record(
+            table: 'chatgpt_conversation_observations',
+            unique: [
+                'chatgpt_conversation_id' => $conversationId,
+                'chatgpt_source_set_id' => $sourceSetId,
+            ],
+            values: [
+                'chatgpt_archive_id' => $archiveId,
+            ],
+        );
+    }
+
+    private function recordMessageObservation(int $messageId, int $sourceSetId, int $archiveId): void
+    {
+        $this->sourceObservationStore->record(
+            table: 'chatgpt_message_observations',
+            unique: [
+                'chatgpt_message_id' => $messageId,
+                'chatgpt_source_set_id' => $sourceSetId,
+            ],
+            values: [
+                'chatgpt_archive_id' => $archiveId,
+            ],
+        );
     }
 
     /**
@@ -340,47 +412,17 @@ class ImportChatGptConversationsAction
     }
 
     /**
-     * @param  array{source_file:string, conversations:int, messages:int}  $summary
+     * @param  array<string, mixed>  $summary
      */
     private function writeArtifacts(Run $run, ImporterDispatchData $dispatchPayload, array $summary): void
     {
-        $importDirectory = base_path('data/imports/chatgpt');
-        $runDirectory = base_path('data/runs/import');
-        File::ensureDirectoryExists($importDirectory);
-        File::ensureDirectoryExists($runDirectory);
-
-        $slug = Str::slug(pathinfo($summary['source_file'], PATHINFO_FILENAME));
-        $importSummaryPath = $importDirectory.'/'.$slug.'-summary.json';
-        $runSummaryPath = $runDirectory.'/chatgpt-import-run-'.$run->id.'.json';
-
-        $payload = [
-            'source_locator' => $dispatchPayload->sourceLocator,
-            'scope_snapshot' => $dispatchPayload->scopeSnapshot,
-            'summary' => $summary,
-        ];
-
-        File::put($importSummaryPath, json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-        File::put($runSummaryPath, json_encode([
-            'run_id' => $run->id,
-            'status' => $run->status,
-            'summary' => $summary,
-        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-
-        $this->artifactRecorder->record(new RecordArtifactData(
-            runId: $run->id,
+        $this->importArtifactWriter->write(
+            run: $run,
+            dispatchPayload: $dispatchPayload,
+            sourceType: 'chatgpt',
             artifactKind: 'chatgpt-import-summary',
-            locator: $importSummaryPath,
-            classification: 'diagnostic',
-            metadata: $summary,
-        ));
-
-        $this->artifactRecorder->record(new RecordArtifactData(
-            runId: $run->id,
-            artifactKind: 'run-summary',
-            locator: $runSummaryPath,
-            classification: 'diagnostic',
-            metadata: $summary,
-        ));
+            summary: $summary,
+        );
     }
 
     /**

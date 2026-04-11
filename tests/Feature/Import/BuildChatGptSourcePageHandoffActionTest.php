@@ -32,29 +32,32 @@ it('builds a compile-facing handoff from canonical chatgpt rows', function (): v
     $importResult = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
     $handoff = app(BuildChatGptSourcePageHandoffAction::class)($importResult->run->id);
-    $archiveIds = $handoff->canonicalScope['archive_ids'];
+    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('chatgpt');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
-    expect($archiveIds)->toHaveCount(1);
+    expect($sourceSetIds)->toHaveCount(1);
     expect($handoff->canonicalScope)->toMatchArray([
         'source_locator' => $exportRoot,
         'accepted_root_paths' => [$exportRoot],
         'tables' => [
             'chatgpt_archives',
+            'chatgpt_source_sets',
             'chatgpt_conversations',
             'chatgpt_nodes',
             'chatgpt_messages',
             'chatgpt_message_parts',
             'chatgpt_assets',
+            'chatgpt_conversation_observations',
+            'chatgpt_message_observations',
         ],
-        'archive_ids' => $archiveIds,
+        'source_set_ids' => $sourceSetIds,
         'handoff_scope' => [
-            'archive_ids' => $archiveIds,
+            'source_set_ids' => $sourceSetIds,
         ],
         'row_counts' => [
-            'archives' => 1,
+            'source_sets' => 1,
             'conversations' => 2,
             'messages' => 4,
         ],
@@ -100,7 +103,7 @@ it('builds the handoff from normalized rows without rescanning the raw export pa
 
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($handoff->canonicalScope['row_counts'])->toMatchArray([
-        'archives' => 1,
+        'source_sets' => 1,
         'conversations' => 1,
         'messages' => 2,
     ]);
@@ -138,6 +141,10 @@ it('normalizes legacy relative source locators in the handoff payload', function
         ]);
 
     DB::table('chatgpt_archives')
+        ->update([
+            'source_locator' => $relativeExportRoot,
+        ]);
+    DB::table('chatgpt_source_sets')
         ->update([
             'source_locator' => $relativeExportRoot,
         ]);

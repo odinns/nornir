@@ -45,7 +45,7 @@ it('imports a chatgpt export into canonical tables while preserving graph struct
     expect(DB::table('chatgpt_assets')->count())->toBe(1);
 
     $assistantMessage = DB::table('chatgpt_messages')
-        ->where('message_id', 'assistant-1')
+        ->where('message_id', 'assistant-conversation-1')
         ->first();
 
     expect($assistantMessage)->not->toBeNull();
@@ -86,11 +86,113 @@ it('reruns idempotently for the same export root', function (): void {
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
     expect(DB::table('chatgpt_archives')->count())->toBe(1);
+    expect(DB::table('chatgpt_source_sets')->count())->toBe(1);
     expect(DB::table('chatgpt_conversations')->count())->toBe(1);
     expect(DB::table('chatgpt_nodes')->count())->toBe(4);
     expect(DB::table('chatgpt_messages')->count())->toBe(4);
     expect(DB::table('chatgpt_message_parts')->count())->toBe(4);
     expect(DB::table('chatgpt_assets')->count())->toBe(1);
+    expect(DB::table('chatgpt_message_observations')->count())->toBe(4);
+    expect($secondResult->summary['inserted_messages'])->toBe(0);
+    expect($secondResult->summary['reobserved_messages'])->toBe(4);
+});
+
+it('keeps older canonical conversations when a newer export omits them', function (): void {
+    $fullExportRoot = createChatGptExportDirectory([
+        buildChatGptConversation('conversation-history-1'),
+        buildChatGptConversation('conversation-history-2'),
+    ]);
+    $truncatedExportRoot = createChatGptExportDirectory([
+        buildChatGptConversation('conversation-history-2'),
+        buildChatGptConversation('conversation-history-3'),
+    ]);
+
+    $recordIntake = app(RecordIntakeAction::class);
+    $importer = app(ImportChatGptConversationsAction::class);
+
+    $fullIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $fullExportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fullExportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+    $truncatedIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $truncatedExportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$truncatedExportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $importer($fullIntake->dispatchPayload);
+    $result = $importer($truncatedIntake->dispatchPayload);
+
+    expect(DB::table('chatgpt_source_sets')->count())->toBe(2);
+    expect(DB::table('chatgpt_conversations')->count())->toBe(3);
+    expect(DB::table('chatgpt_messages')->count())->toBe(12);
+    expect(DB::table('chatgpt_message_observations')->count())->toBe(16);
+    expect(DB::table('chatgpt_conversations')->pluck('conversation_id')->all())->toEqualCanonicalizing([
+        'conversation-history-1',
+        'conversation-history-2',
+        'conversation-history-3',
+    ]);
+    expect($result->summary['inserted_messages'])->toBe(4);
+    expect($result->summary['reobserved_messages'])->toBe(4);
+});
+
+it('backfills missing canonical conversations when an older fuller export arrives later', function (): void {
+    $truncatedExportRoot = createChatGptExportDirectory([
+        buildChatGptConversation('conversation-backfill-2'),
+    ]);
+    $fullExportRoot = createChatGptExportDirectory([
+        buildChatGptConversation('conversation-backfill-1'),
+        buildChatGptConversation('conversation-backfill-2'),
+    ]);
+
+    $recordIntake = app(RecordIntakeAction::class);
+    $importer = app(ImportChatGptConversationsAction::class);
+
+    $truncatedIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $truncatedExportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$truncatedExportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+    $fullIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $fullExportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fullExportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $importer($truncatedIntake->dispatchPayload);
+    $result = $importer($fullIntake->dispatchPayload);
+
+    expect(DB::table('chatgpt_source_sets')->count())->toBe(2);
+    expect(DB::table('chatgpt_conversations')->count())->toBe(2);
+    expect(DB::table('chatgpt_messages')->count())->toBe(8);
+    expect(DB::table('chatgpt_message_observations')->count())->toBe(12);
+    expect(DB::table('chatgpt_conversations')->pluck('conversation_id')->all())->toEqualCanonicalizing([
+        'conversation-backfill-1',
+        'conversation-backfill-2',
+    ]);
+    expect($result->summary['inserted_messages'])->toBe(4);
+    expect($result->summary['reobserved_messages'])->toBe(4);
 });
 
 it('fails clearly on malformed export data', function (): void {
@@ -153,7 +255,7 @@ it('records importer artifacts and provenance links for the imported rows', func
 
     expect($links)->not->toBeEmpty();
     expect($links->pluck('output_target')->contains(fn (string $target): bool => str_contains($target, 'chatgpt_messages')))->toBeTrue();
-    expect($links->pluck('evidence_ref')->contains('conversations-000.json#message:assistant-1'))->toBeTrue();
+    expect($links->pluck('evidence_ref')->contains('conversations-000.json#message:assistant-conversation-1'))->toBeTrue();
 });
 
 it('keeps structural nodes even when the export has null messages', function (): void {
@@ -187,7 +289,7 @@ it('keeps structural nodes even when the export has null messages', function ():
 
 it('imports message parts longer than mysql text without truncation errors', function (): void {
     $conversation = buildChatGptConversation();
-    $conversation['mapping']['assistant-1']['message']['content']['parts'][0] = str_repeat('A long answer. ', 6_000);
+    $conversation['mapping']['assistant-conversation-1']['message']['content']['parts'][0] = str_repeat('A long answer. ', 6_000);
 
     $exportRoot = createChatGptExportDirectory([$conversation]);
 
@@ -211,7 +313,7 @@ it('imports message parts longer than mysql text without truncation errors', fun
         ->orderByRaw('LENGTH(text_part) DESC')
         ->value('text_part');
 
-    expect($storedPart)->toBe($conversation['mapping']['assistant-1']['message']['content']['parts'][0]);
+    expect($storedPart)->toBe($conversation['mapping']['assistant-conversation-1']['message']['content']['parts'][0]);
 });
 
 function createChatGptExportDirectory(array $conversations): string
@@ -226,22 +328,22 @@ function createChatGptExportDirectory(array $conversations): string
     return $path;
 }
 
-function buildChatGptConversation(): array
+function buildChatGptConversation(string $conversationId = 'conversation-1'): array
 {
     return [
-        'id' => 'conversation-1',
-        'conversation_id' => 'conversation-1',
+        'id' => $conversationId,
+        'conversation_id' => $conversationId,
         'title' => 'Importer test conversation',
         'create_time' => 1_697_527_962.568149,
         'update_time' => 1_697_528_705.169732,
-        'current_node' => 'assistant-1',
+        'current_node' => 'assistant-'.$conversationId,
         'mapping' => [
-            'root-node' => [
-                'id' => 'root-node',
+            'root-'.$conversationId => [
+                'id' => 'root-'.$conversationId,
                 'parent' => null,
-                'children' => ['user-1'],
+                'children' => ['user-1-'.$conversationId],
                 'message' => [
-                    'id' => 'root-node',
+                    'id' => 'root-'.$conversationId,
                     'author' => ['role' => 'system', 'name' => null, 'metadata' => []],
                     'content' => ['content_type' => 'text', 'parts' => ['']],
                     'metadata' => ['is_visually_hidden_from_conversation' => true],
@@ -254,12 +356,12 @@ function buildChatGptConversation(): array
                     'channel' => null,
                 ],
             ],
-            'user-1' => [
-                'id' => 'user-1',
-                'parent' => 'root-node',
-                'children' => ['assistant-1'],
+            'user-1-'.$conversationId => [
+                'id' => 'user-1-'.$conversationId,
+                'parent' => 'root-'.$conversationId,
+                'children' => ['assistant-'.$conversationId],
                 'message' => [
-                    'id' => 'user-1',
+                    'id' => 'user-1-'.$conversationId,
                     'author' => ['role' => 'user', 'name' => null, 'metadata' => []],
                     'content' => ['content_type' => 'text', 'parts' => ['What time is importer time?']],
                     'metadata' => ['timestamp_' => 'absolute'],
@@ -272,12 +374,12 @@ function buildChatGptConversation(): array
                     'channel' => null,
                 ],
             ],
-            'assistant-1' => [
-                'id' => 'assistant-1',
-                'parent' => 'user-1',
-                'children' => ['user-2'],
+            'assistant-'.$conversationId => [
+                'id' => 'assistant-'.$conversationId,
+                'parent' => 'user-1-'.$conversationId,
+                'children' => ['user-2-'.$conversationId],
                 'message' => [
-                    'id' => 'assistant-1',
+                    'id' => 'assistant-'.$conversationId,
                     'author' => ['role' => 'assistant', 'name' => null, 'metadata' => []],
                     'content' => [
                         'content_type' => 'multimodal_text',
@@ -300,12 +402,12 @@ function buildChatGptConversation(): array
                     'channel' => null,
                 ],
             ],
-            'user-2' => [
-                'id' => 'user-2',
-                'parent' => 'assistant-1',
+            'user-2-'.$conversationId => [
+                'id' => 'user-2-'.$conversationId,
+                'parent' => 'assistant-'.$conversationId,
                 'children' => [],
                 'message' => [
-                    'id' => 'user-2',
+                    'id' => 'user-2-'.$conversationId,
                     'author' => ['role' => 'user', 'name' => null, 'metadata' => []],
                     'content' => ['content_type' => 'text', 'parts' => ['Fine. Keep going.']],
                     'metadata' => ['timestamp_' => 'absolute'],

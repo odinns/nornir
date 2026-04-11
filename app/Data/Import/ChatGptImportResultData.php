@@ -9,7 +9,14 @@ use App\Models\Run;
 final readonly class ChatGptImportResultData
 {
     /**
-     * @param  array{source_file:string, conversations:int, messages:int}  $summary
+     * @param  array{
+     *     source_file:string,
+     *     source_set_id:int,
+     *     conversations:int,
+     *     messages:int,
+     *     inserted_messages:int,
+     *     reobserved_messages:int
+     * }  $summary
      */
     public function __construct(
         public Run $run,

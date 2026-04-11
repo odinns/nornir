@@ -6,13 +6,14 @@ namespace App\Console\Commands;
 
 use App\Actions\Import\ImportChatGptConversationsAction;
 use App\Actions\Intake\RecordIntakeAction;
+use App\Console\Commands\Concerns\InteractsWithImportConsole;
 use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use InvalidArgumentException;
 
 class ImportChatGptCommand extends Command
 {
+    use InteractsWithImportConsole;
+
     protected $signature = 'import:chatgpt
         {source : Path to a ChatGPT export directory or conversation JSON file}
         {--archive-label= : Optional archive label}
@@ -31,7 +32,7 @@ class ImportChatGptCommand extends Command
     public function handle(): int
     {
         $source = $this->sourceArgument();
-        $accessMode = $this->resolveAccessMode($source);
+        $accessMode = $this->resolveFilesystemAccessMode($source);
         $scopeSnapshot = $this->buildScopeSnapshot($source, $accessMode);
 
         $this->info("Recording intake for ChatGPT source: {$source}");
@@ -44,8 +45,7 @@ class ImportChatGptCommand extends Command
             importerOptions: [],
         ));
 
-        $this->line("Intake record: {$intakeResult->intakeRecord->id}");
-        $this->line("Review manifest: {$intakeResult->reviewManifestPath}");
+        $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
         $this->info('Importing ChatGPT conversations');
 
         $importResult = ($this->importChatGptConversationsAction)(
@@ -76,12 +76,18 @@ class ImportChatGptCommand extends Command
             },
         );
 
-        $this->info('Import complete');
-        $this->line("Run id: {$importResult->run->id}");
-        $this->line("Run status: {$importResult->run->status}");
-        $this->line("Source file: {$importResult->summary['source_file']}");
-        $this->line("Imported conversations: {$importResult->summary['conversations']}");
-        $this->line("Imported messages: {$importResult->summary['messages']}");
+        $this->printImportCompletion(
+            runId: $importResult->run->id,
+            runStatus: $importResult->run->status,
+            summary: $importResult->summary,
+            labels: [
+                'source_file' => 'Source file',
+                'conversations' => 'Imported conversations',
+                'messages' => 'Imported messages',
+                'inserted_messages' => 'Inserted messages',
+                'reobserved_messages' => 'Reobserved messages',
+            ],
+        );
 
         return self::SUCCESS;
     }
@@ -113,36 +119,5 @@ class ImportChatGptCommand extends Command
             'accepted_root_paths' => array_values(array_unique([$source, ...$additionalRoots])),
             'relative_glob' => $this->stringOption('glob') ?? 'conversations-*.json',
         ];
-    }
-
-    private function resolveAccessMode(string $source): string
-    {
-        if (File::isDirectory($source)) {
-            return 'local-path';
-        }
-
-        if (File::isFile($source)) {
-            return 'archive';
-        }
-
-        throw new InvalidArgumentException('Source locator is not reachable.');
-    }
-
-    private function sourceArgument(): string
-    {
-        $source = $this->argument('source');
-
-        if (! is_string($source) || $source === '') {
-            throw new InvalidArgumentException('Source locator is not reachable.');
-        }
-
-        return $source;
-    }
-
-    private function stringOption(string $name): ?string
-    {
-        $value = $this->option($name);
-
-        return is_string($value) ? $value : null;
     }
 }

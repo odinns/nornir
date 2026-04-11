@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Import;
 
+use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use App\Models\Run;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -13,69 +13,66 @@ class BuildChatGptSourcePageHandoffAction
 {
     private const array CANONICAL_TABLES = [
         'chatgpt_archives',
+        'chatgpt_source_sets',
         'chatgpt_conversations',
         'chatgpt_nodes',
         'chatgpt_messages',
         'chatgpt_message_parts',
         'chatgpt_assets',
+        'chatgpt_conversation_observations',
+        'chatgpt_message_observations',
     ];
+
+    public function __construct(
+        private readonly SourcePageHandoffSupport $sourcePageHandoffSupport,
+    ) {}
 
     public function __invoke(int $runId): WikiCompilationHandoffData
     {
-        $run = Run::query()->find($runId);
+        $boundary = $this->sourcePageHandoffSupport->resolveRunBoundary(
+            runId: $runId,
+            operation: 'chatgpt-import',
+            errorMessage: 'Run does not describe a successful ChatGPT import.',
+        );
+        $run = $boundary['run'];
+        $sourceLocator = $boundary['source_locator'];
+        $scopeSnapshot = $boundary['scope_snapshot'];
 
-        if ($run === null
-            || $run->subsystem !== 'import'
-            || $run->operation !== 'chatgpt-import'
-            || $run->status !== Run::STATUS_SUCCEEDED) {
-            throw new InvalidArgumentException('Run does not describe a successful ChatGPT import.');
-        }
-
-        $inputScope = $run->input_scope;
-        $sourceLocator = $inputScope['source_locator'] ?? null;
-        $scopeSnapshot = $inputScope['scope_snapshot'] ?? [];
-
-        if (! is_string($sourceLocator) || ! is_array($scopeSnapshot)) {
-            throw new InvalidArgumentException('Run input scope is missing the ChatGPT source boundary.');
-        }
-
-        $normalizedSourceLocator = $this->normalizePath($sourceLocator);
-        $normalizedAcceptedRootPaths = $this->normalizeAcceptedRootPaths(
+        $normalizedSourceLocator = $this->sourcePageHandoffSupport->normalizePath($sourceLocator);
+        $normalizedAcceptedRootPaths = $this->sourcePageHandoffSupport->normalizePaths(
             $scopeSnapshot['accepted_root_paths'] ?? [$sourceLocator],
         );
 
-        $archiveIds = DB::table('chatgpt_archives')
-            ->whereIn('source_locator', array_values(array_unique([$sourceLocator, $normalizedSourceLocator])))
-            ->orderBy('id')
-            ->pluck('id')
-            ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+        $sourceSetIds = $this->sourcePageHandoffSupport->resolveSourceSetIds('chatgpt_source_sets', $sourceLocator);
 
-        if ($archiveIds === []) {
+        if ($sourceSetIds === []) {
             throw new InvalidArgumentException('No canonical ChatGPT rows were found for the requested run.');
         }
 
-        $conversationCount = (int) DB::table('chatgpt_conversations')
-            ->whereIn('chatgpt_archive_id', $archiveIds)
-            ->count();
+        $conversationIds = DB::table('chatgpt_conversation_observations')
+            ->whereIn('chatgpt_source_set_id', $sourceSetIds)
+            ->pluck('chatgpt_conversation_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
 
-        $messageCount = (int) DB::table('chatgpt_messages')
-            ->join('chatgpt_conversations', 'chatgpt_conversations.id', '=', 'chatgpt_messages.chatgpt_conversation_id')
-            ->whereIn('chatgpt_conversations.chatgpt_archive_id', $archiveIds)
-            ->count();
+        $messageIds = DB::table('chatgpt_message_observations')
+            ->whereIn('chatgpt_source_set_id', $sourceSetIds)
+            ->pluck('chatgpt_message_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
 
         $canonicalScope = [
             'source_locator' => $normalizedSourceLocator,
             'accepted_root_paths' => $normalizedAcceptedRootPaths,
             'tables' => self::CANONICAL_TABLES,
-            'archive_ids' => $archiveIds,
+            'source_set_ids' => $sourceSetIds,
             'handoff_scope' => [
-                'archive_ids' => $archiveIds,
+                'source_set_ids' => $sourceSetIds,
             ],
             'row_counts' => [
-                'archives' => count($archiveIds),
-                'conversations' => $conversationCount,
-                'messages' => $messageCount,
+                'source_sets' => count($sourceSetIds),
+                'conversations' => count(array_unique($conversationIds)),
+                'messages' => count(array_unique($messageIds)),
             ],
         ];
 
@@ -85,37 +82,5 @@ class BuildChatGptSourcePageHandoffAction
             owningRunId: $run->id,
             canonicalScope: $canonicalScope,
         );
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function normalizeAcceptedRootPaths(mixed $acceptedRootPaths): array
-    {
-        if (! is_array($acceptedRootPaths)) {
-            return [];
-        }
-
-        $paths = array_values(array_filter($acceptedRootPaths, static fn (mixed $path): bool => is_string($path) && $path !== ''));
-
-        return array_map(
-            fn (string $path): string => $this->normalizePath($path),
-            $paths,
-        );
-    }
-
-    private function normalizePath(string $path): string
-    {
-        $normalizedPath = realpath($path);
-
-        if ($normalizedPath !== false) {
-            return $normalizedPath;
-        }
-
-        if (str_starts_with($path, DIRECTORY_SEPARATOR)) {
-            return $path;
-        }
-
-        return base_path($path);
     }
 }
