@@ -22,6 +22,19 @@ class RunRecorder
             'idempotency_key' => $data->idempotencyKey,
         ]);
 
+        if ($run->exists && $run->status === Run::STATUS_RUNNING) {
+            $run->forceFill([
+                'status' => Run::STATUS_CANCELLED,
+                'finished_at' => Carbon::now(),
+                'failure_summary' => 'Previous attempt interrupted before completion.',
+            ])->save();
+
+            $this->appendEvent($run, 'run_interrupted', [
+                'status' => Run::STATUS_CANCELLED,
+                'reason' => 'stale-running-restart',
+            ]);
+        }
+
         $run->fill([
             'parent_run_id' => $data->parentRunId,
             'status' => Run::STATUS_RUNNING,

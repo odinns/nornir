@@ -64,6 +64,43 @@ it('records lifecycle events when a run starts and succeeds', function (): void 
     ]);
 });
 
+it('records when a stale running logical run is restarted', function (): void {
+    $recorder = app(RunRecorder::class);
+
+    $firstRun = $recorder->start(new StartRunData(
+        subsystem: 'import',
+        operation: 'chatgpt-import',
+        inputScope: ['archive' => 'chatgpt-export-2026-04-10'],
+        idempotencyKey: 'chatgpt-import:chatgpt-export-2026-04-10',
+    ));
+
+    $firstRun->forceFill([
+        'started_at' => now()->subMinutes(15),
+    ])->save();
+
+    $restartedRun = $recorder->start(new StartRunData(
+        subsystem: 'import',
+        operation: 'chatgpt-import',
+        inputScope: ['archive' => 'chatgpt-export-2026-04-10'],
+        idempotencyKey: 'chatgpt-import:chatgpt-export-2026-04-10',
+    ));
+
+    expect($restartedRun->is($firstRun))->toBeTrue();
+    expect($restartedRun->status)->toBe(Run::STATUS_RUNNING);
+    expect($restartedRun->finished_at)->toBeNull();
+    expect($restartedRun->failure_summary)->toBeNull();
+    expect($restartedRun->events()->orderBy('id')->pluck('event')->all())->toBe([
+        'run_started',
+        'run_interrupted',
+        'run_started',
+    ]);
+    expect($restartedRun->events()->where('event', 'run_interrupted')->latest('id')->value('payload'))
+        ->toMatchArray([
+            'status' => Run::STATUS_CANCELLED,
+            'reason' => 'stale-running-restart',
+        ]);
+});
+
 it('records failure and partial completion states without overwriting event history', function (): void {
     $recorder = app(RunRecorder::class);
 
