@@ -1,0 +1,142 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Actions\Import\BuildSmsSourcePageHandoffAction;
+use App\Actions\Import\ImportSmsMessagesAction;
+use App\Actions\Intake\RecordIntakeAction;
+use App\Data\Intake\RecordIntakeData;
+use App\Models\Run;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+
+uses(RefreshDatabase::class);
+
+it('builds a compile-facing handoff from canonical sms rows', function (): void {
+    $fixture = createSmsFixtureDatabase('sms-handoff', [
+        'messages' => [
+            [
+                'guid' => 'msg-handoff-001',
+                'text' => 'Handoff message one',
+                'is_from_me' => 0,
+                'handle_id' => 1,
+                'date' => appleTimestampForUnix(1_700_400_000),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_400_010),
+                'cache_has_attachments' => 0,
+            ],
+            [
+                'guid' => 'msg-handoff-002',
+                'text' => 'Handoff message two',
+                'is_from_me' => 1,
+                'handle_id' => null,
+                'date' => appleTimestampForUnix(1_700_400_100),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_400_120),
+                'cache_has_attachments' => 0,
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'sms',
+        accessMode: 'archive',
+        sourceLocator: $fixture['database_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['root_path']],
+            'attachments_root' => $fixture['attachments_root'],
+        ],
+        importerOptions: [],
+    ));
+
+    $importResult = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+
+    $handoff = app(BuildSmsSourcePageHandoffAction::class)($importResult->run->id);
+    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
+
+    expect($handoff->sourceType)->toBe('sms');
+    expect($handoff->handoffType)->toBe('source-pages');
+    expect($handoff->owningRunId)->toBe($importResult->run->id);
+    expect($sourceSetIds)->toHaveCount(1);
+    expect($handoff->canonicalScope)->toMatchArray([
+        'source_locator' => $fixture['database_path'],
+        'accepted_root_paths' => [$fixture['root_path']],
+        'attachments_root' => $fixture['attachments_root'],
+        'tables' => [
+            'sms_source_sets',
+            'sms_conversations',
+            'sms_participants',
+            'sms_messages',
+            'sms_attachments',
+            'sms_message_observations',
+        ],
+        'source_set_ids' => $sourceSetIds,
+        'handoff_scope' => [
+            'source_set_ids' => $sourceSetIds,
+        ],
+        'row_counts' => [
+            'source_sets' => 1,
+            'conversations' => 1,
+            'participants' => 1,
+            'messages' => 2,
+            'attachments' => 0,
+        ],
+    ]);
+});
+
+it('rejects runs that are not successful sms imports', function (): void {
+    $run = Run::query()->create([
+        'subsystem' => 'muninn',
+        'operation' => 'timeline-pass',
+        'status' => Run::STATUS_SUCCEEDED,
+        'input_scope' => ['person' => 'odinn'],
+        'idempotency_key' => 'timeline-pass:odinn',
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    expect(fn () => app(BuildSmsSourcePageHandoffAction::class)($run->id))
+        ->toThrow(InvalidArgumentException::class, 'Run does not describe a successful SMS import.');
+});
+
+it('builds the sms handoff from canonical rows without rescanning the raw source path', function (): void {
+    $fixture = createSmsFixtureDatabase('sms-handoff-no-raw', [
+        'messages' => [
+            [
+                'guid' => 'msg-handoff-rawless-001',
+                'text' => 'Raw path can vanish now',
+                'is_from_me' => 0,
+                'handle_id' => 1,
+                'date' => appleTimestampForUnix(1_700_500_000),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_500_010),
+                'cache_has_attachments' => 0,
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'sms',
+        accessMode: 'archive',
+        sourceLocator: $fixture['database_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['root_path']],
+            'attachments_root' => $fixture['attachments_root'],
+        ],
+        importerOptions: [],
+    ));
+
+    $importResult = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+
+    File::deleteDirectory($fixture['root_path']);
+
+    $handoff = app(BuildSmsSourcePageHandoffAction::class)($importResult->run->id);
+
+    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+        'source_sets' => 1,
+        'conversations' => 1,
+        'participants' => 1,
+        'messages' => 1,
+        'attachments' => 0,
+    ]);
+});

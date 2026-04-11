@@ -11,5 +11,12 @@ return [
                 'local-path',
             ],
         ],
+        'sms' => [
+            'importer_key' => 'sms',
+            'access_modes' => [
+                'archive',
+                'local-path',
+            ],
+        ],
     ],
 ];
