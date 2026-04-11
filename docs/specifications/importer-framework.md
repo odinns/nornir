@@ -38,6 +38,8 @@ Define how source-specific importers plug into Nornir without collapsing into on
 - logical identity and source occurrence identity must be distinguished where needed
 - importer-specific diagnostics belong under `data/imports/<source>/`
 - shared operational summaries and auditable run mirrors belong under `data/runs/`
+- importer-owned canonical datetime fields must be written as UTC instants
+- timezone conversion for human display belongs downstream, not inside canonical import persistence
 
 ## Forbidden behavior
 

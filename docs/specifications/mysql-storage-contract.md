@@ -53,6 +53,9 @@ Source-owned tables use stable prefixes:
 - keep derived tables visibly derived
 - never overwrite canonical raw-normalized fields with cleaned prose
 - store enough provenance to trace markdown claims back to source rows
+- canonical imported datetime columns represent UTC instants, not server-local wall time
+- when the source provides epoch timestamps, preserve the numeric epoch field alongside the UTC datetime field
+- database session timezone must not introduce ambiguity into canonical importer writes
 
 ## Forbidden behavior
 

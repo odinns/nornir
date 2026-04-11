@@ -18,5 +18,11 @@ return [
                 'local-path',
             ],
         ],
+        'facebook' => [
+            'importer_key' => 'facebook',
+            'access_modes' => [
+                'local-path',
+            ],
+        ],
     ],
 ];
