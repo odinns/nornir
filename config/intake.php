@@ -24,5 +24,11 @@ return [
                 'local-path',
             ],
         ],
+        'twitter' => [
+            'importer_key' => 'twitter',
+            'access_modes' => [
+                'local-path',
+            ],
+        ],
     ],
 ];
