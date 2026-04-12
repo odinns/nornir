@@ -36,5 +36,11 @@ return [
                 'local-path',
             ],
         ],
+        'fidonet' => [
+            'importer_key' => 'fidonet',
+            'access_modes' => [
+                'database',
+            ],
+        ],
     ],
 ];

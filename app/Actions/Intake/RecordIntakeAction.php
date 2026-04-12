@@ -67,6 +67,14 @@ class RecordIntakeAction
             throw new InvalidArgumentException('Source locator is not reachable.');
         }
 
+        if ($data->accessMode === 'database') {
+            if (! File::isFile($data->sourceLocator)) {
+                throw new InvalidArgumentException('Database intake requires an env file source locator.');
+            }
+
+            return;
+        }
+
         if ($data->accessMode === 'archive' && ! File::isFile($data->sourceLocator)) {
             throw new InvalidArgumentException('Archive intake requires a file source locator.');
         }

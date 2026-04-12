@@ -22,7 +22,13 @@ trait InteractsWithSourcePageHandoffConsole
         }
 
         $this->line('Source set count: '.($rowCounts['source_sets'] ?? 0));
-        $this->line('Conversation count: '.($rowCounts['conversations'] ?? 0));
+
+        if (array_key_exists('conversations', $rowCounts)) {
+            $this->line('Conversation count: '.($rowCounts['conversations'] ?? 0));
+        } elseif (array_key_exists('threads', $rowCounts)) {
+            $this->line('Thread count: '.($rowCounts['threads'] ?? 0));
+        }
+
         $this->line('Message count: '.($rowCounts['messages'] ?? 0));
         $this->info('Handoff ready');
     }
