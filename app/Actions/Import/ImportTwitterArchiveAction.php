@@ -241,7 +241,8 @@ class ImportTwitterArchiveAction
                 'screen_name' => $this->stringValue($profile['screenName'] ?? null),
                 'display_name' => $this->stringValue($profile['displayName'] ?? null),
                 'bio' => $this->stringValue(data_get($profile, 'description.bio')),
-                'location' => $this->stringValue($profile['location'] ?? null),
+                'location' => $this->stringValue(data_get($profile, 'description.location'))
+                    ?? $this->stringValue($profile['location'] ?? null),
                 'website_url' => $this->stringValue(data_get($profile, 'description.website')),
                 'avatar_path' => $avatarMedia['relative_path'],
                 'header_path' => $headerMedia['relative_path'],
@@ -263,7 +264,7 @@ class ImportTwitterArchiveAction
         ] as $entry) {
             $media = $entry['media'];
 
-            if (! is_array($media) || $media['relative_path'] === null && $media['source_url'] === null) {
+            if ($media['relative_path'] === null && $media['source_url'] === null) {
                 continue;
             }
 
@@ -296,13 +297,22 @@ class ImportTwitterArchiveAction
                 continue;
             }
 
-            $screenName = $this->stringValue($payload['screenName'] ?? null);
+            $changePayload = $payload['screenNameChange'] ?? $payload;
+
+            if (! is_array($changePayload)) {
+                continue;
+            }
+
+            $screenName = $this->stringValue($changePayload['changedTo'] ?? null)
+                ?? $this->stringValue($payload['screenName'] ?? null);
 
             if ($screenName === null) {
                 continue;
             }
 
-            $changedAtSource = $this->stringValue($payload['changedAt'] ?? null);
+            $changedAtSource = $this->stringValue($changePayload['changedAt'] ?? null)
+                ?? $this->stringValue($payload['changedAt'] ?? null);
+            $resolvedAccountId = $this->stringValue($payload['accountId'] ?? null) ?? $accountId;
 
             DB::table('twitter_screen_name_changes')->updateOrInsert(
                 [
@@ -311,7 +321,7 @@ class ImportTwitterArchiveAction
                     'changed_at_source' => $changedAtSource,
                 ],
                 [
-                    'account_id' => $accountId,
+                    'account_id' => $resolvedAccountId,
                     'changed_at' => $this->parseIsoTimestamp($changedAtSource),
                     'raw_change' => json_encode($payload, JSON_THROW_ON_ERROR),
                     'created_at' => now(),

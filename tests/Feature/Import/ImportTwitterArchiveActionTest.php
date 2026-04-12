@@ -187,3 +187,64 @@ it('accepts remote profile media urls without treating them as archive traversal
         ->whereNotNull('source_url')
         ->count())->toBe(2);
 });
+
+it('imports profile location from the nested description payload used by real archives', function (): void {
+    $fixture = createTwitterFixtureArchive('twitter-import-nested-location', [
+        'profile' => [
+            'description' => [
+                'bio' => 'Nested location case',
+                'website' => 'https://example.test',
+                'location' => 'Taastrup, Denmark',
+            ],
+            'avatarMediaUrl' => 'https://pbs.twimg.com/profile_images/example/avatar.jpg',
+            'headerMediaUrl' => 'https://pbs.twimg.com/profile_banners/example/header',
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
+
+    expect(DB::table('twitter_profile_snapshots')->value('location'))->toBe('Taastrup, Denmark');
+});
+
+it('imports screen name changes from the nested real-archive shape', function (): void {
+    $fixture = createTwitterFixtureArchive('twitter-import-screen-name-change', [
+        'screen_name_changes' => [[
+            'screenNameChange' => [
+                'accountId' => '123456',
+                'screenNameChange' => [
+                    'changedAt' => '2023-10-01T04:12:34.000Z',
+                    'changedFrom' => 'odinnsorensen',
+                    'changedTo' => 'odinns_art',
+                ],
+            ],
+        ]],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
+
+    expect(DB::table('twitter_screen_name_changes')->get(['account_id', 'screen_name', 'changed_at_source'])->all())
+        ->toHaveCount(1)
+        ->and(DB::table('twitter_screen_name_changes')->value('account_id'))->toBe('123456')
+        ->and(DB::table('twitter_screen_name_changes')->value('screen_name'))->toBe('odinns_art')
+        ->and(DB::table('twitter_screen_name_changes')->value('changed_at_source'))->toBe('2023-10-01T04:12:34.000Z');
+});
