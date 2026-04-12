@@ -2,29 +2,29 @@
 
 ## Summary
 
-Build the LinkedIn importer from the real export in `../llm-wiki/raw/history/linkedin`. First verify and tighten the current specs against actual CSV files, then implement bounded intake, canonical `linkedin_*` tables, importer CLI, additive non-destructive reruns, run artifacts, and compile-facing handoff.
+Build the LinkedIn importer from the real export in `../llm-wiki/raw/history/linkedin`. The phase-1 slice is biography and timeline material: profile history, recognition, networking, activity, and private human messages.
 
 ## Steps
 
-1. Inspect the real export and adjust the LinkedIn specs before implementation.
-2. Lock importer scope around profile snapshots, positions, organizations, and posts or messages only if explicitly kept in scope.
-3. Add or finish intake wiring for bounded archive paths.
-4. Implement canonical storage for the locked scope.
-5. Build the importer command and run recording.
+1. Validate archive shape and accepted phase-1 files.
+2. Import profile and career-history slices.
+3. Import relationship and recognition slices, including recommendations and endorsements.
+4. Import activity slices.
+5. Import human private messages and remote attachment refs.
 6. Emit compile-facing handoff from canonical rows.
-7. Test happy path, additive rerun behavior, omitted-in-later-export behavior, malformed CSV handling, and date-range preservation.
+7. Test idempotence, sparse reruns, malformed CSV handling, and timestamp parsing.
 
 ## Acceptance
 
-- Specs match the real export shape before code is written.
-- Imports the approved LinkedIn entities into canonical `linkedin_*` tables.
-- Later exports may omit older profile or message data without implying deletion of earlier valid canonical history.
-- Sparse or missing datasets are handled honestly.
-- Handoff is generated from canonical rows.
+- Imports biography-relevant LinkedIn entities into canonical `linkedin_*` tables.
+- Endorsements are included because they contribute to biography and timeline evidence.
+- `messages.csv` is included in phase 1.
+- `Connections.csv` preamble handling is explicit and tested.
+- Later thinner exports do not erase older valid canonical rows.
+- Handoff is generated from canonical rows without rescanning raw source material.
 
 ## Specifications Used
 
-- `docs/specifications/intake-system.md`
 - `docs/specifications/importer-framework.md`
 - `docs/specifications/linkedin-source-navigation.md`
 - `docs/specifications/linkedin-to-nornir-importer.md`

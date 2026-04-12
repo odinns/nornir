@@ -30,5 +30,11 @@ return [
                 'local-path',
             ],
         ],
+        'linkedin' => [
+            'importer_key' => 'linkedin',
+            'access_modes' => [
+                'local-path',
+            ],
+        ],
     ],
 ];
