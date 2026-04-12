@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\File;
  *         reaction:string,
  *         actor?:string|null
  *     }>,
+ *     real_archive_reactions?:list<array{
+ *         timestamp:int,
+ *         reaction:string,
+ *         actor:string,
+ *         url?:string|null
+ *     }>,
  *     threads?:list<array{
  *         category:string,
  *         thread_key:string,
@@ -136,6 +142,29 @@ function createFacebookFixtureArchive(string $name, array $dataset): array
                 ]],
             ], $dataset['reactions'] ?? []),
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
+    );
+    File::put(
+        $archivePath.'/your_facebook_activity/comments_and_reactions/likes_and_reactions.json',
+        json_encode(array_map(static fn (array $reaction): array => [
+            'timestamp' => $reaction['timestamp'],
+            'fbid' => (string) ($reaction['timestamp'].'-reaction'),
+            'label_values' => [
+                [
+                    'label' => 'Reaktion',
+                    'value' => $reaction['reaction'],
+                ],
+                [
+                    'label' => 'Webadresse',
+                    'value' => $reaction['url'] ?? 'https://www.facebook.com/example',
+                    'href' => $reaction['url'] ?? 'https://www.facebook.com/example',
+                ],
+                [
+                    'label' => 'Navn',
+                    'value' => $reaction['actor'],
+                ],
+            ],
+            'media' => [],
+        ], $dataset['real_archive_reactions'] ?? []), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
     );
 
     foreach ($dataset['threads'] ?? [] as $thread) {

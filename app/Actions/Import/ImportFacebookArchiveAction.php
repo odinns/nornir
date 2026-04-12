@@ -383,75 +383,163 @@ class ImportFacebookArchiveAction
      */
     private function importArchiveReactions(string $archivePath, int $archiveId, Run $run, array &$observedPeople): int
     {
-        $path = $archivePath.'/your_facebook_activity/comments_and_reactions/reactions.json';
-
-        if (! File::exists($path)) {
-            return 0;
-        }
-
-        $reactions = $this->readJsonFile($path)['reactions_v2'] ?? [];
-
-        if (! is_array($reactions)) {
-            return 0;
-        }
-
+        $paths = [
+            $archivePath.'/your_facebook_activity/comments_and_reactions/reactions.json',
+            ...array_values(File::glob($archivePath.'/your_facebook_activity/comments_and_reactions/likes_and_reactions*.json') ?: []),
+        ];
         $count = 0;
 
-        foreach ($reactions as $reaction) {
+        foreach (array_values(array_unique($paths)) as $path) {
+            if (! File::exists($path)) {
+                continue;
+            }
+
+            foreach ($this->extractArchiveReactions($path) as $reaction) {
+                $timestamp = $this->integerValue($reaction['timestamp'] ?? null);
+                $title = $this->normalizeString($reaction['title'] ?? null);
+                $reactionName = $this->normalizeString($reaction['reaction'] ?? null);
+
+                if ($reactionName === null) {
+                    continue;
+                }
+
+                $actor = $this->normalizeString($reaction['actor'] ?? null);
+                $personId = $actor !== null ? $this->upsertPersonByName($actor) : null;
+
+                if ($personId !== null) {
+                    $observedPeople[$personId] = true;
+                }
+
+                $canonicalKey = sha1(json_encode([$timestamp, $title, $reactionName, $actor], JSON_THROW_ON_ERROR));
+                $reactionRow = $this->upsertCanonicalRow(
+                    table: 'facebook_reactions',
+                    unique: ['canonical_key' => $canonicalKey],
+                    values: [
+                        'facebook_archive_id' => $archiveId,
+                        'facebook_person_id' => $personId,
+                        'published_timestamp' => $timestamp,
+                        'published_at' => $this->timestampColumnValue($timestamp),
+                        'title' => $title,
+                        'reaction' => $reactionName,
+                        'raw_reaction' => json_encode($reaction, JSON_THROW_ON_ERROR),
+                    ],
+                );
+
+                $this->sourceObservationStore->record(
+                    table: 'facebook_reaction_observations',
+                    unique: [
+                        'facebook_reaction_id' => $reactionRow['id'],
+                        'facebook_archive_id' => $archiveId,
+                    ],
+                );
+
+                $this->provenanceWriter->link(new WriteProvenanceLinkData(
+                    runId: $run->id,
+                    outputTarget: 'facebook_reactions:'.$reactionRow['id'],
+                    claimKey: 'imported-reaction',
+                    evidenceType: 'source-file',
+                    evidenceRef: basename($path).'#reaction:'.$canonicalKey,
+                ));
+
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @return list<array{timestamp:?int,title:?string,reaction:?string,actor:?string}>
+     */
+    private function extractArchiveReactions(string $path): array
+    {
+        $payload = $this->readJsonFile($path);
+        $reactions = [];
+
+        if (isset($payload['reactions_v2']) && is_array($payload['reactions_v2'])) {
+            foreach ($payload['reactions_v2'] as $reaction) {
+                if (! is_array($reaction)) {
+                    continue;
+                }
+
+                $reactions[] = [
+                    'timestamp' => $this->integerValue($reaction['timestamp'] ?? null),
+                    'title' => $this->normalizeString($reaction['title'] ?? null),
+                    'reaction' => $this->normalizeString(data_get($reaction, 'data.0.reaction.reaction')),
+                    'actor' => $this->normalizeString(data_get($reaction, 'data.0.reaction.actor')),
+                ];
+            }
+
+            return $reactions;
+        }
+
+        foreach ($payload as $reaction) {
             if (! is_array($reaction)) {
                 continue;
             }
 
-            $timestamp = $this->integerValue($reaction['timestamp'] ?? null);
-            $title = $this->normalizeString($reaction['title'] ?? null);
-            $reactionName = $this->normalizeString(data_get($reaction, 'data.0.reaction.reaction'));
+            $labelValues = $reaction['label_values'] ?? [];
 
-            if ($reactionName === null) {
+            if (! is_array($labelValues)) {
                 continue;
             }
 
-            $actor = $this->normalizeString(data_get($reaction, 'data.0.reaction.actor'));
-            $personId = $actor !== null ? $this->upsertPersonByName($actor) : null;
-
-            if ($personId !== null) {
-                $observedPeople[$personId] = true;
-            }
-
-            $canonicalKey = sha1(json_encode([$timestamp, $title, $reactionName, $actor], JSON_THROW_ON_ERROR));
-            $reactionRow = $this->upsertCanonicalRow(
-                table: 'facebook_reactions',
-                unique: ['canonical_key' => $canonicalKey],
-                values: [
-                    'facebook_archive_id' => $archiveId,
-                    'facebook_person_id' => $personId,
-                    'published_timestamp' => $timestamp,
-                    'published_at' => $this->timestampColumnValue($timestamp),
-                    'title' => $title,
-                    'reaction' => $reactionName,
-                    'raw_reaction' => json_encode($reaction, JSON_THROW_ON_ERROR),
-                ],
-            );
-
-            $this->sourceObservationStore->record(
-                table: 'facebook_reaction_observations',
-                unique: [
-                    'facebook_reaction_id' => $reactionRow['id'],
-                    'facebook_archive_id' => $archiveId,
-                ],
-            );
-
-            $this->provenanceWriter->link(new WriteProvenanceLinkData(
-                runId: $run->id,
-                outputTarget: 'facebook_reactions:'.$reactionRow['id'],
-                claimKey: 'imported-reaction',
-                evidenceType: 'source-file',
-                evidenceRef: 'reactions.json#reaction:'.$canonicalKey,
-            ));
-
-            $count++;
+            $reactions[] = [
+                'timestamp' => $this->integerValue($reaction['timestamp'] ?? null),
+                'title' => $this->firstReactionLabelValue($labelValues, ['Webadresse', 'Title', 'Titel']),
+                'reaction' => $this->firstReactionLabelValue($labelValues, ['Reaktion', 'Reaction']),
+                'actor' => $this->firstReactionLabelValue($labelValues, ['Navn', 'Name']),
+            ];
         }
 
-        return $count;
+        return $reactions;
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  list<string>  $labels
+     */
+    private function firstReactionLabelValue(array $items, array $labels): ?string
+    {
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $label = $this->normalizeString($item['label'] ?? null);
+
+            if ($label !== null && in_array($label, $labels, true)) {
+                $value = $this->normalizeString($item['value'] ?? null)
+                    ?? $this->normalizeString($item['href'] ?? null);
+
+                if ($value !== null) {
+                    return $value;
+                }
+            }
+
+            $dicts = $item['dict'] ?? null;
+
+            if (! is_array($dicts)) {
+                continue;
+            }
+
+            foreach ($dicts as $dict) {
+                if (! is_array($dict)) {
+                    continue;
+                }
+
+                $nestedValue = $this->firstReactionLabelValue(
+                    is_array($dict['dict'] ?? null) ? $dict['dict'] : [],
+                    $labels,
+                );
+
+                if ($nestedValue !== null) {
+                    return $nestedValue;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -236,3 +236,42 @@ it('keeps older canonical messages when a newer facebook export is missing them'
         'Still present later',
     ]);
 });
+
+it('imports reactions from real archive likes_and_reactions files', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-real-reactions', [
+        'real_archive_reactions' => [
+            [
+                'timestamp' => 1_775_335_067,
+                'reaction' => 'Synes godt om',
+                'actor' => 'Elektrikeren Holleufer',
+                'url' => 'https://www.facebook.com/reel/3814146072218469/',
+            ],
+            [
+                'timestamp' => 1_775_234_931,
+                'reaction' => 'Elsker',
+                'actor' => 'Anita Strandmark',
+                'url' => 'https://www.facebook.com/groups/1559569757962238/permalink/1985913185327891/',
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    $result = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect(DB::table('facebook_reactions')->count())->toBe(2);
+    expect(DB::table('facebook_people')->where('display_name', 'Anita Strandmark')->exists())->toBeTrue();
+    expect(DB::table('facebook_reactions')->orderBy('published_timestamp')->pluck('reaction')->all())->toBe([
+        'Elsker',
+        'Synes godt om',
+    ]);
+});
