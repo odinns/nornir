@@ -94,13 +94,102 @@ it('imports an apple chat db into canonical sms tables', function (): void {
     $participant = DB::table('sms_participants')->first();
 
     expect($participant)->not->toBeNull();
+
+    if ($participant === null) {
+        return;
+    }
+
     expect($participant->identifier)->toBe('+4511111111');
     expect($participant->display_name)->toBe('Camilla Lee');
 
     $attachment = DB::table('sms_attachments')->first();
 
     expect($attachment)->not->toBeNull();
+
+    if ($attachment === null) {
+        return;
+    }
+
     expect($attachment->relative_path)->toBe('Attachments/00/00/sample.jpg');
+});
+
+it('imports text from attributedBody when the message text column is empty', function (): void {
+    $fixture = createSmsFixtureDatabase('sms-import-attributed-body', [
+        'messages' => [
+            [
+                'guid' => 'msg-attributed-001',
+                'text' => null,
+                'attributed_body' => 'Din forsendelse er blevet tilbageholdt.',
+                'is_from_me' => 0,
+                'handle_id' => 1,
+                'date' => appleTimestampForUnix(1_700_010_000),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_010_030),
+                'cache_has_attachments' => 0,
+                'service' => 'SMS',
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'sms',
+        accessMode: 'archive',
+        sourceLocator: $fixture['database_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['root_path']],
+            'attachments_root' => $fixture['attachments_root'],
+        ],
+        importerOptions: [],
+    ));
+
+    app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+
+    expect(DB::table('sms_messages')->value('text_body'))
+        ->toBe('Din forsendelse er blevet tilbageholdt.');
+});
+
+it('ignores orphaned message rows that are not linked to a chat', function (): void {
+    $fixture = createSmsFixtureDatabase('sms-import-orphaned-messages', [
+        'messages' => [
+            [
+                'guid' => 'msg-joined-001',
+                'text' => 'Visible message',
+                'is_from_me' => 0,
+                'handle_id' => 1,
+                'date' => appleTimestampForUnix(1_700_020_000),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_020_030),
+                'cache_has_attachments' => 0,
+            ],
+            [
+                'guid' => 'msg-orphan-001',
+                'text' => 'Should stay out of canonical tables',
+                'is_from_me' => 0,
+                'handle_id' => 1,
+                'date' => appleTimestampForUnix(1_700_020_060),
+                'date_read' => null,
+                'date_delivered' => appleTimestampForUnix(1_700_020_090),
+                'cache_has_attachments' => 0,
+                'joined' => false,
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'sms',
+        accessMode: 'archive',
+        sourceLocator: $fixture['database_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['root_path']],
+            'attachments_root' => $fixture['attachments_root'],
+        ],
+        importerOptions: [],
+    ));
+
+    app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+
+    expect(DB::table('sms_messages')->pluck('source_guid')->all())->toBe(['msg-joined-001']);
+    expect(DB::table('sms_message_observations')->count())->toBe(1);
 });
 
 it('reruns idempotently for the same sms backup', function (): void {
@@ -319,6 +408,11 @@ it('fails clearly when the sqlite source is missing required tables', function (
     $failedRun = Run::query()->latest('id')->first();
 
     expect($failedRun)->not->toBeNull();
+
+    if ($failedRun === null) {
+        return;
+    }
+
     expect($failedRun->status)->toBe(Run::STATUS_FAILED);
     expect($failedRun->failure_summary)->toContain('Malformed SMS source payload');
 });

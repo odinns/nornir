@@ -9,12 +9,20 @@ use Illuminate\Support\Facades\File;
  *     messages:list<array{
  *         guid:string,
  *         text:string|null,
+ *         attributed_body?:string|null,
  *         is_from_me:int,
  *         handle_id:int|null,
  *         date:int|null,
  *         date_read:int|null,
  *         date_delivered:int|null,
- *         cache_has_attachments:int
+ *         cache_has_attachments:int,
+ *         service?:string|null,
+ *         item_type?:int,
+ *         associated_message_guid?:string|null,
+ *         associated_message_type?:int|null,
+ *         group_title?:string|null,
+ *         group_action_type?:int|null,
+ *         joined?:bool
  *     }>,
  *     attachments?:list<array{
  *         message_guid:string,
@@ -121,9 +129,9 @@ function createSmsFixtureDatabase(string $name, array $dataset): array
             service, is_delivered, is_read, is_sent, cache_has_attachments, item_type,
             associated_message_guid, associated_message_type, group_title, group_action_type, handle_id
         ) VALUES (
-            :guid, :text, NULL, :is_from_me, :date, :date_read, :date_delivered,
-            'iMessage', 1, 1, 1, :cache_has_attachments, 0,
-            NULL, NULL, NULL, NULL, :handle_id
+            :guid, :text, :attributed_body, :is_from_me, :date, :date_read, :date_delivered,
+            :service, 1, 1, 1, :cache_has_attachments, :item_type,
+            :associated_message_guid, :associated_message_type, :group_title, :group_action_type, :handle_id
         )
     SQL);
 
@@ -134,19 +142,31 @@ function createSmsFixtureDatabase(string $name, array $dataset): array
         $insertMessage->execute([
             'guid' => $message['guid'],
             'text' => $message['text'],
+            'attributed_body' => array_key_exists('attributed_body', $message)
+                ? encodeSmsAttributedBody($message['attributed_body'])
+                : null,
             'is_from_me' => $message['is_from_me'],
             'date' => $message['date'],
             'date_read' => $message['date_read'],
             'date_delivered' => $message['date_delivered'],
+            'service' => $message['service'] ?? 'iMessage',
             'cache_has_attachments' => $message['cache_has_attachments'],
+            'item_type' => $message['item_type'] ?? 0,
+            'associated_message_guid' => $message['associated_message_guid'] ?? null,
+            'associated_message_type' => $message['associated_message_type'] ?? null,
+            'group_title' => $message['group_title'] ?? null,
+            'group_action_type' => $message['group_action_type'] ?? null,
             'handle_id' => $message['handle_id'],
         ]);
 
         $messageRowId = (int) $pdo->lastInsertId();
         $messageRowIds[$message['guid']] = $messageRowId;
-        $insertChatMessageJoin->execute([
-            'message_id' => $messageRowId,
-        ]);
+
+        if (($message['joined'] ?? true) === true) {
+            $insertChatMessageJoin->execute([
+                'message_id' => $messageRowId,
+            ]);
+        }
     }
 
     if (($dataset['attachments'] ?? []) !== []) {
@@ -186,6 +206,25 @@ function createSmsFixtureDatabase(string $name, array $dataset): array
 function appleTimestampForUnix(int $unixTimestamp): int
 {
     return ($unixTimestamp - 978307200) * 1_000_000_000;
+}
+
+function encodeSmsAttributedBody(?string $text): ?string
+{
+    if ($text === null) {
+        return null;
+    }
+
+    $length = strlen($text);
+
+    if ($length > 0x7FFF) {
+        throw new InvalidArgumentException('SMS attributedBody fixture text is too long.');
+    }
+
+    if ($length < 0x80) {
+        return "\x84\x01+".chr($length).$text;
+    }
+
+    return "\x84\x01+\x81".chr($length % 256).chr(intdiv($length, 256)).$text;
 }
 
 /**
