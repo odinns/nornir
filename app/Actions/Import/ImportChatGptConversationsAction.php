@@ -12,6 +12,7 @@ use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -246,7 +247,9 @@ class ImportChatGptConversationsAction
                 'title' => isset($conversation['title']) ? (string) $conversation['title'] : null,
                 'current_node' => isset($conversation['current_node']) ? (string) $conversation['current_node'] : null,
                 'source_create_time' => isset($conversation['create_time']) ? (float) $conversation['create_time'] : null,
+                'conversation_created_at' => $this->normalizeTimestamp($conversation['create_time'] ?? null),
                 'source_update_time' => isset($conversation['update_time']) ? (float) $conversation['update_time'] : null,
+                'conversation_updated_at' => $this->normalizeTimestamp($conversation['update_time'] ?? null),
                 'raw_metadata' => json_encode($conversation, JSON_THROW_ON_ERROR),
                 'updated_at' => now(),
                 'created_at' => now(),
@@ -312,7 +315,9 @@ class ImportChatGptConversationsAction
                 'recipient' => isset($message['recipient']) ? (string) $message['recipient'] : null,
                 'model_slug' => is_array($metadata) ? ($metadata['model_slug'] ?? null) : null,
                 'source_create_time' => isset($message['create_time']) && is_numeric($message['create_time']) ? (float) $message['create_time'] : null,
+                'message_created_at' => $this->normalizeTimestamp($message['create_time'] ?? null),
                 'source_update_time' => isset($message['update_time']) && is_numeric($message['update_time']) ? (float) $message['update_time'] : null,
+                'message_updated_at' => $this->normalizeTimestamp($message['update_time'] ?? null),
                 'end_turn' => array_key_exists('end_turn', $message) ? (bool) $message['end_turn'] : null,
                 'raw_message' => json_encode($message, JSON_THROW_ON_ERROR),
                 'updated_at' => now(),
@@ -435,5 +440,14 @@ class ImportChatGptConversationsAction
         }
 
         $progress($event, $payload);
+    }
+
+    private function normalizeTimestamp(mixed $value): ?string
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return CarbonImmutable::createFromTimestampUTC((float) $value)->toDateTimeString();
     }
 }

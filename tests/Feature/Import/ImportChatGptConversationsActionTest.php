@@ -63,6 +63,47 @@ it('imports a chatgpt export into canonical tables while preserving graph struct
     ]);
 });
 
+it('stores normalized utc datetimes alongside raw source times', function (): void {
+    $exportRoot = createChatGptExportDirectory([
+        buildChatGptConversation(),
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'chatgpt',
+        accessMode: 'local-path',
+        sourceLocator: $exportRoot,
+        scopeSnapshot: [
+            'accepted_root_paths' => [$exportRoot],
+            'relative_glob' => 'conversations-*.json',
+        ],
+        importerOptions: [],
+    ));
+
+    $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+
+    $conversation = DB::table('chatgpt_conversations')
+        ->where('conversation_id', 'conversation-1')
+        ->first();
+
+    $assistantMessage = DB::table('chatgpt_messages')
+        ->where('message_id', 'assistant-conversation-1')
+        ->first();
+
+    expect($conversation)->not->toBeNull();
+    expect($conversation->source_create_time)->toBeFloat();
+    expect($conversation->source_update_time)->toBeFloat();
+    expect($conversation->conversation_created_at)->toBe('2023-10-17 07:32:42');
+    expect($conversation->conversation_updated_at)->toBe('2023-10-17 07:45:05');
+
+    expect($assistantMessage)->not->toBeNull();
+    expect($assistantMessage->source_create_time)->toBeFloat();
+    expect($assistantMessage->source_update_time)->toBeNull();
+    expect($assistantMessage->message_created_at)->toBe('2023-10-17 07:35:22');
+    expect($assistantMessage->message_updated_at)->toBeNull();
+});
+
 it('reruns idempotently for the same export root', function (): void {
     $exportRoot = createChatGptExportDirectory([
         buildChatGptConversation(),

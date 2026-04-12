@@ -55,6 +55,8 @@ it('builds a compile-facing handoff from canonical chatgpt rows', function (): v
         'source_set_ids' => $sourceSetIds,
         'handoff_scope' => [
             'source_set_ids' => $sourceSetIds,
+            'selection_mode' => 'canonical-broad',
+            'biography_filter_required' => true,
         ],
         'row_counts' => [
             'source_sets' => 1,

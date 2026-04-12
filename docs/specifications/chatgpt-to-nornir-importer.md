@@ -2,7 +2,8 @@
 
 ## Goal
 
-Import ChatGPT export conversations into canonical MySQL tables with graph fidelity and derived transcript support.
+Import ChatGPT export conversations into canonical MySQL tables with graph fidelity and timeline-grade timestamps.
+The importer preserves broad canonical truth. Biography relevance is applied downstream, not by throwing data away during import.
 
 ## Canonical source
 
@@ -39,6 +40,7 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 
 - preserve graph structure
 - preserve roles
+- preserve raw float source times and normalized UTC datetimes for chronology work
 - derive visible transcript rows separately
 - read directly from approved bounded local paths when available instead of requiring a copied staging mirror inside Nornir
 - when multiple local roots are configured, treat them as an explicit allowlist and record which root supplied the imported archive or files
@@ -56,6 +58,7 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 ## Wiki compilation handoff
 
 - compile source summaries from normalized rows, not raw file rescans
+- mark ChatGPT handoff as broad canonical evidence; downstream biography compilation must apply a relevance filter before treating chats as biography material
 
 ## Forbidden behavior
 
@@ -67,7 +70,9 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 ## Review checklist
 
 - graph truth survives import
+- normalized UTC datetimes exist for conversations and messages
 - derived transcript is visibly derived
+- handoff makes the biography-filter requirement explicit
 
 ## Acceptance checks
 

@@ -46,3 +46,4 @@ Primary inputs are ChatGPT export archives or approved API-backed export equival
 ## Bottom line
 
 This source is conversation-graph-first, not flat transcript-first.
+Import broadly enough to preserve truth. Treat biography relevance as a downstream selection problem, not an import-time guessing game.
