@@ -42,5 +42,11 @@ return [
                 'database',
             ],
         ],
+        'gmail' => [
+            'importer_key' => 'gmail',
+            'access_modes' => [
+                'api',
+            ],
+        ],
     ],
 ];
