@@ -54,5 +54,11 @@ return [
                 'local-path',
             ],
         ],
+        'media-collection' => [
+            'importer_key' => 'media-collection',
+            'access_modes' => [
+                'db-connection',
+            ],
+        ],
     ],
 ];

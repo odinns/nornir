@@ -63,6 +63,10 @@ class RecordIntakeAction
 
     private function assertReachable(RecordIntakeData $data): void
     {
+        if ($data->accessMode === 'db-connection') {
+            return;
+        }
+
         if (! File::exists($data->sourceLocator)) {
             throw new InvalidArgumentException('Source locator is not reachable.');
         }
@@ -98,6 +102,10 @@ class RecordIntakeAction
 
     private function normalizeFilesystemPaths(RecordIntakeData $data): RecordIntakeData
     {
+        if ($data->accessMode === 'db-connection') {
+            return $data;
+        }
+
         $scopeSnapshot = $data->scopeSnapshot;
 
         if (is_array($scopeSnapshot['accepted_root_paths'] ?? null)) {
