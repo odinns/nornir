@@ -12,13 +12,42 @@ class GmailApiClient implements GmailApiClientInterface
 {
     private Gmail $service;
 
-    public function __construct(string $credentialsPath, string $accountEmail)
+    public function __construct(string $credentialsPath)
     {
         $client = new Client;
         $client->setAuthConfig($credentialsPath);
         $client->setScopes([Gmail::GMAIL_READONLY]);
-        $client->setSubject($accountEmail);
+        $client->setAccessType('offline');
+
+        $tokenPath = dirname($credentialsPath).'/token.json';
+
+        if (file_exists($tokenPath)) {
+            $token = json_decode((string) file_get_contents($tokenPath), true);
+
+            if (is_array($token)) {
+                $client->setAccessToken($token);
+            }
+        }
+
+        if ($client->isAccessTokenExpired()) {
+            if ($client->getRefreshToken() !== null) {
+                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+                file_put_contents($tokenPath, json_encode($client->getAccessToken(), JSON_THROW_ON_ERROR));
+            } else {
+                throw new RuntimeException(
+                    "No valid token found. Run: php artisan gmail:auth {$credentialsPath}"
+                );
+            }
+        }
+
         $this->service = new Gmail($client);
+    }
+
+    public function getAccountEmail(): string
+    {
+        $profile = $this->service->users->getProfile('me');
+
+        return (string) $profile->getEmailAddress();
     }
 
     /**

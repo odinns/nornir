@@ -17,7 +17,6 @@ class ImportGmailCommand extends Command
 
     protected $signature = 'import:gmail
         {source : Path to Gmail API credentials JSON}
-        {--account= : Gmail account email to import}
         {--query= : Gmail query string to scope the import}
         {--validate-only : Validate credentials and scope without importing}
         {--dry-run : Process messages without writing to the database}';
@@ -34,14 +33,7 @@ class ImportGmailCommand extends Command
     public function handle(): int
     {
         $source = $this->sourceArgument();
-        $account = $this->stringOption('account');
         $query = $this->stringOption('query');
-
-        if ($account === null || $account === '') {
-            $this->error('The --account flag is required.');
-
-            return self::FAILURE;
-        }
 
         if ($query === null || $query === '') {
             $this->error('The --query flag is required.');
@@ -49,7 +41,7 @@ class ImportGmailCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Recording intake for Gmail account: {$account}");
+        $this->info('Recording intake for Gmail source');
 
         try {
             $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
@@ -57,7 +49,6 @@ class ImportGmailCommand extends Command
                 accessMode: 'api',
                 sourceLocator: $source,
                 scopeSnapshot: [
-                    'account_email' => $account,
                     'query' => $query,
                 ],
                 importerOptions: [],

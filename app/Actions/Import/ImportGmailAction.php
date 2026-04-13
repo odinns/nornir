@@ -6,6 +6,7 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\ImportArtifactWriter;
 use App\Actions\Import\Support\ImportRunExecutor;
+use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\GmailImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
@@ -23,6 +24,7 @@ class ImportGmailAction
         private readonly ImportArtifactWriter $importArtifactWriter,
         private readonly ProvenanceWriter $provenanceWriter,
         private readonly GmailClientFactory $gmailClientFactory,
+        private readonly SourceObservationStore $observationStore,
     ) {}
 
     public function __invoke(ImporterDispatchData $dispatchPayload, ?callable $progress = null): GmailImportResultData
@@ -30,7 +32,7 @@ class ImportGmailAction
         $execution = $this->importRunExecutor->execute(
             dispatchPayload: $dispatchPayload,
             operation: 'gmail-import',
-            import: fn (Run $run): array => DB::transaction(fn (): array => $this->importMessages($dispatchPayload, $run, $progress)),
+            import: fn (Run $run): array => $this->importMessages($dispatchPayload, $run, $progress),
             writeArtifacts: function (Run $run, array $summary) use ($dispatchPayload): void {
                 $this->importArtifactWriter->write(
                     run: $run,
@@ -54,10 +56,10 @@ class ImportGmailAction
      */
     private function importMessages(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {
-        $accountEmail = (string) ($dispatchPayload->scopeSnapshot['account_email'] ?? '');
         $query = (string) ($dispatchPayload->scopeSnapshot['query'] ?? '');
 
-        $client = $this->gmailClientFactory->make($dispatchPayload->sourceLocator, $accountEmail);
+        $client = $this->gmailClientFactory->make($dispatchPayload->sourceLocator, '');
+        $accountEmail = $client->getAccountEmail();
 
         $accountId = $this->upsertAccount($accountEmail);
 
@@ -134,19 +136,11 @@ class ImportGmailAction
 
     private function upsertAccount(string $accountEmail): int
     {
-        $accountKey = sha1($accountEmail);
-
-        DB::table('gmail_accounts')->updateOrInsert(
-            ['account_key' => $accountKey],
-            [
-                'account_email' => $accountEmail,
-                'access_mode' => 'api',
-                'updated_at' => now(),
-                'created_at' => now(),
-            ],
+        return $this->observationStore->upsertAndReturnId(
+            table: 'gmail_accounts',
+            unique: ['account_key' => sha1($accountEmail)],
+            values: ['account_email' => $accountEmail, 'access_mode' => 'api'],
         );
-
-        return (int) DB::table('gmail_accounts')->where('account_key', $accountKey)->value('id');
     }
 
     /**
@@ -226,27 +220,15 @@ class ImportGmailAction
      */
     private function syncLabels(int $messageRowId, array $labelIds): int
     {
-        $synced = 0;
-
         foreach ($labelIds as $labelId) {
-            $existing = DB::table('gmail_message_labels')
-                ->where('gmail_message_id', $messageRowId)
-                ->where('label_id', $labelId)
-                ->exists();
-
-            if (! $existing) {
-                DB::table('gmail_message_labels')->insert([
-                    'gmail_message_id' => $messageRowId,
-                    'label_id' => $labelId,
-                    'label_name' => $labelId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $synced++;
-            }
+            $this->observationStore->record(
+                table: 'gmail_message_labels',
+                unique: ['gmail_message_id' => $messageRowId, 'label_id' => $labelId],
+                values: ['label_name' => $labelId],
+            );
         }
 
-        return $synced;
+        return count($labelIds);
     }
 
     /**

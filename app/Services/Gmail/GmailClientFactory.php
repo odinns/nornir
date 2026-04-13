@@ -8,6 +8,6 @@ class GmailClientFactory
 {
     public function make(string $credentialsPath, string $accountEmail): GmailApiClientInterface
     {
-        return new GmailApiClient($credentialsPath, $accountEmail);
+        return new GmailApiClient($credentialsPath);
     }
 }

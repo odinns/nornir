@@ -37,7 +37,7 @@ it('builds a gmail source-page handoff from the cli', function (): void {
         }
     });
 
-    $intake = makeGmailIntake('odinn@example.com', 'from:me');
+    $intake = makeGmailIntake('from:me');
     $importResult = app(ImportGmailAction::class)($intake->dispatchPayload);
 
     $this->artisan('handoff:gmail-source-pages', [

@@ -6,6 +6,8 @@ namespace App\Services\Gmail;
 
 interface GmailApiClientInterface
 {
+    public function getAccountEmail(): string;
+
     /**
      * @return array{messages: list<array{id: string, threadId: string}>, nextPageToken: ?string}
      */

@@ -16,6 +16,11 @@ class FakeGmailApiClient implements GmailApiClientInterface
         $this->messages = $messages;
     }
 
+    public function getAccountEmail(): string
+    {
+        return 'test@example.com';
+    }
+
     /**
      * {@inheritDoc}
      */

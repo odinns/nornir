@@ -33,13 +33,14 @@ class BuildGmailSourcePageHandoffAction
 
         $run = $boundary['run'];
         $scopeSnapshot = $boundary['scope_snapshot'];
-        $accountEmail = (string) ($scopeSnapshot['account_email'] ?? '');
 
-        $account = DB::table('gmail_accounts')->where('account_email', $accountEmail)->first();
+        $account = DB::table('gmail_accounts')->orderBy('id')->first();
 
         if ($account === null) {
             throw new InvalidArgumentException('No canonical Gmail rows were found for the requested run.');
         }
+
+        $accountEmail = (string) $account->account_email;
 
         $accountId = (int) $account->id;
         $threadCount = (int) DB::table('gmail_threads')->where('gmail_account_id', $accountId)->count();

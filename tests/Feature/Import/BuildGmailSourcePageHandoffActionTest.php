@@ -40,14 +40,14 @@ it('builds a compile-facing handoff from canonical gmail rows', function (): voi
         }
     });
 
-    $intake = makeGmailIntake('odinn@example.com', 'from:me');
+    $intake = makeGmailIntake('from:me');
     $importResult = app(ImportGmailAction::class)($intake->dispatchPayload);
     $handoff = app(BuildGmailSourcePageHandoffAction::class)($importResult->run->id);
 
     expect($handoff->sourceType)->toBe('gmail');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
-    expect($handoff->canonicalScope['account_email'])->toBe('odinn@example.com');
+    expect($handoff->canonicalScope['account_email'])->toBe('test@example.com');
     expect($handoff->canonicalScope['row_counts']['messages'])->toBe(2);
     expect($handoff->canonicalScope['row_counts']['threads'])->toBe(2);
 });

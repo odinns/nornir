@@ -42,10 +42,9 @@ it('imports gmail messages from the cli with useful output', function (): void {
 
     $this->artisan('import:gmail', [
         'source' => $credentialsPath,
-        '--account' => 'odinn@example.com',
         '--query' => 'from:me',
     ])
-        ->expectsOutputToContain('Recording intake for Gmail account')
+        ->expectsOutputToContain('Recording intake for Gmail source')
         ->expectsOutputToContain('Importing Gmail messages')
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
@@ -55,22 +54,11 @@ it('imports gmail messages from the cli with useful output', function (): void {
     expect(DB::table('runs')->where('status', Run::STATUS_SUCCEEDED)->count())->toBe(1);
 });
 
-it('fails when the account flag is missing', function (): void {
-    $credentialsPath = createGmailCredentialsFixture('gmail-console-missing-account');
-
-    $this->artisan('import:gmail', [
-        'source' => $credentialsPath,
-        '--query' => 'from:me',
-    ])
-        ->assertFailed();
-});
-
 it('fails when the query flag is missing', function (): void {
     $credentialsPath = createGmailCredentialsFixture('gmail-console-missing-query');
 
     $this->artisan('import:gmail', [
         'source' => $credentialsPath,
-        '--account' => 'odinn@example.com',
     ])
         ->assertFailed();
 });

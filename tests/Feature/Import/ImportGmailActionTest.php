@@ -43,7 +43,7 @@ function bindFakeGmailClient(array $messages): void
     });
 }
 
-function makeGmailIntake(string $account = 'odinn@example.com', string $query = 'from:me'): RecordIntakeResultData
+function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
 {
     $credentialsPath = createGmailCredentialsFixture();
 
@@ -52,7 +52,6 @@ function makeGmailIntake(string $account = 'odinn@example.com', string $query = 
         accessMode: 'api',
         sourceLocator: $credentialsPath,
         scopeSnapshot: [
-            'account_email' => $account,
             'query' => $query,
         ],
         importerOptions: [],
@@ -104,7 +103,7 @@ it('imports gmail messages into canonical tables and records a succeeded run', f
     expect(DB::table('gmail_attachments')->count())->toBe(0);
 
     $account = DB::table('gmail_accounts')->first();
-    expect($account->account_email)->toBe('odinn@example.com');
+    expect($account->account_email)->toBe('test@example.com');
     expect($account->access_mode)->toBe('api');
 
     expect($result->summary['messages'])->toBe(2);
