@@ -10,5 +10,6 @@ require_once __DIR__.'/Support/TwitterFixtures.php';
 require_once __DIR__.'/Support/LinkedInFixtures.php';
 require_once __DIR__.'/Support/FidonetFixtures.php';
 require_once __DIR__.'/Support/GmailFixtures.php';
+require_once __DIR__.'/Support/InstagramFixtures.php';
 
 uses(TestCase::class)->in('Feature');
