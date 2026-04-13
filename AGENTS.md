@@ -49,11 +49,13 @@ Push back on requests that conflict with the specs, blur important boundaries, o
 At the beginning of each implementation phase:
 
 - branch fresh from `main`
-- freshly load the `tdd`, `simplify`, and chosen reviewer skill before doing work
+- load the `tdd` skill before writing any code
 - use TDD for the phase slice instead of writing the implementation in one lump
 
 At the end of each phase:
 
+- load and run the `simplify` skill on changed code
+- load and run the chosen reviewer skill on the diff
 - run `./vendor/bin/pint`
 - run `./vendor/bin/rector process`
 - run `./vendor/bin/phpstan analyse`
@@ -61,3 +63,7 @@ At the end of each phase:
 - commit the phase
 - merge back to `main`
 - stop for manual review and testing before starting the next phase
+
+## Review
+
+Another model - Codex, Claude or Gemini - will review your output once you are done.
