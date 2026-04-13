@@ -11,10 +11,16 @@ use InvalidArgumentException;
 
 class BuildGmailSourcePageHandoffAction
 {
+    private const string TABLE_ACCOUNTS = 'gmail_accounts';
+
+    private const string TABLE_THREADS = 'gmail_threads';
+
+    private const string TABLE_MESSAGES = 'gmail_messages';
+
     private const array CANONICAL_TABLES = [
-        'gmail_accounts',
-        'gmail_threads',
-        'gmail_messages',
+        self::TABLE_ACCOUNTS,
+        self::TABLE_THREADS,
+        self::TABLE_MESSAGES,
         'gmail_message_labels',
         'gmail_attachments',
     ];
@@ -34,7 +40,7 @@ class BuildGmailSourcePageHandoffAction
         $run = $boundary['run'];
         $scopeSnapshot = $boundary['scope_snapshot'];
 
-        $account = DB::table('gmail_accounts')->orderBy('id')->first();
+        $account = DB::table(self::TABLE_ACCOUNTS)->orderBy('id')->first();
 
         if ($account === null) {
             throw new InvalidArgumentException('No canonical Gmail rows were found for the requested run.');
@@ -43,9 +49,9 @@ class BuildGmailSourcePageHandoffAction
         $accountEmail = (string) $account->account_email;
 
         $accountId = (int) $account->id;
-        $threadCount = (int) DB::table('gmail_threads')->where('gmail_account_id', $accountId)->count();
-        $messageCount = (int) DB::table('gmail_messages')
-            ->whereIn('gmail_thread_id', DB::table('gmail_threads')->where('gmail_account_id', $accountId)->pluck('id'))
+        $threadCount = (int) DB::table(self::TABLE_THREADS)->where('gmail_account_id', $accountId)->count();
+        $messageCount = (int) DB::table(self::TABLE_MESSAGES)
+            ->whereIn('gmail_thread_id', DB::table(self::TABLE_THREADS)->where('gmail_account_id', $accountId)->pluck('id'))
             ->count();
 
         $canonicalScope = [

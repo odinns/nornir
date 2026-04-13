@@ -19,6 +19,16 @@ use InvalidArgumentException;
 
 class ImportGmailAction
 {
+    private const string TABLE_ACCOUNTS = 'gmail_accounts';
+
+    private const string TABLE_THREADS = 'gmail_threads';
+
+    private const string TABLE_MESSAGES = 'gmail_messages';
+
+    private const string TABLE_LABELS = 'gmail_message_labels';
+
+    private const string TABLE_ATTACHMENTS = 'gmail_attachments';
+
     public function __construct(
         private readonly ImportRunExecutor $importRunExecutor,
         private readonly ImportArtifactWriter $importArtifactWriter,
@@ -110,7 +120,7 @@ class ImportGmailAction
 
                 $this->provenanceWriter->link(new WriteProvenanceLinkData(
                     runId: $run->id,
-                    outputTarget: 'gmail_messages:'.$messageId,
+                    outputTarget: self::TABLE_MESSAGES.':'.$messageId,
                     claimKey: 'imported-message',
                     evidenceType: 'api-response',
                     evidenceRef: 'gmail-api#message:'.$messageId,
@@ -137,7 +147,7 @@ class ImportGmailAction
     private function upsertAccount(string $accountEmail): int
     {
         return $this->observationStore->upsertAndReturnId(
-            table: 'gmail_accounts',
+            table: self::TABLE_ACCOUNTS,
             unique: ['account_key' => sha1($accountEmail)],
             values: ['account_email' => $accountEmail, 'access_mode' => 'api'],
         );
@@ -148,7 +158,7 @@ class ImportGmailAction
      */
     private function upsertThread(int $accountId, string $threadId, array $fullMessage, int &$threadCount): int
     {
-        $existing = DB::table('gmail_threads')
+        $existing = DB::table(self::TABLE_THREADS)
             ->where('gmail_account_id', $accountId)
             ->where('thread_id', $threadId)
             ->value('id');
@@ -157,7 +167,7 @@ class ImportGmailAction
             $threadCount++;
         }
 
-        DB::table('gmail_threads')->updateOrInsert(
+        DB::table(self::TABLE_THREADS)->updateOrInsert(
             [
                 'gmail_account_id' => $accountId,
                 'thread_id' => $threadId,
@@ -170,7 +180,7 @@ class ImportGmailAction
             ],
         );
 
-        return (int) DB::table('gmail_threads')
+        return (int) DB::table(self::TABLE_THREADS)
             ->where('gmail_account_id', $accountId)
             ->where('thread_id', $threadId)
             ->value('id');
@@ -182,12 +192,12 @@ class ImportGmailAction
      */
     private function upsertMessage(int $threadRowId, string $messageId, array $fullMessage): array
     {
-        $existing = DB::table('gmail_messages')->where('message_id', $messageId)->value('id');
+        $existing = DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id');
 
         $headers = $this->extractHeaders($fullMessage['payload'] ?? []);
         $internalDate = isset($fullMessage['internalDate']) ? (int) $fullMessage['internalDate'] : null;
 
-        DB::table('gmail_messages')->updateOrInsert(
+        DB::table(self::TABLE_MESSAGES)->updateOrInsert(
             ['message_id' => $messageId],
             [
                 'gmail_thread_id' => $threadRowId,
@@ -210,7 +220,7 @@ class ImportGmailAction
         );
 
         return [
-            'id' => (int) DB::table('gmail_messages')->where('message_id', $messageId)->value('id'),
+            'id' => (int) DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id'),
             'wasRecentlyCreated' => $existing === null,
         ];
     }
@@ -222,7 +232,7 @@ class ImportGmailAction
     {
         foreach ($labelIds as $labelId) {
             $this->observationStore->record(
-                table: 'gmail_message_labels',
+                table: self::TABLE_LABELS,
                 unique: ['gmail_message_id' => $messageRowId, 'label_id' => $labelId],
                 values: ['label_name' => $labelId],
             );
@@ -264,7 +274,7 @@ class ImportGmailAction
                 $mimeType = isset($part['mimeType']) && is_string($part['mimeType']) ? $part['mimeType'] : null;
                 $size = isset($body['size']) && is_numeric($body['size']) ? (int) $body['size'] : null;
 
-                DB::table('gmail_attachments')->updateOrInsert(
+                DB::table(self::TABLE_ATTACHMENTS)->updateOrInsert(
                     [
                         'gmail_message_id' => $messageRowId,
                         'attachment_id' => $attachmentId,
