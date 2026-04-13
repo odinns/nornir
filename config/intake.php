@@ -48,5 +48,11 @@ return [
                 'api',
             ],
         ],
+        'instagram' => [
+            'importer_key' => 'instagram',
+            'access_modes' => [
+                'local-path',
+            ],
+        ],
     ],
 ];
