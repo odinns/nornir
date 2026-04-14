@@ -25,7 +25,10 @@ class BuildFacebookSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'facebook-import',
+            errorMessage: 'No successful Facebook import run is available for handoff.',
+        );
 
         $handoff = ($this->buildFacebookSourcePageHandoffAction)($runId);
 
@@ -35,19 +38,5 @@ class BuildFacebookSourcePageHandoffCommand extends Command
         $this->printHandoffSummary('Facebook', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'facebook-import',
-            errorMessage: 'No successful Facebook import run is available for handoff.',
-        );
     }
 }

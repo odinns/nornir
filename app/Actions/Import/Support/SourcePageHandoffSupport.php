@@ -57,6 +57,32 @@ class SourcePageHandoffSupport
     /**
      * @return list<string>
      */
+    public function resolveProvenanceOutputRefs(int $runId, string $outputTargetPrefix): array
+    {
+        $prefix = $outputTargetPrefix.':';
+
+        /** @var list<string> */
+        return DB::table('provenance_links')
+            ->where('run_id', $runId)
+            ->where('output_target', 'like', $prefix.'%')
+            ->orderBy('id')
+            ->pluck('output_target')
+            ->map(static function (mixed $outputTarget) use ($prefix): ?string {
+                if (! is_string($outputTarget) || ! str_starts_with($outputTarget, $prefix) || $outputTarget === $prefix) {
+                    return null;
+                }
+
+                return substr($outputTarget, strlen($prefix));
+            })
+            ->filter(static fn (mixed $ref): bool => is_string($ref) && $ref !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
     public function normalizePaths(mixed $paths): array
     {
         if (! is_array($paths)) {

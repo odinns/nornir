@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\Import\ImportGmailAction;
 use App\Models\Run;
-use App\Services\Gmail\GmailApiClientInterface;
-use App\Services\Gmail\GmailClientFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -21,24 +19,6 @@ beforeEach(function (): void {
 afterEach(function (): void {
     File::deleteDirectory(base_path('data/test-fixtures/gmail'));
 });
-
-/**
- * @param  list<array<string, mixed>>  $messages
- */
-function bindFakeGmailClient(array $messages): void
-{
-    $fake = new FakeGmailApiClient($messages);
-
-    app()->bind(GmailClientFactory::class, static fn (): GmailClientFactory => new class($fake) extends GmailClientFactory
-    {
-        public function __construct(private readonly GmailApiClientInterface $client) {}
-
-        public function make(string $credentialsPath, string $accountEmail): GmailApiClientInterface
-        {
-            return $this->client;
-        }
-    });
-}
 
 it('imports gmail messages into canonical tables and records a succeeded run', function (): void {
     bindFakeGmailClient([
@@ -79,14 +59,21 @@ it('imports gmail messages into canonical tables and records a succeeded run', f
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('gmail_accounts')->count())->toBe(1);
+    expect(DB::table('gmail_source_sets')->count())->toBe(1);
     expect(DB::table('gmail_threads')->count())->toBe(1);
     expect(DB::table('gmail_messages')->count())->toBe(2);
+    expect(DB::table('gmail_message_observations')->count())->toBe(2);
     expect(DB::table('gmail_message_labels')->count())->toBe(3); // INBOX×2 + UNREAD×1
     expect(DB::table('gmail_attachments')->count())->toBe(0);
 
     $account = DB::table('gmail_accounts')->first();
     expect($account->account_email)->toBe('test@example.com');
     expect($account->access_mode)->toBe('api');
+
+    $sourceSet = DB::table('gmail_source_sets')->first();
+    expect($sourceSet->account_email)->toBe('test@example.com');
+    expect($sourceSet->query)->toBe('from:me');
+    expect($sourceSet->access_mode)->toBe('api');
 
     expect($result->summary['messages'])->toBe(2);
     expect($result->summary['threads'])->toBe(1);
@@ -105,7 +92,9 @@ it('is idempotent on rerun with the same messages', function (): void {
     $result2 = app(ImportGmailAction::class)($intake2->dispatchPayload);
 
     expect($result2->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect(DB::table('gmail_source_sets')->count())->toBe(1);
     expect(DB::table('gmail_messages')->count())->toBe(1);
+    expect(DB::table('gmail_message_observations')->count())->toBe(1);
     expect($result2->summary['inserted_messages'])->toBe(0);
     expect($result2->summary['reobserved_messages'])->toBe(1);
 });
@@ -125,9 +114,33 @@ it('adds new messages on a subsequent run without losing prior ones', function (
     $result = app(ImportGmailAction::class)($intake2->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect(DB::table('gmail_source_sets')->count())->toBe(1);
     expect(DB::table('gmail_messages')->count())->toBe(2);
+    expect(DB::table('gmail_message_observations')->count())->toBe(2);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(1);
+});
+
+it('creates a new gmail source set for a different query on the same account', function (): void {
+    bindFakeGmailClient([
+        buildGmailMessage(['id' => 'msg-alpha-001', 'threadId' => 'thread-alpha-001']),
+    ]);
+
+    app(ImportGmailAction::class)(makeGmailIntake('label:alpha')->dispatchPayload);
+
+    bindFakeGmailClient([
+        buildGmailMessage(['id' => 'msg-beta-001', 'threadId' => 'thread-beta-001']),
+    ]);
+
+    $result = app(ImportGmailAction::class)(makeGmailIntake('label:beta')->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect(DB::table('gmail_source_sets')->count())->toBe(2);
+    expect(DB::table('gmail_message_observations')->count())->toBe(2);
+    expect(DB::table('gmail_source_sets')->orderBy('query')->pluck('query')->all())->toBe([
+        'label:alpha',
+        'label:beta',
+    ]);
 });
 
 it('succeeds with an empty query result and records zero messages', function (): void {

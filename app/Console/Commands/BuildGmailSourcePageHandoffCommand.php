@@ -25,7 +25,10 @@ class BuildGmailSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'gmail-import',
+            errorMessage: 'No successful Gmail import run is available for handoff.',
+        );
         $handoff = ($this->buildGmailSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $accountEmail = $handoff->canonicalScope['account_email'] ?? null;
@@ -38,19 +41,5 @@ class BuildGmailSourcePageHandoffCommand extends Command
         );
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'gmail-import',
-            errorMessage: 'No successful Gmail import run is available for handoff.',
-        );
     }
 }

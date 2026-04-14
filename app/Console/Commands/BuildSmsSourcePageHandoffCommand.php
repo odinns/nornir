@@ -25,7 +25,10 @@ class BuildSmsSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'sms-import',
+            errorMessage: 'No successful SMS import run is available for handoff.',
+        );
 
         $handoff = ($this->buildSmsSourcePageHandoffAction)($runId);
 
@@ -35,19 +38,5 @@ class BuildSmsSourcePageHandoffCommand extends Command
         $this->printHandoffSummary('SMS', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'sms-import',
-            errorMessage: 'No successful SMS import run is available for handoff.',
-        );
     }
 }

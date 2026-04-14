@@ -19,6 +19,8 @@ use InvalidArgumentException;
 
 class ImportGmailAction
 {
+    private const string TABLE_SOURCE_SETS = 'gmail_source_sets';
+
     private const string TABLE_ACCOUNTS = 'gmail_accounts';
 
     private const string TABLE_THREADS = 'gmail_threads';
@@ -28,6 +30,8 @@ class ImportGmailAction
     private const string TABLE_LABELS = 'gmail_message_labels';
 
     private const string TABLE_ATTACHMENTS = 'gmail_attachments';
+
+    private const string TABLE_MESSAGE_OBSERVATIONS = 'gmail_message_observations';
 
     public function __construct(
         private readonly ImportRunExecutor $importRunExecutor,
@@ -72,6 +76,7 @@ class ImportGmailAction
         $accountEmail = $client->getAccountEmail();
 
         $accountId = $this->upsertAccount($accountEmail);
+        $sourceSetId = $this->upsertSourceSet($dispatchPayload, $accountEmail, $query);
 
         $threadCount = 0;
         $messageCount = 0;
@@ -118,6 +123,14 @@ class ImportGmailAction
                 $added = $this->syncAttachments($result['id'], $full['payload'] ?? []);
                 $attachmentCount += $added;
 
+                $this->observationStore->record(
+                    table: self::TABLE_MESSAGE_OBSERVATIONS,
+                    unique: [
+                        'gmail_message_id' => $result['id'],
+                        'gmail_source_set_id' => $sourceSetId,
+                    ],
+                );
+
                 $this->provenanceWriter->link(new WriteProvenanceLinkData(
                     runId: $run->id,
                     outputTarget: self::TABLE_MESSAGES.':'.$messageId,
@@ -134,6 +147,7 @@ class ImportGmailAction
         } while ($pageToken !== null);
 
         return [
+            'source_set_id' => $sourceSetId,
             'account_email' => $accountEmail,
             'threads' => $threadCount,
             'messages' => $messageCount,
@@ -150,6 +164,27 @@ class ImportGmailAction
             table: self::TABLE_ACCOUNTS,
             unique: ['account_key' => sha1($accountEmail)],
             values: ['account_email' => $accountEmail, 'access_mode' => 'api'],
+        );
+    }
+
+    private function upsertSourceSet(ImporterDispatchData $dispatchPayload, string $accountEmail, string $query): int
+    {
+        $sourceKey = sha1(implode('|', [
+            $dispatchPayload->accessMode,
+            $dispatchPayload->sourceLocator,
+            $accountEmail,
+            $query,
+        ]));
+
+        return $this->observationStore->upsertAndReturnId(
+            table: self::TABLE_SOURCE_SETS,
+            unique: ['source_key' => $sourceKey],
+            values: [
+                'source_locator' => $dispatchPayload->sourceLocator,
+                'access_mode' => $dispatchPayload->accessMode,
+                'account_email' => $accountEmail,
+                'query' => $query,
+            ],
         );
     }
 

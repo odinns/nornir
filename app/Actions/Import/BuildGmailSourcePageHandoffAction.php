@@ -11,18 +11,24 @@ use InvalidArgumentException;
 
 class BuildGmailSourcePageHandoffAction
 {
+    private const string TABLE_SOURCE_SETS = 'gmail_source_sets';
+
     private const string TABLE_ACCOUNTS = 'gmail_accounts';
 
     private const string TABLE_THREADS = 'gmail_threads';
 
     private const string TABLE_MESSAGES = 'gmail_messages';
 
+    private const string TABLE_MESSAGE_OBSERVATIONS = 'gmail_message_observations';
+
     private const array CANONICAL_TABLES = [
+        self::TABLE_SOURCE_SETS,
         self::TABLE_ACCOUNTS,
         self::TABLE_THREADS,
         self::TABLE_MESSAGES,
         'gmail_message_labels',
         'gmail_attachments',
+        self::TABLE_MESSAGE_OBSERVATIONS,
     ];
 
     public function __construct(
@@ -38,29 +44,71 @@ class BuildGmailSourcePageHandoffAction
         );
 
         $run = $boundary['run'];
+        $sourceLocator = $boundary['source_locator'];
         $scopeSnapshot = $boundary['scope_snapshot'];
+        $normalizedSourceLocator = $this->sourcePageHandoffSupport->normalizePath($sourceLocator);
+        $query = (string) ($scopeSnapshot['query'] ?? '');
 
-        $account = DB::table(self::TABLE_ACCOUNTS)->orderBy('id')->first();
+        $sourceSetRows = DB::table(self::TABLE_SOURCE_SETS)
+            ->whereIn('source_locator', array_values(array_unique([$sourceLocator, $normalizedSourceLocator])))
+            ->where('query', $query)
+            ->orderBy('id')
+            ->get(['id', 'account_email']);
 
-        if ($account === null) {
+        $sourceSetIds = $sourceSetRows
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        if ($sourceSetIds === []) {
             throw new InvalidArgumentException('No canonical Gmail rows were found for the requested run.');
         }
 
-        $accountEmail = (string) $account->account_email;
+        $accountEmails = $sourceSetRows
+            ->pluck('account_email')
+            ->filter(static fn (mixed $email): bool => is_string($email) && $email !== '')
+            ->unique()
+            ->values()
+            ->all();
 
-        $accountId = (int) $account->id;
-        $threadCount = (int) DB::table(self::TABLE_THREADS)->where('gmail_account_id', $accountId)->count();
-        $messageCount = (int) DB::table(self::TABLE_MESSAGES)
-            ->whereIn('gmail_thread_id', DB::table(self::TABLE_THREADS)->where('gmail_account_id', $accountId)->pluck('id'))
-            ->count();
+        if (count($accountEmails) !== 1) {
+            throw new InvalidArgumentException('Gmail handoff run resolved to multiple canonical accounts.');
+        }
+
+        $messageRowIds = DB::table(self::TABLE_MESSAGE_OBSERVATIONS)
+            ->whereIn('gmail_source_set_id', $sourceSetIds)
+            ->pluck('gmail_message_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($messageRowIds === []) {
+            throw new InvalidArgumentException('No canonical Gmail rows were found for the requested run.');
+        }
+
+        $threadIds = DB::table(self::TABLE_MESSAGES)
+            ->whereIn('id', $messageRowIds)
+            ->distinct()
+            ->pluck('gmail_thread_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         $canonicalScope = [
-            'account_email' => $accountEmail,
-            'query' => $scopeSnapshot['query'] ?? null,
+            'account_email' => $accountEmails[0],
+            'query' => $query,
             'tables' => self::CANONICAL_TABLES,
+            'source_set_ids' => $sourceSetIds,
+            'handoff_scope' => [
+                'source_set_ids' => $sourceSetIds,
+                'selection_mode' => 'canonical-broad',
+            ],
             'row_counts' => [
-                'threads' => $threadCount,
-                'messages' => $messageCount,
+                'source_sets' => count($sourceSetIds),
+                'threads' => count($threadIds),
+                'messages' => count($messageRowIds),
             ],
         ];
 

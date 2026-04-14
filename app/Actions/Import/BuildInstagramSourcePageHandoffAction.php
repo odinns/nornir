@@ -7,7 +7,6 @@ namespace App\Actions\Import;
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 
 class BuildInstagramSourcePageHandoffAction
@@ -40,15 +39,39 @@ class BuildInstagramSourcePageHandoffAction
         );
 
         $run = $boundary['run'];
-        $sourceLocator = $boundary['source_locator'];
+        $snapshotIds = $this->sourcePageHandoffSupport->resolveProvenanceOutputRefs($run->id, self::TABLE_PROFILE_SNAPSHOTS);
 
-        $personalInfoPath = $sourceLocator.'/personal_information/personal_information/personal_information.json';
-        $contents = File::get($personalInfoPath);
-        $personalInfo = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
-        $username = (string) ($personalInfo['profile_user'][0]['string_map_data']['Username']['value'] ?? '');
-        $accountKey = sha1($username);
+        $accountIds = $snapshotIds === []
+            ? []
+            : DB::table(self::TABLE_PROFILE_SNAPSHOTS)
+                ->whereIn('id', array_map('intval', $snapshotIds))
+                ->distinct()
+                ->pluck('instagram_account_id')
+                ->map(static fn (mixed $id): int => (int) $id)
+                ->all();
 
-        $account = DB::table(self::TABLE_ACCOUNTS)->where('account_key', $accountKey)->first();
+        if ($accountIds === []) {
+            $postIds = $this->sourcePageHandoffSupport->resolveProvenanceOutputRefs($run->id, self::TABLE_POSTS);
+
+            $accountIds = $postIds === []
+                ? []
+                : DB::table(self::TABLE_POSTS)
+                    ->whereIn('id', array_map('intval', $postIds))
+                    ->distinct()
+                    ->pluck('instagram_account_id')
+                    ->map(static fn (mixed $id): int => (int) $id)
+                    ->all();
+        }
+
+        $accountIds = array_values(array_unique($accountIds));
+
+        if (count($accountIds) > 1) {
+            throw new InvalidArgumentException('Instagram handoff run resolved to multiple canonical accounts.');
+        }
+
+        $account = $accountIds === []
+            ? null
+            : DB::table(self::TABLE_ACCOUNTS)->where('id', $accountIds[0])->first();
 
         if ($account === null) {
             throw new InvalidArgumentException('No canonical Instagram rows were found for the requested run.');

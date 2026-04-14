@@ -6,6 +6,7 @@ use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Data\Intake\RecordIntakeResultData;
 use App\Services\Gmail\GmailApiClientInterface;
+use App\Services\Gmail\GmailClientFactory;
 use Illuminate\Support\Facades\File;
 
 class FakeGmailApiClient implements GmailApiClientInterface
@@ -14,14 +15,16 @@ class FakeGmailApiClient implements GmailApiClientInterface
     private array $messages;
 
     /** @param list<array<string, mixed>> $messages */
-    public function __construct(array $messages = [])
-    {
+    public function __construct(
+        array $messages = [],
+        private readonly string $accountEmail = 'test@example.com',
+    ) {
         $this->messages = $messages;
     }
 
     public function getAccountEmail(): string
     {
-        return 'test@example.com';
+        return $this->accountEmail;
     }
 
     /**
@@ -93,6 +96,32 @@ function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
         ],
         importerOptions: [],
     ));
+}
+
+/**
+ * @param  list<array<string, mixed>>  $messages
+ */
+function bindFakeGmailClient(array $messages): void
+{
+    bindFakeGmailClientForAccount($messages);
+}
+
+/**
+ * @param  list<array<string, mixed>>  $messages
+ */
+function bindFakeGmailClientForAccount(array $messages, string $accountEmail = 'test@example.com'): void
+{
+    $fake = new FakeGmailApiClient($messages, $accountEmail);
+
+    app()->bind(GmailClientFactory::class, static fn (): GmailClientFactory => new class($fake) extends GmailClientFactory
+    {
+        public function __construct(private readonly GmailApiClientInterface $client) {}
+
+        public function make(string $credentialsPath, string $accountEmail): GmailApiClientInterface
+        {
+            return $this->client;
+        }
+    });
 }
 
 /**

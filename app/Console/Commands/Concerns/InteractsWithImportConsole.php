@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Concerns;
 
+use App\Actions\Intake\RecordIntakeAction;
+use App\Data\Intake\RecordIntakeData;
+use App\Data\Intake\RecordIntakeResultData;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 
@@ -81,6 +84,27 @@ trait InteractsWithImportConsole
         return array_values(array_filter(
             $value,
             static fn (mixed $item): bool => is_string($item) && $item !== '',
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $scopeSnapshot
+     * @param  array<string, mixed>  $importerOptions
+     */
+    protected function recordImportIntake(
+        RecordIntakeAction $recordIntakeAction,
+        string $sourceType,
+        string $accessMode,
+        string $sourceLocator,
+        array $scopeSnapshot,
+        array $importerOptions = [],
+    ): RecordIntakeResultData {
+        return ($recordIntakeAction)(new RecordIntakeData(
+            sourceType: $sourceType,
+            accessMode: $accessMode,
+            sourceLocator: $sourceLocator,
+            scopeSnapshot: $scopeSnapshot,
+            importerOptions: $importerOptions,
         ));
     }
 }

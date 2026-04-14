@@ -25,7 +25,10 @@ class BuildInstagramSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'instagram-import',
+            errorMessage: 'No successful Instagram import run is available for handoff.',
+        );
         $handoff = ($this->buildInstagramSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $username = $handoff->canonicalScope['username'] ?? null;
@@ -42,19 +45,5 @@ class BuildInstagramSourcePageHandoffCommand extends Command
         $this->info('Handoff ready');
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'instagram-import',
-            errorMessage: 'No successful Instagram import run is available for handoff.',
-        );
     }
 }

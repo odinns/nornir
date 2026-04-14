@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Import\Support;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class SourceObservationStore
@@ -14,15 +15,25 @@ class SourceObservationStore
      */
     public function upsertAndReturnId(string $table, array $unique, array $values): int
     {
-        DB::table($table)->updateOrInsert($unique, $this->withTimestamps($values));
+        $timestamps = [
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
 
-        $query = DB::table($table);
+        $inserted = DB::table($table)->insertOrIgnore([
+            ...$unique,
+            ...$values,
+            ...$timestamps,
+        ]);
 
-        foreach ($unique as $column => $value) {
-            $query->where($column, $value);
+        if ($inserted === 0) {
+            $this->queryForUnique($table, $unique)->update([
+                ...$values,
+                'updated_at' => now(),
+            ]);
         }
 
-        return (int) $query->value('id');
+        return (int) $this->queryForUnique($table, $unique)->value('id');
     }
 
     /**
@@ -31,19 +42,32 @@ class SourceObservationStore
      */
     public function record(string $table, array $unique, array $values = []): void
     {
-        DB::table($table)->updateOrInsert($unique, $this->withTimestamps($values));
+        $inserted = DB::table($table)->insertOrIgnore([
+            ...$unique,
+            ...$values,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($inserted === 0) {
+            $this->queryForUnique($table, $unique)->update([
+                ...$values,
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     /**
-     * @param  array<string, mixed>  $values
-     * @return array<string, mixed>
+     * @param  array<string, mixed>  $unique
      */
-    private function withTimestamps(array $values): array
+    private function queryForUnique(string $table, array $unique): Builder
     {
-        return [
-            ...$values,
-            'updated_at' => now(),
-            'created_at' => now(),
-        ];
+        $query = DB::table($table);
+
+        foreach ($unique as $column => $value) {
+            $query->where($column, $value);
+        }
+
+        return $query;
     }
 }

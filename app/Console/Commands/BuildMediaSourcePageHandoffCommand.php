@@ -25,7 +25,10 @@ class BuildMediaSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'media-collection-import',
+            errorMessage: 'No successful media-collection import run is available for handoff.',
+        );
         $handoff = ($this->buildMediaSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $volumeFilter = $handoff->canonicalScope['volume_filter'] ?? null;
@@ -41,19 +44,5 @@ class BuildMediaSourcePageHandoffCommand extends Command
         $this->info('Handoff ready');
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'media-collection-import',
-            errorMessage: 'No successful media-collection import run is available for handoff.',
-        );
     }
 }

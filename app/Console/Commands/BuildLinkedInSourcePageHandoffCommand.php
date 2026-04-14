@@ -25,7 +25,10 @@ class BuildLinkedInSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'linkedin-import',
+            errorMessage: 'No successful LinkedIn import run is available for handoff.',
+        );
         $handoff = ($this->buildLinkedInSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $sourceLocator = $handoff->canonicalScope['source_locator'] ?? '';
@@ -33,19 +36,5 @@ class BuildLinkedInSourcePageHandoffCommand extends Command
         $this->printHandoffSummary('LinkedIn', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'linkedin-import',
-            errorMessage: 'No successful LinkedIn import run is available for handoff.',
-        );
     }
 }

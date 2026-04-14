@@ -71,6 +71,29 @@ it('builds a compile-facing handoff from canonical instagram rows', function ():
     ]);
 });
 
+it('builds instagram handoff without rereading raw archive files', function (): void {
+    $fixture = createInstagramFixtureArchive('instagram-handoff-canonical-only', [
+        'username' => 'canonical_only_user',
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'instagram',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: ['archive_root' => $fixture['archive_path']],
+        importerOptions: [],
+    ));
+
+    $importResult = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
+
+    File::delete($fixture['archive_path'].'/personal_information/personal_information/personal_information.json');
+
+    $handoff = app(BuildInstagramSourcePageHandoffAction::class)($importResult->run->id);
+
+    expect($handoff->canonicalScope['username'])->toBe('canonical_only_user');
+    expect($handoff->canonicalScope['row_counts']['posts'])->toBe(1);
+});
+
 it('rejects runs that are not successful instagram imports', function (): void {
     $run = Run::query()->create([
         'subsystem' => 'import',

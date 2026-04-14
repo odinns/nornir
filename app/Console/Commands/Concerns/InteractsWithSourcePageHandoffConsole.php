@@ -9,6 +9,20 @@ use InvalidArgumentException;
 
 trait InteractsWithSourcePageHandoffConsole
 {
+    protected function resolveRequestedOrLatestRunId(string $operation, string $errorMessage): int
+    {
+        $runId = $this->option('run-id');
+
+        if (is_string($runId) && $runId !== '') {
+            return (int) $runId;
+        }
+
+        return $this->resolveLatestSuccessfulRunId(
+            operation: $operation,
+            errorMessage: $errorMessage,
+        );
+    }
+
     /**
      * @param  array<string, int>  $rowCounts
      */

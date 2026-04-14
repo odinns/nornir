@@ -25,7 +25,10 @@ class BuildFidonetSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'fidonet-import',
+            errorMessage: 'No successful FidoNet import run is available for handoff.',
+        );
         $handoff = ($this->buildFidonetSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $sourceLocator = $handoff->canonicalScope['source_locator'] ?? '';
@@ -33,19 +36,5 @@ class BuildFidonetSourcePageHandoffCommand extends Command
         $this->printHandoffSummary('FidoNet', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'fidonet-import',
-            errorMessage: 'No successful FidoNet import run is available for handoff.',
-        );
     }
 }

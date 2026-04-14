@@ -25,7 +25,10 @@ class BuildTwitterSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'twitter-import',
+            errorMessage: 'No successful Twitter import run is available for handoff.',
+        );
         $handoff = ($this->buildTwitterSourcePageHandoffAction)($runId);
         $rowCounts = $handoff->canonicalScope['row_counts'] ?? [];
         $sourceLocator = $handoff->canonicalScope['source_locator'] ?? '';
@@ -43,19 +46,5 @@ class BuildTwitterSourcePageHandoffCommand extends Command
         $this->info('Handoff ready');
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'twitter-import',
-            errorMessage: 'No successful Twitter import run is available for handoff.',
-        );
     }
 }

@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Actions\Import\ImportFacebookArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
-use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
 
 class ImportFacebookCommand extends Command
@@ -32,15 +31,15 @@ class ImportFacebookCommand extends Command
 
         $this->info("Recording intake for Facebook source: {$source}");
 
-        $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
+        $intakeResult = $this->recordImportIntake(
+            recordIntakeAction: $this->recordIntakeAction,
             sourceType: 'facebook',
             accessMode: 'local-path',
             sourceLocator: $source,
             scopeSnapshot: [
                 'accepted_root_paths' => [$source],
             ],
-            importerOptions: [],
-        ));
+        );
 
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
         $this->info('Importing Facebook archive');

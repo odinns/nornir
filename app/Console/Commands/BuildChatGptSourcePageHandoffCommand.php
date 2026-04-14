@@ -25,7 +25,10 @@ class BuildChatGptSourcePageHandoffCommand extends Command
 
     public function handle(): int
     {
-        $runId = $this->resolveRunId();
+        $runId = $this->resolveRequestedOrLatestRunId(
+            operation: 'chatgpt-import',
+            errorMessage: 'No successful ChatGPT import run is available for handoff.',
+        );
 
         $handoff = ($this->buildChatGptSourcePageHandoffAction)($runId);
 
@@ -35,19 +38,5 @@ class BuildChatGptSourcePageHandoffCommand extends Command
         $this->printHandoffSummary('ChatGPT', $runId, $rowCounts, is_string($sourceLocator) ? $sourceLocator : null);
 
         return self::SUCCESS;
-    }
-
-    private function resolveRunId(): int
-    {
-        $runId = $this->option('run-id');
-
-        if (is_string($runId) && $runId !== '') {
-            return (int) $runId;
-        }
-
-        return $this->resolveLatestSuccessfulRunId(
-            operation: 'chatgpt-import',
-            errorMessage: 'No successful ChatGPT import run is available for handoff.',
-        );
     }
 }

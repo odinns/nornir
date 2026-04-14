@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Actions\Import\ImportInstagramArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
-use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
 
 class ImportInstagramCommand extends Command
@@ -32,13 +31,13 @@ class ImportInstagramCommand extends Command
 
         $this->info("Recording intake for Instagram source: {$source}");
 
-        $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
+        $intakeResult = $this->recordImportIntake(
+            recordIntakeAction: $this->recordIntakeAction,
             sourceType: 'instagram',
             accessMode: 'local-path',
             sourceLocator: $source,
             scopeSnapshot: ['archive_root' => $source],
-            importerOptions: [],
-        ));
+        );
 
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
         $this->info('Importing Instagram archive');

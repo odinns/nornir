@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Actions\Import\ImportTwitterArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
-use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
 
 class ImportTwitterCommand extends Command
@@ -32,15 +31,15 @@ class ImportTwitterCommand extends Command
 
         $this->info("Recording intake for Twitter source: {$source}");
 
-        $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
+        $intakeResult = $this->recordImportIntake(
+            recordIntakeAction: $this->recordIntakeAction,
             sourceType: 'twitter',
             accessMode: 'local-path',
             sourceLocator: $source,
             scopeSnapshot: [
                 'accepted_root_paths' => [$source],
             ],
-            importerOptions: [],
-        ));
+        );
 
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
         $this->info('Importing Twitter archive');
