@@ -13,7 +13,6 @@ Read the specs before inventing policy:
 
 - `docs/nornir-spec.md`
 - `docs/specifications/README.md`
-- `docs/remaining-work.md`
 
 ## Development
 
@@ -31,7 +30,7 @@ Operational state stays out of git:
 
 The bootstrap phases are complete.
 
-See `docs/remaining-work.md` for the current remaining-work plan:
+Current roadmap work lives in `docs/plans/`:
 
 - next source importers
 - wiki compilation

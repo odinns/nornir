@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Import\ImportGmailAction;
-use App\Actions\Intake\RecordIntakeAction;
-use App\Data\Intake\RecordIntakeData;
-use App\Data\Intake\RecordIntakeResultData;
 use App\Models\Run;
 use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Gmail\GmailClientFactory;
@@ -41,21 +38,6 @@ function bindFakeGmailClient(array $messages): void
             return $this->client;
         }
     });
-}
-
-function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
-{
-    $credentialsPath = createGmailCredentialsFixture();
-
-    return app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'gmail',
-        accessMode: 'api',
-        sourceLocator: $credentialsPath,
-        scopeSnapshot: [
-            'query' => $query,
-        ],
-        importerOptions: [],
-    ));
 }
 
 it('imports gmail messages into canonical tables and records a succeeded run', function (): void {

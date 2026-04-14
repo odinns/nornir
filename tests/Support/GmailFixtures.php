@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Intake\RecordIntakeAction;
+use App\Data\Intake\RecordIntakeData;
+use App\Data\Intake\RecordIntakeResultData;
 use App\Services\Gmail\GmailApiClientInterface;
 use Illuminate\Support\Facades\File;
 
@@ -75,6 +78,21 @@ function createGmailCredentialsFixture(string $label = 'gmail-test'): string
     ], JSON_PRETTY_PRINT));
 
     return $path;
+}
+
+function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
+{
+    $credentialsPath = createGmailCredentialsFixture();
+
+    return app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'gmail',
+        accessMode: 'api',
+        sourceLocator: $credentialsPath,
+        scopeSnapshot: [
+            'query' => $query,
+        ],
+        importerOptions: [],
+    ));
 }
 
 /**

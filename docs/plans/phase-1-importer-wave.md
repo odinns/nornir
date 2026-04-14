@@ -2,7 +2,7 @@
 
 ## Summary
 
-Complete the full importer wave before starting wiki compilation. This phase includes SMS, Facebook, Twitter, LinkedIn, Instagram, FidoNet, Gmail, and media collection, in that order. ChatGPT remains the completed reference implementation.
+The importer wave is complete for the phase-1 sources tracked here: SMS, Facebook, Twitter, LinkedIn, Instagram, FidoNet, Gmail, and media collection. ChatGPT remains the earlier reference implementation. The remaining pipeline work now starts at source-page compilation rather than more phase-1 importer completion.
 
 ## Importer Order
 
@@ -88,9 +88,9 @@ Likely adjustments to call out in this phase:
 - media collection tests for bounded traversal, metadata extraction, unreadable-file reporting, and stale external reference detection
 - FidoNet boundary test proving no fake full-copy import
 
-## Gate To Phase 2
+## Status
 
-Phase 2 starts only after all non-blocked Phase 1 importers emit stable handoffs. Media collection is the only allowed holdout if `~/Projects/odinns/mostly-unique` is not ready enough to inspect.
+Done. The tracked phase-1 importer set now has importer commands, canonical storage, rerun-safe imports, and compile-facing handoff coverage.
 
 ## Specifications Used
 
