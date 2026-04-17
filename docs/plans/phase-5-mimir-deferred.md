@@ -7,7 +7,7 @@ Keep Mimir deferred. This phase is a deliberate placeholder, not a stealth UI bu
 ## Mimir Waits For
 
 - stable canonical imports
-- stable source-page compilation
+- stable evidence workbench outputs
 - at least initial Muninn and Huginn products
 
 ## Acceptance Scenarios

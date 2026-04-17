@@ -1,43 +1,46 @@
-# Phase 2: Source-Page Compilation
+# Phase 2: Evidence Workbench
 
 ## Summary
 
-Build the first real compiler stage after all non-blocked Phase 1 importers emit stable handoffs. If media collection is still blocked on `~/Projects/odinns/mostly-unique`, allow that as the only holdout. This phase is limited to source pages in `wiki/sources/`.
+Build the first post-import layer around bounded evidence access, inspection, and biography-facing extraction helpers. Do not force every importer slice through a markdown compiler before the workflow is proven. If media collection is still blocked on `~/Projects/odinns/mostly-unique`, allow that as the only holdout.
+
+If the handoff layer still feels abstract, read `docs/handoff-explainer.md` first. In this phase the handoff is a bounded query contract, not the centerpiece of a source-page ritual.
 
 ## Focus
 
-- consume importer handoffs
-- generate deterministic slugs and paths
-- embed provenance
-- overwrite reruns safely
-- never write outside `wiki/`
+- consume bounded importer slices directly from canonical rows
+- expose evidence-selection and inspection helpers for manual and AI-assisted work
+- support biography-facing extraction without raw rescans
+- produce structured review artifacts when useful
+- keep durable markdown output optional and narrow
 
 ## Implementation Sequence
 
-1. Lock the compiler input shape from importer handoffs.
-2. Define deterministic source-page path and slug rules from stable source identity.
-3. Compile source pages from canonical rows only.
-4. Embed run id and provenance references in every claim-bearing section.
-5. Make reruns resolve to the same logical target and overwrite safely.
-6. Reject generation when provenance is missing or incomplete.
+1. Lock the first bounded evidence-query interface over canonical imports and source sets.
+2. Build source-aware selectors for chronology-relevant and biography-relevant slices.
+3. Produce structured evidence bundles or review artifacts from canonical rows only.
+4. Preserve run id and provenance links throughout every extracted bundle or summary.
+5. Keep markdown generation optional and explicit; only emit durable pages when the output is worth preserving.
+6. Reject extraction or generation when the bounded slice or provenance is incomplete.
 
 ## Acceptance Scenarios
 
-- deterministic source-page path generation
+- bounded evidence selection from canonical rows
+- chronology-relevant extraction without raw rescans
 - provenance-required failure cases
-- rerun-safe overwrite of the same logical page
-- no writes outside `wiki/`
+- reviewable structured output for a bounded slice
+- optional durable output stays deterministic when emitted
 
 ## Specifications Used
 
 - `docs/specifications/importer-framework.md`
-- `docs/specifications/wiki-compilation-contract.md`
+- `docs/specifications/muninn-biography-pipeline.md`
 - `docs/specifications/mysql-storage-contract.md`
 - `docs/specifications/orchestration-runs-jobs-and-provenance.md`
-- `docs/specifications/storage-and-path-conventions.md`
+- `docs/specifications/wiki-compilation-contract.md`
 - `docs/specifications/testing-and-tdd-strategy.md`
 
 ## Assumptions
 
 - Media collection may remain the only blocked importer when this phase starts.
-- Source pages compile from canonical rows and handoffs, not raw rescans.
+- Canonical imports and bounded slices are the real foundation; markdown is a downstream convenience, not the primary product of this phase.

@@ -2,7 +2,7 @@
 
 ## Summary
 
-The importer wave is complete for the phase-1 sources tracked here: SMS, Facebook, Twitter, LinkedIn, Instagram, FidoNet, Gmail, and media collection. ChatGPT remains the earlier reference implementation. The remaining pipeline work now starts at source-page compilation rather than more phase-1 importer completion.
+The importer wave is complete for the phase-1 sources tracked here: SMS, Facebook, Twitter, LinkedIn, Instagram, FidoNet, Gmail, and media collection. ChatGPT remains the earlier reference implementation. The remaining work now starts at bounded evidence access and biography-facing post-import tooling rather than more phase-1 importer completion.
 
 ## Importer Order
 
