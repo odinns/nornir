@@ -7,12 +7,13 @@ The repository starts backend-first:
 - Laravel scaffold
 - quality gates
 - architecture tests
-- importer and pipeline work in later phases
+- importer and pipeline work in later roadmap slices
 
 Read the specs before inventing policy:
 
 - `docs/nornir-spec.md`
 - `docs/specifications/README.md`
+- `docs/handoff-explainer.md` if the importer handoff layer still feels like wizard fog
 
 ## Development
 
@@ -28,13 +29,15 @@ Operational state stays out of git:
 
 ## Roadmap
 
-The bootstrap phases are complete.
+The bootstrap work is complete.
 
-Current roadmap work lives in `docs/plans/`:
+Active roadmap and backlog work live in `/Users/odinn/Projects/runes/nornir/`.
 
-- next source importers
-- wiki compilation
-- Muninn
-- Huginn
-- Mimir
-- targeted operational cleanup
+`docs/plans/` is legacy planning history. Keep it for context, not as the live source of truth.
+
+New work should be captured as atomic Runes items:
+
+- `bugs/` for broken behavior
+- `features/` for new capability
+- `tasks/` for implementation, cleanup, and refactors
+- `ideas/` for things worth saving before they become work
