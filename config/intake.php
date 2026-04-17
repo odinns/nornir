@@ -54,6 +54,13 @@ return [
                 'local-path',
             ],
         ],
+        'apple-health' => [
+            'importer_key' => 'apple-health',
+            'access_modes' => [
+                'archive',
+                'local-path',
+            ],
+        ],
         'media-collection' => [
             'importer_key' => 'media-collection',
             'access_modes' => [
