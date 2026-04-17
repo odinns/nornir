@@ -2,14 +2,14 @@
 
 ## Summary
 
-Build the downstream interpretive phase over canonical imports and Muninn evidence.
+Build the downstream interpretive phase over canonical imports and Muninn evidence, after the evidence workbench and first biography extraction are stable.
 
 ## Focus
 
 - supported cross-source synthesis
 - mandatory support traces
 - explicit weak-evidence refusal
-- correct `wiki/huginn/` output behavior
+- correct durable Huginn output behavior
 
 ## Implementation Sequence
 
@@ -17,7 +17,7 @@ Build the downstream interpretive phase over canonical imports and Muninn eviden
 2. Select evidence from canonical rows and Muninn evidence bundles.
 3. Validate generator output against evidence and output-shape rules before persistence.
 4. Persist support traces for every non-trivial claim.
-5. Compile Huginn output into `wiki/huginn/`.
+5. Persist Huginn support traces and emit `wiki/huginn/` pages only for outputs worth preserving.
 6. Reject weak-evidence output instead of emitting sludge.
 
 ## Acceptance Scenarios
@@ -39,5 +39,5 @@ Build the downstream interpretive phase over canonical imports and Muninn eviden
 
 ## Assumptions
 
-- Canonical imports and Muninn evidence are stable enough to support challenged interpretation.
+- Canonical imports, evidence-selection helpers, and Muninn evidence are stable enough to support challenged interpretation.
 - Huginn stays downstream of evidence and does not rewrite source truth into certainty.

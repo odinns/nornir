@@ -21,6 +21,8 @@ use XMLReader;
 
 class ImportAppleHealthAction
 {
+    private const int TRANSACTION_BATCH_SIZE = 1000;
+
     public function __construct(
         private readonly ImportRunExecutor $importRunExecutor,
         private readonly ImportArtifactWriter $importArtifactWriter,
@@ -100,34 +102,50 @@ class ImportAppleHealthAction
             'reobserved_workouts' => 0,
         ];
 
-        DB::transaction(function () use ($exportXmlPath, $run, $sourceSetId, &$summary): void {
-            foreach ($this->streamEntries($exportXmlPath) as $entry) {
+        $batch = [];
+
+        foreach ($this->streamEntries($exportXmlPath) as $entry) {
+            $batch[] = $entry;
+
+            if (count($batch) < self::TRANSACTION_BATCH_SIZE) {
+                continue;
+            }
+
+            $this->importEntryBatch($batch, $exportXmlPath, $run, $sourceSetId, $summary);
+            $batch = [];
+        }
+
+        if ($batch !== []) {
+            $this->importEntryBatch($batch, $exportXmlPath, $run, $sourceSetId, $summary);
+        }
+
+        return $summary;
+    }
+
+    /**
+     * @param  list<array{element:string, attributes:array<string, string>}>  $entries
+     * @param  array{
+     *     source_file:string,
+     *     source_set_id:int,
+     *     records:int,
+     *     workouts:int,
+     *     inserted_records:int,
+     *     reobserved_records:int,
+     *     inserted_workouts:int,
+     *     reobserved_workouts:int
+     * }  &$summary
+     */
+    private function importEntryBatch(
+        array $entries,
+        string $exportXmlPath,
+        Run $run,
+        int $sourceSetId,
+        array &$summary,
+    ): void {
+        DB::transaction(function () use ($entries, $exportXmlPath, $run, $sourceSetId, &$summary): void {
+            foreach ($entries as $entry) {
                 if ($entry['element'] === 'Record') {
-                    $recordRow = $this->upsertRecord($entry['attributes']);
-
-                    if ($recordRow['wasRecentlyCreated']) {
-                        $summary['inserted_records']++;
-                    } else {
-                        $summary['reobserved_records']++;
-                    }
-
-                    $this->sourceObservationStore->record(
-                        table: 'apple_health_record_observations',
-                        unique: [
-                            'apple_health_record_id' => $recordRow['id'],
-                            'apple_health_source_set_id' => $sourceSetId,
-                        ],
-                    );
-
-                    $summary['records']++;
-
-                    $this->provenanceWriter->link(new WriteProvenanceLinkData(
-                        runId: $run->id,
-                        outputTarget: 'apple_health_records:'.$recordRow['id'],
-                        claimKey: 'imported-record',
-                        evidenceType: 'source-file',
-                        evidenceRef: basename($exportXmlPath).'#record:'.$recordRow['canonical_key'],
-                    ));
+                    $this->importRecordEntry($entry['attributes'], $exportXmlPath, $run, $sourceSetId, $summary);
 
                     continue;
                 }
@@ -136,35 +154,103 @@ class ImportAppleHealthAction
                     continue;
                 }
 
-                $workoutRow = $this->upsertWorkout($entry['attributes']);
-
-                if ($workoutRow['wasRecentlyCreated']) {
-                    $summary['inserted_workouts']++;
-                } else {
-                    $summary['reobserved_workouts']++;
-                }
-
-                $this->sourceObservationStore->record(
-                    table: 'apple_health_workout_observations',
-                    unique: [
-                        'apple_health_workout_id' => $workoutRow['id'],
-                        'apple_health_source_set_id' => $sourceSetId,
-                    ],
-                );
-
-                $summary['workouts']++;
-
-                $this->provenanceWriter->link(new WriteProvenanceLinkData(
-                    runId: $run->id,
-                    outputTarget: 'apple_health_workouts:'.$workoutRow['id'],
-                    claimKey: 'imported-workout',
-                    evidenceType: 'source-file',
-                    evidenceRef: basename($exportXmlPath).'#workout:'.$workoutRow['canonical_key'],
-                ));
+                $this->importWorkoutEntry($entry['attributes'], $exportXmlPath, $run, $sourceSetId, $summary);
             }
         });
+    }
 
-        return $summary;
+    /**
+     * @param  array<string, string>  $attributes
+     * @param  array{
+     *     source_file:string,
+     *     source_set_id:int,
+     *     records:int,
+     *     workouts:int,
+     *     inserted_records:int,
+     *     reobserved_records:int,
+     *     inserted_workouts:int,
+     *     reobserved_workouts:int
+     * }  &$summary
+     */
+    private function importRecordEntry(
+        array $attributes,
+        string $exportXmlPath,
+        Run $run,
+        int $sourceSetId,
+        array &$summary,
+    ): void {
+        $recordRow = $this->upsertRecord($attributes);
+
+        if ($recordRow['wasRecentlyCreated']) {
+            $summary['inserted_records']++;
+        } else {
+            $summary['reobserved_records']++;
+        }
+
+        $this->sourceObservationStore->record(
+            table: 'apple_health_record_observations',
+            unique: [
+                'apple_health_record_id' => $recordRow['id'],
+                'apple_health_source_set_id' => $sourceSetId,
+            ],
+        );
+
+        $summary['records']++;
+
+        $this->provenanceWriter->link(new WriteProvenanceLinkData(
+            runId: $run->id,
+            outputTarget: 'apple_health_records:'.$recordRow['id'],
+            claimKey: 'imported-record',
+            evidenceType: 'source-file',
+            evidenceRef: basename($exportXmlPath).'#record:'.$recordRow['canonical_key'],
+        ));
+    }
+
+    /**
+     * @param  array<string, string>  $attributes
+     * @param  array{
+     *     source_file:string,
+     *     source_set_id:int,
+     *     records:int,
+     *     workouts:int,
+     *     inserted_records:int,
+     *     reobserved_records:int,
+     *     inserted_workouts:int,
+     *     reobserved_workouts:int
+     * }  &$summary
+     */
+    private function importWorkoutEntry(
+        array $attributes,
+        string $exportXmlPath,
+        Run $run,
+        int $sourceSetId,
+        array &$summary,
+    ): void {
+        $workoutRow = $this->upsertWorkout($attributes);
+
+        if ($workoutRow['wasRecentlyCreated']) {
+            $summary['inserted_workouts']++;
+        } else {
+            $summary['reobserved_workouts']++;
+        }
+
+        $this->sourceObservationStore->record(
+            table: 'apple_health_workout_observations',
+            unique: [
+                'apple_health_workout_id' => $workoutRow['id'],
+                'apple_health_source_set_id' => $sourceSetId,
+            ],
+        );
+
+        $summary['workouts']++;
+
+        $this->provenanceWriter->link(new WriteProvenanceLinkData(
+            runId: $run->id,
+            outputTarget: 'apple_health_workouts:'.$workoutRow['id'],
+            claimKey: 'imported-workout',
+            evidenceType: 'source-file',
+            evidenceRef: basename($exportXmlPath).'#workout:'.$workoutRow['canonical_key'],
+        ));
     }
 
     private function resolveExportXmlPath(ImporterDispatchData $dispatchPayload): string

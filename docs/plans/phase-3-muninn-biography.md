@@ -2,7 +2,7 @@
 
 ## Summary
 
-Build the first evidence-first biography phase after multiple source imports and source pages already exist.
+Build the first evidence-first biography phase after multiple source imports and the evidence workbench exist.
 
 ## Focus
 
@@ -18,7 +18,7 @@ Build the first evidence-first biography phase after multiple source imports and
 2. Select evidence from canonical imported rows and media metadata where relevant.
 3. Build chronology-first extraction and shaping with provenance preserved throughout.
 4. Surface contradictions instead of smoothing them away.
-5. Compile Muninn outputs into `wiki/muninn/`.
+5. Persist Muninn evidence products first, and only compile `wiki/muninn/` pages when a durable page is worth keeping.
 6. Record runs, artifacts, and provenance links for generated output.
 
 ## Acceptance Scenarios
@@ -26,7 +26,7 @@ Build the first evidence-first biography phase after multiple source imports and
 - evidence-bound event extraction
 - chronology ordering
 - contradiction preservation
-- traceable Muninn page output
+- traceable Muninn evidence output
 
 ## Specifications Used
 
@@ -39,5 +39,5 @@ Build the first evidence-first biography phase after multiple source imports and
 
 ## Assumptions
 
-- Multiple imported sources and source pages already exist before this phase starts.
+- Multiple imported sources and bounded evidence-selection helpers already exist before this phase starts.
 - Muninn output remains evidence-first and non-interpretive.
