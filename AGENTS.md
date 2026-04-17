@@ -44,15 +44,22 @@ MySQL is canonical for imported source material. `wiki/` is compiled markdown ou
 
 Push back on requests that conflict with the specs, blur important boundaries, or introduce obvious architectural drift. Do not comply by default just because a request is recent or emphatic. Call out the conflict plainly, explain the better path, and only bend the rules when the change is deliberate and the tradeoff is explicit.
 
-## Phase workflow
+## Task Management
 
-At the beginning of each implementation phase:
+Use Runes as the active backlog for Nornir. Load the external skill at `/Users/odinn/Projects/runes/SKILL.md` for task capture, task updates, attachments, and project bootstrap, and treat that skill as the source of truth for writing into the Runes repo.
 
+The canonical project backlog lives in `/Users/odinn/Projects/runes/nornir/`. `docs/plans/` is legacy planning history, not the live roadmap.
+
+## Execution workflow
+
+At the beginning of each implementation slice:
+
+- capture or update the relevant Runes item first
 - branch fresh from `main`
 - load the `tdd` skill before writing any code
-- use TDD for the phase slice instead of writing the implementation in one lump
+- use TDD for the current slice instead of writing the implementation in one lump
 
-At the end of each phase:
+At the end of each implementation slice:
 
 - load and run the `simplify` skill on changed code
 - load and run the chosen reviewer skill on the diff
@@ -60,9 +67,9 @@ At the end of each phase:
 - run `./vendor/bin/rector process`
 - run `./vendor/bin/phpstan analyse`
 - run `./vendor/bin/pest`
-- commit the phase
+- commit the slice
 - merge back to `main`
-- stop for manual review and testing before starting the next phase
+- stop for manual review and testing before starting the next slice
 
 ## Review
 
