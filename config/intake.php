@@ -11,8 +11,8 @@ return [
                 'local-path',
             ],
         ],
-        'sms' => [
-            'importer_key' => 'sms',
+        'apple-messages' => [
+            'importer_key' => 'apple-messages',
             'access_modes' => [
                 'archive',
                 'local-path',

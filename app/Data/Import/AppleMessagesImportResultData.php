@@ -6,7 +6,7 @@ namespace App\Data\Import;
 
 use App\Models\Run;
 
-final readonly class SmsImportResultData
+final readonly class AppleMessagesImportResultData
 {
     /**
      * @param  array{

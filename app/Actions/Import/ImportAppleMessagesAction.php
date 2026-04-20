@@ -7,7 +7,7 @@ namespace App\Actions\Import;
 use App\Actions\Import\Support\ImportArtifactWriter;
 use App\Actions\Import\Support\ImportRunExecutor;
 use App\Actions\Import\Support\SourceObservationStore;
-use App\Data\Import\SmsImportResultData;
+use App\Data\Import\AppleMessagesImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use PDO;
 
-class ImportSmsMessagesAction
+class ImportAppleMessagesAction
 {
     private const array REQUIRED_SQLITE_TABLES = [
         'attachment',
@@ -37,11 +37,11 @@ class ImportSmsMessagesAction
         private readonly ProvenanceWriter $provenanceWriter,
     ) {}
 
-    public function __invoke(ImporterDispatchData $dispatchPayload, ?callable $progress = null): SmsImportResultData
+    public function __invoke(ImporterDispatchData $dispatchPayload, ?callable $progress = null): AppleMessagesImportResultData
     {
         $execution = $this->importRunExecutor->execute(
             dispatchPayload: $dispatchPayload,
-            operation: 'sms-import',
+            operation: 'apple-messages-import',
             import: fn ($run): array => $this->importDatabase($dispatchPayload, $run, $progress),
             writeArtifacts: function ($run, array $summary) use ($dispatchPayload): void {
                 $this->writeArtifacts($run, $dispatchPayload, $summary);
@@ -62,7 +62,7 @@ class ImportSmsMessagesAction
          * } $execution
          */
 
-        return new SmsImportResultData(
+        return new AppleMessagesImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
         );
@@ -91,7 +91,7 @@ class ImportSmsMessagesAction
 
         $sourceSetId = DB::transaction(function () use ($dispatchPayload, $databasePath, $attachmentsRoot): int {
             return $this->sourceObservationStore->upsertAndReturnId(
-                table: 'sms_source_sets',
+                table: 'apple_messages_source_sets',
                 unique: [
                     'source_key' => sha1($databasePath),
                 ],
@@ -150,10 +150,10 @@ class ImportSmsMessagesAction
                     $observedParticipantIds[$participantId] = true;
 
                     $this->sourceObservationStore->record(
-                        table: 'sms_conversation_participant',
+                        table: 'apple_messages_conversation_participant',
                         unique: [
-                            'sms_conversation_id' => $conversationId,
-                            'sms_participant_id' => $participantId,
+                            'apple_messages_conversation_id' => $conversationId,
+                            'apple_messages_participant_id' => $participantId,
                         ],
                     );
                 }
@@ -176,10 +176,10 @@ class ImportSmsMessagesAction
                     }
 
                     $this->sourceObservationStore->record(
-                        table: 'sms_message_observations',
+                        table: 'apple_messages_message_observations',
                         unique: [
-                            'sms_message_id' => $messageRow['id'],
-                            'sms_source_set_id' => $sourceSetId,
+                            'apple_messages_message_id' => $messageRow['id'],
+                            'apple_messages_source_set_id' => $sourceSetId,
                         ],
                         values: [
                             'source_message_row_id' => $message['row_id'],
@@ -195,7 +195,7 @@ class ImportSmsMessagesAction
 
                     $this->provenanceWriter->link(new WriteProvenanceLinkData(
                         runId: $run->id,
-                        outputTarget: 'sms_messages:'.$messageRow['id'],
+                        outputTarget: 'apple_messages_messages:'.$messageRow['id'],
                         claimKey: 'imported-message',
                         evidenceType: 'source-file',
                         evidenceRef: basename($dispatchPayload->sourceLocator).'#message:'.($message['guid'] ?? $message['row_id']),
@@ -225,7 +225,7 @@ class ImportSmsMessagesAction
         $databasePath = rtrim($dispatchPayload->sourceLocator, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'chat.db';
 
         if (! File::exists($databasePath) || ! File::isFile($databasePath)) {
-            throw new InvalidArgumentException('Malformed SMS source payload: chat.db was not found inside the requested directory.');
+            throw new InvalidArgumentException('Malformed Apple Messages source payload: chat.db was not found inside the requested directory.');
         }
 
         return $databasePath;
@@ -449,7 +449,7 @@ class ImportSmsMessagesAction
     private function connectToSourceDatabase(string $databasePath): PDO
     {
         if (! File::exists($databasePath) || ! File::isFile($databasePath)) {
-            throw new InvalidArgumentException('Malformed SMS source payload: chat.db is not reachable.');
+            throw new InvalidArgumentException('Malformed Apple Messages source payload: chat.db is not reachable.');
         }
 
         $sqlite = new PDO('sqlite:'.$databasePath);
@@ -475,7 +475,7 @@ class ImportSmsMessagesAction
 
         if ($missing !== []) {
             throw new InvalidArgumentException(
-                'Malformed SMS source payload: required SQLite tables are missing ('.implode(', ', $missing).').'
+                'Malformed Apple Messages source payload: required SQLite tables are missing ('.implode(', ', $missing).').'
             );
         }
     }
@@ -685,7 +685,7 @@ class ImportSmsMessagesAction
     {
         $conversationKey = $this->conversationKey($chat);
 
-        DB::table('sms_conversations')->updateOrInsert(
+        DB::table('apple_messages_conversations')->updateOrInsert(
             [
                 'conversation_key' => $conversationKey,
             ],
@@ -703,7 +703,7 @@ class ImportSmsMessagesAction
             ],
         );
 
-        return (int) DB::table('sms_conversations')
+        return (int) DB::table('apple_messages_conversations')
             ->where('conversation_key', $conversationKey)
             ->value('id');
     }
@@ -713,11 +713,11 @@ class ImportSmsMessagesAction
      */
     private function upsertParticipant(array $participant, ?string $displayName = null): int
     {
-        $existingParticipant = DB::table('sms_participants')
+        $existingParticipant = DB::table('apple_messages_participants')
             ->where('identifier', $participant['identifier'])
             ->first();
 
-        DB::table('sms_participants')->updateOrInsert(
+        DB::table('apple_messages_participants')->updateOrInsert(
             [
                 'identifier' => $participant['identifier'],
             ],
@@ -730,7 +730,7 @@ class ImportSmsMessagesAction
             ],
         );
 
-        return (int) DB::table('sms_participants')
+        return (int) DB::table('apple_messages_participants')
             ->where('identifier', $participant['identifier'])
             ->value('id');
     }
@@ -742,11 +742,11 @@ class ImportSmsMessagesAction
     private function upsertMessage(int $conversationId, ?int $senderParticipantId, array $message): array
     {
         $canonicalKey = $this->messageCanonicalKey($message);
-        $existing = DB::table('sms_messages')
+        $existing = DB::table('apple_messages_messages')
             ->where('canonical_key', $canonicalKey)
             ->first();
 
-        $existingConversationId = $existing === null ? null : (int) $existing->sms_conversation_id;
+        $existingConversationId = $existing === null ? null : (int) $existing->apple_messages_conversation_id;
         $existingSenderParticipantId = $existing === null || $existing->sender_participant_id === null
             ? null
             : (int) $existing->sender_participant_id;
@@ -764,7 +764,7 @@ class ImportSmsMessagesAction
         $existingReactionType = $existing === null || $existing->reaction_type === null ? null : (int) $existing->reaction_type;
 
         $payload = [
-            'sms_conversation_id' => $existingConversationId ?? $conversationId,
+            'apple_messages_conversation_id' => $existingConversationId ?? $conversationId,
             'sender_participant_id' => $existingSenderParticipantId ?? $senderParticipantId,
             'source_guid' => $existingSourceGuid ?? $message['guid'],
             'source_row_id' => $existingSourceRowId ?? $message['row_id'],
@@ -787,14 +787,14 @@ class ImportSmsMessagesAction
             'created_at' => now(),
         ];
 
-        DB::table('sms_messages')->updateOrInsert(
+        DB::table('apple_messages_messages')->updateOrInsert(
             [
                 'canonical_key' => $canonicalKey,
             ],
             $payload,
         );
 
-        $messageId = (int) DB::table('sms_messages')
+        $messageId = (int) DB::table('apple_messages_messages')
             ->where('canonical_key', $canonicalKey)
             ->value('id');
 
@@ -823,12 +823,12 @@ class ImportSmsMessagesAction
                 (string) $attachment['transfer_name'],
             ]));
 
-        DB::table('sms_attachments')->updateOrInsert(
+        DB::table('apple_messages_attachments')->updateOrInsert(
             [
                 'attachment_key' => $attachmentKey,
             ],
             [
-                'sms_message_id' => $messageId,
+                'apple_messages_message_id' => $messageId,
                 'source_guid' => $attachment['source_guid'],
                 'relative_path' => $relativePath,
                 'source_filename' => $attachment['source_filename'],
@@ -999,7 +999,7 @@ class ImportSmsMessagesAction
         $statement = $sqlite->query($query);
 
         if ($statement === false) {
-            throw new InvalidArgumentException('Malformed SMS source payload: SQLite query failed.');
+            throw new InvalidArgumentException('Malformed Apple Messages source payload: SQLite query failed.');
         }
 
         return $statement;
@@ -1013,8 +1013,8 @@ class ImportSmsMessagesAction
         $this->importArtifactWriter->write(
             run: $run,
             dispatchPayload: $dispatchPayload,
-            sourceType: 'sms',
-            artifactKind: 'sms-import-summary',
+            sourceType: 'apple-messages',
+            artifactKind: 'apple-messages-import-summary',
             summary: $summary,
         );
     }

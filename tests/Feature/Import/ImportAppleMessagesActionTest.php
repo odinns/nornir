@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Import\ImportSmsMessagesAction;
+use App\Actions\Import\ImportAppleMessagesAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Models\ProvenanceLink;
@@ -14,12 +14,12 @@ use Illuminate\Support\Facades\File;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    File::deleteDirectory(base_path('data/imports/sms'));
+    File::deleteDirectory(base_path('data/imports/apple-messages'));
     File::deleteDirectory(base_path('data/runs'));
 });
 
-it('imports an apple chat db into canonical sms tables', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-import-primary', [
+it('imports an apple chat db into canonical apple messages tables', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-import-primary', [
         'messages' => [
             [
                 'guid' => 'msg-001',
@@ -53,7 +53,7 @@ it('imports an apple chat db into canonical sms tables', function (): void {
             ],
         ],
     ]);
-    $contactsDatabase = createAddressBookFixtureDatabase('sms-import-primary-contacts', [[
+    $contactsDatabase = createAddressBookFixtureDatabase('apple-messages-import-primary-contacts', [[
         'first_name' => 'Camilla',
         'last_name' => 'Lee',
         'organization' => null,
@@ -61,7 +61,7 @@ it('imports an apple chat db into canonical sms tables', function (): void {
     ]]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -72,16 +72,16 @@ it('imports an apple chat db into canonical sms tables', function (): void {
         importerOptions: [],
     ));
 
-    $result = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    $result = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('sms_source_sets')->count())->toBe(1);
-    expect(DB::table('sms_conversations')->count())->toBe(1);
-    expect(DB::table('sms_participants')->count())->toBe(1);
-    expect(DB::table('sms_messages')->count())->toBe(2);
-    expect(DB::table('sms_attachments')->count())->toBe(1);
+    expect(DB::table('apple_messages_source_sets')->count())->toBe(1);
+    expect(DB::table('apple_messages_conversations')->count())->toBe(1);
+    expect(DB::table('apple_messages_participants')->count())->toBe(1);
+    expect(DB::table('apple_messages_messages')->count())->toBe(2);
+    expect(DB::table('apple_messages_attachments')->count())->toBe(1);
 
-    $messages = DB::table('sms_messages')
+    $messages = DB::table('apple_messages_messages')
         ->orderBy('sent_at')
         ->pluck('text_body')
         ->all();
@@ -91,7 +91,7 @@ it('imports an apple chat db into canonical sms tables', function (): void {
         'Reply with attachment',
     ]);
 
-    $participant = DB::table('sms_participants')->first();
+    $participant = DB::table('apple_messages_participants')->first();
 
     expect($participant)->not->toBeNull();
 
@@ -102,7 +102,7 @@ it('imports an apple chat db into canonical sms tables', function (): void {
     expect($participant->identifier)->toBe('+4511111111');
     expect($participant->display_name)->toBe('Camilla Lee');
 
-    $attachment = DB::table('sms_attachments')->first();
+    $attachment = DB::table('apple_messages_attachments')->first();
 
     expect($attachment)->not->toBeNull();
 
@@ -114,7 +114,7 @@ it('imports an apple chat db into canonical sms tables', function (): void {
 });
 
 it('imports text from attributedBody when the message text column is empty', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-import-attributed-body', [
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-import-attributed-body', [
         'messages' => [
             [
                 'guid' => 'msg-attributed-001',
@@ -132,7 +132,7 @@ it('imports text from attributedBody when the message text column is empty', fun
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -142,14 +142,14 @@ it('imports text from attributedBody when the message text column is empty', fun
         importerOptions: [],
     ));
 
-    app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('sms_messages')->value('text_body'))
+    expect(DB::table('apple_messages_messages')->value('text_body'))
         ->toBe('Din forsendelse er blevet tilbageholdt.');
 });
 
 it('ignores orphaned message rows that are not linked to a chat', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-import-orphaned-messages', [
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-import-orphaned-messages', [
         'messages' => [
             [
                 'guid' => 'msg-joined-001',
@@ -176,7 +176,7 @@ it('ignores orphaned message rows that are not linked to a chat', function (): v
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -186,14 +186,14 @@ it('ignores orphaned message rows that are not linked to a chat', function (): v
         importerOptions: [],
     ));
 
-    app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('sms_messages')->pluck('source_guid')->all())->toBe(['msg-joined-001']);
-    expect(DB::table('sms_message_observations')->count())->toBe(1);
+    expect(DB::table('apple_messages_messages')->pluck('source_guid')->all())->toBe(['msg-joined-001']);
+    expect(DB::table('apple_messages_message_observations')->count())->toBe(1);
 });
 
-it('reruns idempotently for the same sms backup', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-import-repeat', [
+it('reruns idempotently for the same apple messages backup', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-import-repeat', [
         'messages' => [
             [
                 'guid' => 'msg-repeat-001',
@@ -209,7 +209,7 @@ it('reruns idempotently for the same sms backup', function (): void {
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -219,21 +219,21 @@ it('reruns idempotently for the same sms backup', function (): void {
         importerOptions: [],
     ));
 
-    $importer = app(ImportSmsMessagesAction::class);
+    $importer = app(ImportAppleMessagesAction::class);
 
     $firstResult = $importer($intake->dispatchPayload);
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('sms_source_sets')->count())->toBe(1);
-    expect(DB::table('sms_messages')->count())->toBe(1);
-    expect(DB::table('sms_message_observations')->count())->toBe(1);
+    expect(DB::table('apple_messages_source_sets')->count())->toBe(1);
+    expect(DB::table('apple_messages_messages')->count())->toBe(1);
+    expect(DB::table('apple_messages_message_observations')->count())->toBe(1);
     expect($secondResult->summary['inserted_messages'])->toBe(0);
     expect($secondResult->summary['reobserved_messages'])->toBe(1);
 });
 
 it('keeps older canonical messages when a newer backup is missing them', function (): void {
-    $fullBackup = createSmsFixtureDatabase('sms-import-full-backup', [
+    $fullBackup = createAppleMessagesFixtureDatabase('apple-messages-import-full-backup', [
         'messages' => [
             [
                 'guid' => 'msg-history-001',
@@ -258,7 +258,7 @@ it('keeps older canonical messages when a newer backup is missing them', functio
         ],
     ]);
 
-    $truncatedBackup = createSmsFixtureDatabase('sms-import-truncated-backup', [
+    $truncatedBackup = createAppleMessagesFixtureDatabase('apple-messages-import-truncated-backup', [
         'messages' => [
             [
                 'guid' => 'msg-history-002',
@@ -274,10 +274,10 @@ it('keeps older canonical messages when a newer backup is missing them', functio
     ]);
 
     $recordIntake = app(RecordIntakeAction::class);
-    $importer = app(ImportSmsMessagesAction::class);
+    $importer = app(ImportAppleMessagesAction::class);
 
     $fullIntake = $recordIntake(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fullBackup['database_path'],
         scopeSnapshot: [
@@ -287,7 +287,7 @@ it('keeps older canonical messages when a newer backup is missing them', functio
         importerOptions: [],
     ));
     $truncatedIntake = $recordIntake(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $truncatedBackup['database_path'],
         scopeSnapshot: [
@@ -300,16 +300,16 @@ it('keeps older canonical messages when a newer backup is missing them', functio
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('sms_source_sets')->count())->toBe(2);
-    expect(DB::table('sms_messages')->count())->toBe(2);
-    expect(DB::table('sms_messages')->pluck('source_guid')->all())->toEqualCanonicalizing([
+    expect(DB::table('apple_messages_source_sets')->count())->toBe(2);
+    expect(DB::table('apple_messages_messages')->count())->toBe(2);
+    expect(DB::table('apple_messages_messages')->pluck('source_guid')->all())->toEqualCanonicalizing([
         'msg-history-001',
         'msg-history-002',
     ]);
 });
 
 it('backfills missing history when an older backup is imported after a newer one', function (): void {
-    $truncatedBackup = createSmsFixtureDatabase('sms-import-truncated-first', [
+    $truncatedBackup = createAppleMessagesFixtureDatabase('apple-messages-import-truncated-first', [
         'messages' => [
             [
                 'guid' => 'msg-backfill-002',
@@ -324,7 +324,7 @@ it('backfills missing history when an older backup is imported after a newer one
         ],
     ]);
 
-    $fullBackup = createSmsFixtureDatabase('sms-import-full-second', [
+    $fullBackup = createAppleMessagesFixtureDatabase('apple-messages-import-full-second', [
         'messages' => [
             [
                 'guid' => 'msg-backfill-001',
@@ -350,10 +350,10 @@ it('backfills missing history when an older backup is imported after a newer one
     ]);
 
     $recordIntake = app(RecordIntakeAction::class);
-    $importer = app(ImportSmsMessagesAction::class);
+    $importer = app(ImportAppleMessagesAction::class);
 
     $truncatedIntake = $recordIntake(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $truncatedBackup['database_path'],
         scopeSnapshot: [
@@ -363,7 +363,7 @@ it('backfills missing history when an older backup is imported after a newer one
         importerOptions: [],
     ));
     $fullIntake = $recordIntake(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fullBackup['database_path'],
         scopeSnapshot: [
@@ -376,14 +376,14 @@ it('backfills missing history when an older backup is imported after a newer one
     $importer($truncatedIntake->dispatchPayload);
     $result = $importer($fullIntake->dispatchPayload);
 
-    expect(DB::table('sms_source_sets')->count())->toBe(2);
-    expect(DB::table('sms_messages')->count())->toBe(2);
+    expect(DB::table('apple_messages_source_sets')->count())->toBe(2);
+    expect(DB::table('apple_messages_messages')->count())->toBe(2);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(1);
 });
 
 it('fails clearly when the sqlite source is missing required tables', function (): void {
-    $root = storage_path('framework/testing/sms-import-broken-'.bin2hex(random_bytes(4)));
+    $root = storage_path('framework/testing/apple-messages-import-broken-'.bin2hex(random_bytes(4)));
     $databasePath = $root.'/chat.db';
 
     File::ensureDirectoryExists($root);
@@ -393,7 +393,7 @@ it('fails clearly when the sqlite source is missing required tables', function (
     $pdo->exec('CREATE TABLE chat (ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT)');
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $databasePath,
         scopeSnapshot: [
@@ -402,8 +402,8 @@ it('fails clearly when the sqlite source is missing required tables', function (
         importerOptions: [],
     ));
 
-    expect(fn () => app(ImportSmsMessagesAction::class)($intake->dispatchPayload))
-        ->toThrow(InvalidArgumentException::class, 'Malformed SMS source payload: required SQLite tables are missing');
+    expect(fn () => app(ImportAppleMessagesAction::class)($intake->dispatchPayload))
+        ->toThrow(InvalidArgumentException::class, 'Malformed Apple Messages source payload: required SQLite tables are missing');
 
     $failedRun = Run::query()->latest('id')->first();
 
@@ -414,11 +414,11 @@ it('fails clearly when the sqlite source is missing required tables', function (
     }
 
     expect($failedRun->status)->toBe(Run::STATUS_FAILED);
-    expect($failedRun->failure_summary)->toContain('Malformed SMS source payload');
+    expect($failedRun->failure_summary)->toContain('Malformed Apple Messages source payload');
 });
 
-it('records importer artifacts and provenance links for imported sms rows', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-import-artifacts', [
+it('records importer artifacts and provenance links for imported apple messages rows', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-import-artifacts', [
         'messages' => [
             [
                 'guid' => 'msg-artifact-001',
@@ -434,7 +434,7 @@ it('records importer artifacts and provenance links for imported sms rows', func
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -444,12 +444,12 @@ it('records importer artifacts and provenance links for imported sms rows', func
         importerOptions: [],
     ));
 
-    $result = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    $result = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
     $artifactLocators = $result->run->artifacts()->orderBy('id')->pluck('locator')->all();
 
     expect($artifactLocators)->toHaveCount(2);
-    expect($artifactLocators[0])->toContain('data/imports/sms/');
+    expect($artifactLocators[0])->toContain('data/imports/apple-messages/');
     expect($artifactLocators[1])->toContain('data/runs/import/');
 
     $links = ProvenanceLink::query()
@@ -458,6 +458,6 @@ it('records importer artifacts and provenance links for imported sms rows', func
         ->get();
 
     expect($links)->not->toBeEmpty();
-    expect($links->pluck('output_target')->contains(fn (string $target): bool => str_contains($target, 'sms_messages:')))->toBeTrue();
+    expect($links->pluck('output_target')->contains(fn (string $target): bool => str_contains($target, 'apple_messages_messages:')))->toBeTrue();
     expect($links->pluck('evidence_ref')->contains('chat.db#message:msg-artifact-001'))->toBeTrue();
 });

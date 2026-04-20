@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Actions\Import\ImportSmsMessagesAction;
+use App\Actions\Import\ImportAppleMessagesAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
 use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
 
-class ImportSmsCommand extends Command
+class ImportAppleMessagesCommand extends Command
 {
     use InteractsWithImportConsole;
 
-    protected $signature = 'import:sms
+    protected $signature = 'import:apple-messages
         {source : Path to an Apple Messages chat.db file or a directory containing chat.db}
         {--attachments-root= : Optional attachments root for attachment path normalization}
         {--contacts-db=* : Optional AddressBook sqlite database paths for participant name enrichment}';
 
-    protected $description = 'Import Apple Messages SMS/iMessage history into canonical MySQL tables.';
+    protected $description = 'Import Apple Messages history into canonical MySQL tables.';
 
     public function __construct(
         private readonly RecordIntakeAction $recordIntakeAction,
-        private readonly ImportSmsMessagesAction $importSmsMessagesAction,
+        private readonly ImportAppleMessagesAction $importAppleMessagesAction,
     ) {
         parent::__construct();
     }
@@ -34,10 +34,10 @@ class ImportSmsCommand extends Command
         $accessMode = $this->resolveFilesystemAccessMode($source);
         $scopeSnapshot = $this->buildScopeSnapshot($source, $accessMode);
 
-        $this->info("Recording intake for SMS source: {$source}");
+        $this->info("Recording intake for Apple Messages source: {$source}");
 
         $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
-            sourceType: 'sms',
+            sourceType: 'apple-messages',
             accessMode: $accessMode,
             sourceLocator: $source,
             scopeSnapshot: $scopeSnapshot,
@@ -45,9 +45,9 @@ class ImportSmsCommand extends Command
         ));
 
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
-        $this->info('Importing SMS messages');
+        $this->info('Importing Apple Messages');
 
-        $importResult = ($this->importSmsMessagesAction)(
+        $importResult = ($this->importAppleMessagesAction)(
             $intakeResult->dispatchPayload,
             function (string $event, array $payload): void {
                 if ($event === 'chats_resolved') {

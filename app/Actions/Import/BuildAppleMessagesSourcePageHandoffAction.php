@@ -9,15 +9,15 @@ use App\Data\Import\WikiCompilationHandoffData;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-class BuildSmsSourcePageHandoffAction
+class BuildAppleMessagesSourcePageHandoffAction
 {
     private const array CANONICAL_TABLES = [
-        'sms_source_sets',
-        'sms_conversations',
-        'sms_participants',
-        'sms_messages',
-        'sms_attachments',
-        'sms_message_observations',
+        'apple_messages_source_sets',
+        'apple_messages_conversations',
+        'apple_messages_participants',
+        'apple_messages_messages',
+        'apple_messages_attachments',
+        'apple_messages_message_observations',
     ];
 
     public function __construct(
@@ -28,8 +28,8 @@ class BuildSmsSourcePageHandoffAction
     {
         $boundary = $this->sourcePageHandoffSupport->resolveRunBoundary(
             runId: $runId,
-            operation: 'sms-import',
-            errorMessage: 'Run does not describe a successful SMS import.',
+            operation: 'apple-messages-import',
+            errorMessage: 'Run does not describe a successful Apple Messages import.',
         );
         $run = $boundary['run'];
         $sourceLocator = $boundary['source_locator'];
@@ -42,38 +42,38 @@ class BuildSmsSourcePageHandoffAction
             ? $this->sourcePageHandoffSupport->normalizePath($attachmentsRoot)
             : null;
 
-        $sourceSetIds = $this->sourcePageHandoffSupport->resolveSourceSetIds('sms_source_sets', $sourceLocator);
+        $sourceSetIds = $this->sourcePageHandoffSupport->resolveSourceSetIds('apple_messages_source_sets', $sourceLocator);
 
         if ($sourceSetIds === []) {
-            throw new InvalidArgumentException('No canonical SMS rows were found for the requested run.');
+            throw new InvalidArgumentException('No canonical Apple Messages rows were found for the requested run.');
         }
 
-        $messageIds = DB::table('sms_message_observations')
-            ->whereIn('sms_source_set_id', $sourceSetIds)
-            ->pluck('sms_message_id')
+        $messageIds = DB::table('apple_messages_message_observations')
+            ->whereIn('apple_messages_source_set_id', $sourceSetIds)
+            ->pluck('apple_messages_message_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
         $conversationIds = $messageIds === []
             ? []
-            : DB::table('sms_messages')
+            : DB::table('apple_messages_messages')
                 ->whereIn('id', $messageIds)
                 ->distinct()
-                ->pluck('sms_conversation_id')
+                ->pluck('apple_messages_conversation_id')
                 ->map(static fn (mixed $id): int => (int) $id)
                 ->all();
 
         $participantCount = $conversationIds === []
             ? 0
-            : (int) DB::table('sms_conversation_participant')
-                ->whereIn('sms_conversation_id', $conversationIds)
+            : (int) DB::table('apple_messages_conversation_participant')
+                ->whereIn('apple_messages_conversation_id', $conversationIds)
                 ->distinct()
-                ->count('sms_participant_id');
+                ->count('apple_messages_participant_id');
 
         $attachmentCount = $messageIds === []
             ? 0
-            : (int) DB::table('sms_attachments')
-                ->whereIn('sms_message_id', $messageIds)
+            : (int) DB::table('apple_messages_attachments')
+                ->whereIn('apple_messages_message_id', $messageIds)
                 ->count();
 
         $canonicalScope = [
@@ -95,7 +95,7 @@ class BuildSmsSourcePageHandoffAction
         ];
 
         return new WikiCompilationHandoffData(
-            sourceType: 'sms',
+            sourceType: 'apple-messages',
             handoffType: 'source-pages',
             owningRunId: $run->id,
             canonicalScope: $canonicalScope,

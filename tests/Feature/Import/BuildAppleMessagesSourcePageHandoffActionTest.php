@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Import\BuildSmsSourcePageHandoffAction;
-use App\Actions\Import\ImportSmsMessagesAction;
+use App\Actions\Import\BuildAppleMessagesSourcePageHandoffAction;
+use App\Actions\Import\ImportAppleMessagesAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Models\Run;
@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
-it('builds a compile-facing handoff from canonical sms rows', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-handoff', [
+it('builds a compile-facing handoff from canonical apple messages rows', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-handoff', [
         'messages' => [
             [
                 'guid' => 'msg-handoff-001',
@@ -39,7 +39,7 @@ it('builds a compile-facing handoff from canonical sms rows', function (): void 
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -49,12 +49,12 @@ it('builds a compile-facing handoff from canonical sms rows', function (): void 
         importerOptions: [],
     ));
 
-    $importResult = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    $importResult = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    $handoff = app(BuildSmsSourcePageHandoffAction::class)($importResult->run->id);
+    $handoff = app(BuildAppleMessagesSourcePageHandoffAction::class)($importResult->run->id);
     $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
 
-    expect($handoff->sourceType)->toBe('sms');
+    expect($handoff->sourceType)->toBe('apple-messages');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($sourceSetIds)->toHaveCount(1);
@@ -63,12 +63,12 @@ it('builds a compile-facing handoff from canonical sms rows', function (): void 
         'accepted_root_paths' => [$fixture['root_path']],
         'attachments_root' => $fixture['attachments_root'],
         'tables' => [
-            'sms_source_sets',
-            'sms_conversations',
-            'sms_participants',
-            'sms_messages',
-            'sms_attachments',
-            'sms_message_observations',
+            'apple_messages_source_sets',
+            'apple_messages_conversations',
+            'apple_messages_participants',
+            'apple_messages_messages',
+            'apple_messages_attachments',
+            'apple_messages_message_observations',
         ],
         'source_set_ids' => $sourceSetIds,
         'handoff_scope' => [
@@ -84,7 +84,7 @@ it('builds a compile-facing handoff from canonical sms rows', function (): void 
     ]);
 });
 
-it('rejects runs that are not successful sms imports', function (): void {
+it('rejects runs that are not successful apple messages imports', function (): void {
     $run = Run::query()->create([
         'subsystem' => 'muninn',
         'operation' => 'timeline-pass',
@@ -95,12 +95,12 @@ it('rejects runs that are not successful sms imports', function (): void {
         'finished_at' => now(),
     ]);
 
-    expect(fn () => app(BuildSmsSourcePageHandoffAction::class)($run->id))
-        ->toThrow(InvalidArgumentException::class, 'Run does not describe a successful SMS import.');
+    expect(fn () => app(BuildAppleMessagesSourcePageHandoffAction::class)($run->id))
+        ->toThrow(InvalidArgumentException::class, 'Run does not describe a successful Apple Messages import.');
 });
 
-it('builds the sms handoff from canonical rows without rescanning the raw source path', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-handoff-no-raw', [
+it('builds the apple messages handoff from canonical rows without rescanning the raw source path', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-handoff-no-raw', [
         'messages' => [
             [
                 'guid' => 'msg-handoff-rawless-001',
@@ -116,7 +116,7 @@ it('builds the sms handoff from canonical rows without rescanning the raw source
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -126,11 +126,11 @@ it('builds the sms handoff from canonical rows without rescanning the raw source
         importerOptions: [],
     ));
 
-    $importResult = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    $importResult = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
     File::deleteDirectory($fixture['root_path']);
 
-    $handoff = app(BuildSmsSourcePageHandoffAction::class)($importResult->run->id);
+    $handoff = app(BuildAppleMessagesSourcePageHandoffAction::class)($importResult->run->id);
 
     expect($handoff->canonicalScope['row_counts'])->toMatchArray([
         'source_sets' => 1,

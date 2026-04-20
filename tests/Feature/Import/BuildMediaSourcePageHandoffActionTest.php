@@ -119,10 +119,10 @@ it('respects volume scope — counts and volumes list are filtered to the run sc
 it('rejects runs that are not successful media-collection imports', function (): void {
     $run = Run::query()->create([
         'subsystem' => 'import',
-        'operation' => 'sms-import',
+        'operation' => 'apple-messages-import',
         'status' => Run::STATUS_SUCCEEDED,
         'input_scope' => ['source_locator' => '/tmp/chat.db', 'scope_snapshot' => []],
-        'idempotency_key' => 'sms-import:irrelevant',
+        'idempotency_key' => 'apple-messages-import:irrelevant',
         'started_at' => now(),
         'finished_at' => now(),
     ]);

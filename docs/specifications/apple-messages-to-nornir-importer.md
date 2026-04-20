@@ -1,12 +1,12 @@
-# SMS To Nornir Importer
+# Apple Messages To Nornir Importer
 
 ## Goal
 
-Import SMS history into canonical MySQL tables for chronology-heavy biography work.
+Import Apple Messages history from `chat.db` into canonical MySQL tables for chronology-heavy biography work.
 
 ## Canonical source
 
-Local structured SMS export or source database.
+Local Apple Messages `chat.db` database or equivalent structured export.
 
 ## Inputs
 
@@ -16,16 +16,16 @@ Local structured SMS export or source database.
 
 ## Output structure
 
-- canonical `sms_*` tables
-- run artifacts under `data/imports/sms/`
+- canonical `apple_messages_*` tables
+- run artifacts under `data/imports/apple-messages/`
 
 ## MySQL storage model
 
-- `sms_source_sets`
-- `sms_messages`
-- `sms_participants`
-- `sms_conversations`
-- `sms_attachments`
+- `apple_messages_source_sets`
+- `apple_messages_messages`
+- `apple_messages_participants`
+- `apple_messages_conversations`
+- `apple_messages_attachments`
 
 ## Data model
 
@@ -61,4 +61,4 @@ Preserve message ids, timestamps, direction, participant identifiers, and attach
 
 ## Acceptance checks
 
-- SMS can anchor timelines without fuzzy post-processing
+- Apple Messages can anchor timelines without fuzzy post-processing

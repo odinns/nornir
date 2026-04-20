@@ -37,7 +37,7 @@ Source-owned tables use stable prefixes:
 - `chatgpt_*`
 - `facebook_*`
 - `gmail_*`
-- `sms_*`
+- `apple_messages_*`
 - `twitter_*`
 - `fidonet_*`
 - `media_collection_*`

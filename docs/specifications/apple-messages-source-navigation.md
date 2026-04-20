@@ -1,12 +1,12 @@
-# SMS Source Navigation
+# Apple Messages Source Navigation
 
 ## Start here
 
-Primary input is a local SMS database export or device-generated backup with stable message ids.
+Primary input is a local Apple Messages `chat.db` database or equivalent structured export with stable message ids.
 
 ## Canonical source
 
-- device-exported SMS database or equivalent structured export
+- Apple Messages `chat.db` database or equivalent structured export
 
 ## Source layout or access model
 
@@ -36,4 +36,4 @@ Primary input is a local SMS database export or device-generated backup with sta
 
 ## Bottom line
 
-SMS is message-first with derived conversation grouping.
+Apple Messages is message-first with derived conversation grouping.

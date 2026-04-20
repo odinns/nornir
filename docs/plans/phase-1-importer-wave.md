@@ -38,7 +38,7 @@ For every Phase 1 importer, idempotency means:
 
 ## Importer Tracks
 
-- [phase-1-sms-importer.md](/Users/odinn/Projects/odinns/nornir/docs/plans/phase-1-sms-importer.md)
+- [phase-1-apple-messages-importer.md](/Users/odinn/Projects/odinns/nornir/docs/plans/phase-1-apple-messages-importer.md)
 - [phase-1-facebook-importer.md](/Users/odinn/Projects/odinns/nornir/docs/plans/phase-1-facebook-importer.md)
 - [phase-1-twitter-importer.md](/Users/odinn/Projects/odinns/nornir/docs/plans/phase-1-twitter-importer.md)
 - [phase-1-linkedin-importer.md](/Users/odinn/Projects/odinns/nornir/docs/plans/phase-1-linkedin-importer.md)
@@ -100,8 +100,8 @@ Done. The tracked phase-1 importer set now has importer commands, canonical stor
 - `docs/specifications/orchestration-runs-jobs-and-provenance.md`
 - `docs/specifications/storage-and-path-conventions.md`
 - `docs/specifications/testing-and-tdd-strategy.md`
-- `docs/specifications/sms-source-navigation.md`
-- `docs/specifications/sms-to-nornir-importer.md`
+- `docs/specifications/apple-messages-source-navigation.md`
+- `docs/specifications/apple-messages-to-nornir-importer.md`
 - `docs/specifications/facebook-source-navigation.md`
 - `docs/specifications/facebook-to-nornir-importer.md`
 - `docs/specifications/twitter-source-navigation.md`

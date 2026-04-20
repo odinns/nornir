@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Actions\Import\ImportSmsMessagesAction;
+use App\Actions\Import\ImportAppleMessagesAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('builds an sms source-page handoff from the latest successful import run', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-handoff-cli', [
+it('builds an apple messages source-page handoff from the latest successful import run', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-handoff-cli', [
         'messages' => [
             [
                 'guid' => 'msg-handoff-cli-001',
@@ -26,7 +26,7 @@ it('builds an sms source-page handoff from the latest successful import run', fu
     ]);
 
     $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
-        sourceType: 'sms',
+        sourceType: 'apple-messages',
         accessMode: 'archive',
         sourceLocator: $fixture['database_path'],
         scopeSnapshot: [
@@ -36,10 +36,10 @@ it('builds an sms source-page handoff from the latest successful import run', fu
         importerOptions: [],
     ));
 
-    $importResult = app(ImportSmsMessagesAction::class)($intake->dispatchPayload);
+    $importResult = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:sms-source-pages')
-        ->expectsOutputToContain('Building SMS source-page handoff')
+    $this->artisan('handoff:apple-messages-source-pages')
+        ->expectsOutputToContain('Building Apple Messages source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$fixture['database_path'])
         ->expectsOutputToContain('Source set count: 1')

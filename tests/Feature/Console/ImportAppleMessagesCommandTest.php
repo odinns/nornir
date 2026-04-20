@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\File;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    File::deleteDirectory(base_path('data/imports/sms'));
+    File::deleteDirectory(base_path('data/imports/apple-messages'));
     File::deleteDirectory(base_path('data/runs'));
     File::deleteDirectory(base_path('data/intake'));
 });
 
-it('imports sms backups from the cli with useful default output', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-console', [
+it('imports apple messages backups from the cli with useful default output', function (): void {
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-console', [
         'messages' => [
             [
                 'guid' => 'msg-console-001',
@@ -39,32 +39,32 @@ it('imports sms backups from the cli with useful default output', function (): v
             ],
         ],
     ]);
-    $contactsDatabase = createAddressBookFixtureDatabase('sms-console-contacts', [[
+    $contactsDatabase = createAddressBookFixtureDatabase('apple-messages-console-contacts', [[
         'first_name' => 'Console',
         'last_name' => 'Person',
         'organization' => null,
         'phones' => ['+45 11 11 11 11'],
     ]]);
 
-    $this->artisan('import:sms', [
+    $this->artisan('import:apple-messages', [
         'source' => $fixture['database_path'],
         '--attachments-root' => $fixture['attachments_root'],
         '--contacts-db' => [$contactsDatabase],
     ])
-        ->expectsOutputToContain('Recording intake for SMS source')
-        ->expectsOutputToContain('Importing SMS messages')
+        ->expectsOutputToContain('Recording intake for Apple Messages source')
+        ->expectsOutputToContain('Importing Apple Messages')
         ->expectsOutputToContain('Found 1 chats to import')
         ->expectsOutputToContain('[1/1] +4511111111')
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
     expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('sms_messages')->count())->toBe(2);
-    expect(DB::table('sms_participants')->value('display_name'))->toBe('Console Person');
+    expect(DB::table('apple_messages_messages')->count())->toBe(2);
+    expect(DB::table('apple_messages_participants')->value('display_name'))->toBe('Console Person');
 });
 
 it('stays quiet when quiet mode is requested', function (): void {
-    $fixture = createSmsFixtureDatabase('sms-console-quiet', [
+    $fixture = createAppleMessagesFixtureDatabase('apple-messages-console-quiet', [
         'messages' => [
             [
                 'guid' => 'msg-console-quiet-001',
@@ -79,7 +79,7 @@ it('stays quiet when quiet mode is requested', function (): void {
         ],
     ]);
 
-    $this->artisan('import:sms', [
+    $this->artisan('import:apple-messages', [
         'source' => $fixture['database_path'],
         '--attachments-root' => $fixture['attachments_root'],
         '--quiet' => true,

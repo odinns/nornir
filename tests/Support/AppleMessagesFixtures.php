@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\File;
  * }  $dataset
  * @return array{root_path:string, database_path:string, attachments_root:string}
  */
-function createSmsFixtureDatabase(string $name, array $dataset): array
+function createAppleMessagesFixtureDatabase(string $name, array $dataset): array
 {
     $root = storage_path('framework/testing/'.$name.'-'.bin2hex(random_bytes(4)));
     $attachmentsRoot = $root.'/Attachments';
@@ -143,7 +143,7 @@ function createSmsFixtureDatabase(string $name, array $dataset): array
             'guid' => $message['guid'],
             'text' => $message['text'],
             'attributed_body' => array_key_exists('attributed_body', $message)
-                ? encodeSmsAttributedBody($message['attributed_body'])
+                ? encodeAppleMessagesAttributedBody($message['attributed_body'])
                 : null,
             'is_from_me' => $message['is_from_me'],
             'date' => $message['date'],
@@ -208,7 +208,7 @@ function appleTimestampForUnix(int $unixTimestamp): int
     return ($unixTimestamp - 978307200) * 1_000_000_000;
 }
 
-function encodeSmsAttributedBody(?string $text): ?string
+function encodeAppleMessagesAttributedBody(?string $text): ?string
 {
     if ($text === null) {
         return null;
@@ -217,7 +217,7 @@ function encodeSmsAttributedBody(?string $text): ?string
     $length = strlen($text);
 
     if ($length > 0x7FFF) {
-        throw new InvalidArgumentException('SMS attributedBody fixture text is too long.');
+        throw new InvalidArgumentException('Apple Messages attributedBody fixture text is too long.');
     }
 
     if ($length < 0x80) {
