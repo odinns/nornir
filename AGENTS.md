@@ -40,6 +40,19 @@ PRs MUST explain the change, name affected specs or modules, note testing perfor
 
 MySQL is canonical for imported source material. `wiki/` is compiled markdown output. Heimdallr is read-only. Muninn is evidence-first. Huginn may synthesize, but never without traceable support.
 
+## Database Safety
+
+Treat this repo's local Laravel app as production-dangerous by default.
+
+- If `.env` says `APP_ENV=production`, believe it. That is a hard stop for any mutating Laravel or database command unless the user explicitly asks for that exact production mutation.
+- If `.env` points at `DB_DATABASE=nornir`, treat that database as production data even if it is running locally in DBngin.
+- Never run ad-hoc Laravel bootstrap commands in this repo through `php -r`, `artisan tinker`, or any other path that loads `bootstrap/app.php` outside the test runner when the default environment is `production`.
+- Never run `php artisan migrate`, `migrate:fresh`, `migrate:refresh`, `db:wipe`, seeders, or any equivalent schema/data mutation against the default app environment in this repo unless the user explicitly requests that production-local mutation by name.
+- Never use manual `Artisan::call(...)` from `php -r` for debugging in this repo. That path bypasses the protection of `phpunit.xml` and will use `.env`.
+- Testing must go through Pest or PHPUnit so the `phpunit.xml` overrides take effect. Do not substitute hand-rolled Laravel bootstrap scripts for test coverage.
+- If database debugging is unavoidable, use a command that prints the effective `APP_ENV`, `DB_CONNECTION`, and `DB_DATABASE` first, and stop unless the target is unmistakably a disposable test database.
+- If there is any doubt about which database a command will touch, do not run it.
+
 ## Contributor Behavior
 
 Push back on requests that conflict with the specs, blur important boundaries, or introduce obvious architectural drift. Do not comply by default just because a request is recent or emphatic. Call out the conflict plainly, explain the better path, and only bend the rules when the change is deliberate and the tradeoff is explicit.
