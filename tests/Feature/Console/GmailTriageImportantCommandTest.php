@@ -79,3 +79,15 @@ it('fails clearly when the Gmail credentials path is missing', function (): void
         ->expectsOutputToContain('Set NORNIR_GMAIL_CREDENTIALS')
         ->assertFailed();
 });
+
+it('fails clearly when the limit is invalid', function (): void {
+    config()->set('gmail_triage.credentials_path', '/tmp/fake-credentials.json');
+
+    $this->artisan('gmail:triage-important', [
+        '--window' => 'last 7 days',
+        '--limit' => '0',
+        '--json' => true,
+    ])
+        ->expectsOutputToContain('The --limit option must be a positive integer.')
+        ->assertFailed();
+});

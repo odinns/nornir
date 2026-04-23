@@ -25,11 +25,11 @@ class TriageImportantMailAction
         ?string $since,
         ?string $on,
         ?string $window,
-        int $limit = 25,
+        ?int $limit = null,
         ?string $query = null,
         ?string $rulesPath = null,
     ): array {
-        if ($limit < 1) {
+        if ($limit !== null && $limit < 1) {
             throw new InvalidArgumentException('The limit must be at least 1.');
         }
 
@@ -48,7 +48,7 @@ class TriageImportantMailAction
             $pageToken = $page['nextPageToken'];
 
             foreach ($page['messages'] as $stub) {
-                if ($inspectedCount >= $limit) {
+                if ($limit !== null && $inspectedCount >= $limit) {
                     $pageToken = null;
                     break;
                 }
@@ -131,14 +131,20 @@ class TriageImportantMailAction
             (string) ($message['snippet'] ?? ''),
             $body,
         ]))));
+        $bodyAndSnippetText = strtolower(trim(implode("\n", array_filter([
+            (string) ($message['snippet'] ?? ''),
+            $body,
+        ]))));
 
         $automated = $this->looksAutomated($senderEmail, $subject, $headers, $normalizedLabels, $rules);
         $score = 0;
         $reasons = [];
+        $hasPriorityOverride = false;
 
         if (in_array($senderEmail, $rules['priority_senders'], true)) {
             $score += 3;
             $reasons[] = 'priority sender';
+            $hasPriorityOverride = true;
         }
 
         $senderDomain = $this->extractDomain($senderEmail);
@@ -146,14 +152,15 @@ class TriageImportantMailAction
         if ($senderDomain !== '' && in_array($senderDomain, $rules['priority_domains'], true)) {
             $score += 2;
             $reasons[] = 'priority domain';
+            $hasPriorityOverride = true;
         }
 
         if (array_intersect($normalizedLabels, $rules['priority_labels']) !== []) {
-            $score += 2;
+            $score += 1;
             $reasons[] = 'priority label';
         }
 
-        if ($this->containsDirectQuestion($analysisText)) {
+        if ($this->containsDirectQuestion($bodyAndSnippetText)) {
             $score += 4;
             $reasons[] = 'direct question';
         }
@@ -190,7 +197,7 @@ class TriageImportantMailAction
             $score += 1;
         }
 
-        if ($automated && $score < 5) {
+        if ($automated && ! $hasPriorityOverride) {
             return null;
         }
 
@@ -347,6 +354,12 @@ class TriageImportantMailAction
             return true;
         }
 
+        $senderDomain = $this->extractDomain($senderEmail);
+
+        if ($senderDomain !== '' && in_array($senderDomain, $rules['ignore_domains'], true)) {
+            return true;
+        }
+
         if ($labels !== [] && array_intersect($labels, ['category_promotions', 'category_updates', 'category_forums']) !== []) {
             return true;
         }
@@ -372,8 +385,10 @@ class TriageImportantMailAction
 
     private function containsDirectQuestion(string $text): bool
     {
-        return str_contains($text, '?')
-            || preg_match('/\b(can you|could you|would you|please confirm|do you have|are you able)\b/i', $text) === 1;
+        return preg_match('/\?\s*$/m', $text) === 1
+            || preg_match('/\b(please confirm|can you|could you|would you|do you have|are you able|let me know|reply|respond)\b/i', $text) === 1
+            || preg_match('/\b(what do you think|does this work for you|is this okay|can we|could we)\b/i', $text) === 1
+            || preg_match('/\b(confirm|approve|reply|respond)\b.{0,25}\b(today|tomorrow|asap|soon)\b/i', $text) === 1;
     }
 
     private function containsFollowUp(string $text): bool
@@ -432,11 +447,22 @@ class TriageImportantMailAction
     private function loadRules(?string $rulesPath): array
     {
         $defaults = [
-            'priority_senders' => [],
-            'priority_domains' => [],
+            'priority_senders' => ['haveforeningenkildebo@gmail.com'],
+            'priority_domains' => ['ase.dk'],
             'priority_labels' => ['important', 'starred'],
             'ignore_senders' => [],
-            'ignore_subject_keywords' => ['newsletter', 'digest'],
+            'ignore_domains' => [],
+            'ignore_subject_keywords' => [
+                'newsletter',
+                'digest',
+                'job alert',
+                'job alerts',
+                'apply now',
+                'looked at your profile',
+                'weekly digest',
+                'big savings',
+                'price drop',
+            ],
         ];
 
         $path = is_string($rulesPath) ? trim($rulesPath) : '';

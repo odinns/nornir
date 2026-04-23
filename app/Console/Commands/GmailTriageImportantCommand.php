@@ -15,7 +15,7 @@ class GmailTriageImportantCommand extends Command
         {--since= : Absolute or relative start date}
         {--on= : Single-day date input}
         {--window= : Relative date window like "last 7 days"}
-        {--limit=25 : Maximum number of messages to inspect}
+        {--limit= : Maximum number of messages to inspect}
         {--query= : Additional Gmail query terms}
         {--rules= : Path to a JSON rules file}
         {--json : Emit JSON output}';
@@ -38,12 +38,17 @@ class GmailTriageImportantCommand extends Command
             return self::FAILURE;
         }
 
-        $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT);
+        $rawLimit = $this->option('limit');
+        $limit = null;
 
-        if (! is_int($limit) || $limit < 1) {
-            $this->error('The --limit option must be a positive integer.');
+        if (is_string($rawLimit) && trim($rawLimit) !== '') {
+            $limit = filter_var($rawLimit, FILTER_VALIDATE_INT);
 
-            return self::FAILURE;
+            if (! is_int($limit) || $limit < 1) {
+                $this->error('The --limit option must be a positive integer.');
+
+                return self::FAILURE;
+            }
         }
 
         try {
