@@ -52,7 +52,9 @@ it('maps twitter importer tables through explicit eloquent model contracts', fun
         ->and($archive->account()->getForeignKeyName())->toBe('twitter_archive_id')
         ->and($archive->profileSnapshot()->getForeignKeyName())->toBe('twitter_archive_id')
         ->and($archive->screenNameChanges()->getForeignKeyName())->toBe('twitter_archive_id')
-        ->and($archive->mediaRefs()->getForeignKeyName())->toBe('twitter_archive_id');
+        ->and($archive->mediaRefs()->getForeignKeyName())->toBe('twitter_archive_id')
+        ->and($archive->tweets()->getForeignKeyName())->toBe('first_seen_twitter_archive_id')
+        ->and($archive->noteTweets()->getForeignKeyName())->toBe('first_seen_twitter_archive_id');
 
     expect($account->getTable())->toBe('twitter_accounts')
         ->and($account->account_created_at)->toBeInstanceOf(CarbonImmutable::class)

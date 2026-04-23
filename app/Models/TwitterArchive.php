@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -19,6 +20,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $archive_generated_at_source
  * @property CarbonImmutable|null $archive_generated_at
  * @property array<string, mixed>|null $raw_manifest
+ * @property-read TwitterAccount|null $account
+ * @property-read TwitterProfileSnapshot|null $profileSnapshot
+ * @property-read Collection<int, TwitterScreenNameChange> $screenNameChanges
+ * @property-read Collection<int, TwitterMediaRef> $mediaRefs
+ * @property-read Collection<int, TwitterTweet> $tweets
+ * @property-read Collection<int, TwitterNoteTweet> $noteTweets
  */
 class TwitterArchive extends Model
 {
@@ -64,5 +71,21 @@ class TwitterArchive extends Model
     public function mediaRefs(): HasMany
     {
         return $this->hasMany(TwitterMediaRef::class);
+    }
+
+    /**
+     * @return HasMany<TwitterTweet, $this>
+     */
+    public function tweets(): HasMany
+    {
+        return $this->hasMany(TwitterTweet::class, 'first_seen_twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterNoteTweet, $this>
+     */
+    public function noteTweets(): HasMany
+    {
+        return $this->hasMany(TwitterNoteTweet::class, 'first_seen_twitter_archive_id');
     }
 }

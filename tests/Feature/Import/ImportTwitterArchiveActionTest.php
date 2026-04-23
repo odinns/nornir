@@ -6,6 +6,7 @@ use App\Actions\Import\ImportTwitterArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Models\Run;
+use App\Models\TwitterArchive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -57,6 +58,38 @@ it('imports twitter archive biography slices into canonical twitter tables', fun
         'profile_media/header.jpg',
         'tweets_media/tweet-photo-1.jpg',
     ]);
+});
+
+it('exposes first-seen tweet relations from imported twitter archives', function (): void {
+    $fixture = createTwitterFixtureArchive('twitter-import-model-relations');
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
+
+    $archive = TwitterArchive::query()
+        ->with(['account', 'profileSnapshot', 'screenNameChanges', 'mediaRefs', 'tweets', 'noteTweets'])
+        ->sole();
+
+    expect($archive->account?->account_id)->toBe('123456')
+        ->and($archive->profileSnapshot?->screen_name)->toBe('odinn')
+        ->and($archive->screenNameChanges->pluck('screen_name')->all())->toBe(['oldodinn'])
+        ->and($archive->mediaRefs->pluck('relative_path')->filter()->values()->all())->toEqualCanonicalizing([
+            'community_tweet_media/community-photo-1.jpg',
+            'profile_media/avatar.jpg',
+            'profile_media/header.jpg',
+            'tweets_media/tweet-photo-1.jpg',
+        ])
+        ->and($archive->tweets->pluck('tweet_id')->all())->toEqualCanonicalizing(['111', '112'])
+        ->and($archive->noteTweets->pluck('note_tweet_id')->all())->toBe(['note-1']);
 });
 
 it('reruns idempotently for the same twitter archive', function (): void {
