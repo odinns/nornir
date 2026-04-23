@@ -7,12 +7,13 @@ Read in this order:
 1. `spec-conventions.md`
 2. `storage-and-path-conventions.md`
 3. `mysql-storage-contract.md`
-4. `orchestration-runs-jobs-and-provenance.md`
-5. `coding-standards-and-quality-gates.md`
-6. `testing-and-tdd-strategy.md`
-7. `ai-and-mcp-architecture.md`
-8. subsystem specs
-9. source navigation and importer specs
+4. `importer-model-strategy.md`
+5. `orchestration-runs-jobs-and-provenance.md`
+6. `coding-standards-and-quality-gates.md`
+7. `testing-and-tdd-strategy.md`
+8. `ai-and-mcp-architecture.md`
+9. subsystem specs
+10. source navigation and importer specs
 
 Ground rules:
 
