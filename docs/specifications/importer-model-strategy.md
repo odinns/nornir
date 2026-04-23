@@ -134,8 +134,9 @@ Rule of thumb: if only one importer needs it, keep it in that importer. If three
 ## Validation and testing
 
 - architecture tests should enforce importer model placement and block cross-layer drift
-- feature or model tests should verify casts for datetime, date, and JSON attributes that matter to importer behavior
-- tests should verify relationship wiring for importer tables with non-trivial graphs or child tables
+- each importer Eloquent model slice must include a lightweight model contract test for explicit table mapping, important casts, and declared Eloquent relationships
+- each importer Eloquent model slice with a real graph must include at least one DB-backed feature test over imported fixture data that traverses the persisted Eloquent relationship graph forward and backward
+- DB-backed Eloquent graph tests should assert concrete fixture truths, not only counts
 - tests should verify external-boundary exceptions do not accidentally write into external canonical systems
 
 ## Review checklist
@@ -146,6 +147,7 @@ Rule of thumb: if only one importer needs it, keep it in that importer. If three
 - JSON is used for nested payload truth, not relational laziness
 - shared base or trait code is boring plumbing, not hidden importer policy
 - external canonical boundaries stay explicit
+- Eloquent relationship coverage proves the persisted graph in both directions when the importer owns a multi-table graph
 
 ## Acceptance checks
 
