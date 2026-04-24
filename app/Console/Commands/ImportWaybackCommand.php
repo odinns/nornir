@@ -9,6 +9,8 @@ use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
 use App\Data\Intake\RecordIntakeData;
 use App\Services\Wayback\WaybackClient;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 
@@ -25,6 +27,10 @@ class ImportWaybackCommand extends Command
         {--with-screenshots : Capture PNG screenshots of replay pages}
         {--mirror-assets : Mirror replay pages and assets with wget}
         {--dry-run : Count matching CDX captures without writing importer state}
+        {--list-snapshots : With --dry-run, print a paged list of matching CDX snapshots}
+        {--all-saves : With --dry-run, include all CDX saves instead of importer-eligible 200 HTML captures}
+        {--page=1 : Snapshot list page to display}
+        {--per-page=25 : Snapshot rows to display per page}
         {--delay-ms=2000 : Delay between Wayback requests in milliseconds}';
 
     protected $description = 'Import bounded Wayback captures as biographical evidence.';
@@ -52,6 +58,34 @@ class ImportWaybackCommand extends Command
         $to = $this->stringOption('to');
 
         if ((bool) $this->option('dry-run')) {
+            $allSaves = (bool) $this->option('all-saves');
+            $listSnapshots = (bool) $this->option('list-snapshots');
+
+            if ($allSaves || $listSnapshots) {
+                $snapshots = $this->waybackClient->cdxSnapshots(
+                    scope: $scope,
+                    matchMode: $match,
+                    from: $from,
+                    to: $to,
+                    importableOnly: ! $allSaves,
+                    delayMs: $delayMs,
+                );
+
+                $this->printDryRunSummary(
+                    scope: $scope,
+                    match: $match,
+                    availableCaptures: count($snapshots),
+                    limit: $limit,
+                    label: $allSaves ? 'Available CDX saves' : 'Available CDX snapshots',
+                );
+
+                if ($listSnapshots) {
+                    $this->printSnapshotPage($snapshots);
+                }
+
+                return self::SUCCESS;
+            }
+
             $availableCaptures = $this->waybackClient->cdxCaptureCount(
                 scope: $scope,
                 matchMode: $match,
@@ -60,11 +94,13 @@ class ImportWaybackCommand extends Command
                 delayMs: $delayMs,
             );
 
-            $this->info('Wayback dry run');
-            $this->line("Scope: {$scope}");
-            $this->line("Match mode: {$match}");
-            $this->line('Available CDX captures: '.$availableCaptures);
-            $this->line('Would process with current limit: '.min($availableCaptures, $limit));
+            $this->printDryRunSummary(
+                scope: $scope,
+                match: $match,
+                availableCaptures: $availableCaptures,
+                limit: $limit,
+                label: 'Available CDX captures',
+            );
 
             return self::SUCCESS;
         }
@@ -120,5 +156,64 @@ class ImportWaybackCommand extends Command
         }
 
         return $scope;
+    }
+
+    private function printDryRunSummary(
+        string $scope,
+        string $match,
+        int $availableCaptures,
+        int $limit,
+        string $label,
+    ): void {
+        $this->info('Wayback dry run');
+        $this->line("Scope: {$scope}");
+        $this->line("Match mode: {$match}");
+        $this->line($label.': '.$availableCaptures);
+        $this->line('Would process with current limit: '.min($availableCaptures, $limit));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $snapshots
+     */
+    private function printSnapshotPage(array $snapshots): void
+    {
+        $page = max(1, (int) $this->option('page'));
+        $perPage = max(1, (int) $this->option('per-page'));
+        $total = count($snapshots);
+        $offset = ($page - 1) * $perPage;
+        $pageSnapshots = array_slice($snapshots, $offset, $perPage);
+        $start = $pageSnapshots === [] ? 0 : $offset + 1;
+        $end = min($total, $offset + count($pageSnapshots));
+
+        $this->newLine();
+        $this->line("Showing snapshots {$start}-{$end} of {$total}");
+
+        foreach ($pageSnapshots as $snapshot) {
+            $timestamp = $this->snapshotValue($snapshot, 'timestamp');
+            $original = $this->snapshotValue($snapshot, 'original');
+
+            $this->line($this->formatWaybackTimestamp($timestamp).'  '.$timestamp.'  '.$this->snapshotValue($snapshot, 'statuscode').'  '.$this->snapshotValue($snapshot, 'mimetype'));
+            $this->line('Original: '.$original);
+            $this->line('Replay: '.$this->waybackClient->replayUrl($timestamp, $original));
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    private function snapshotValue(array $snapshot, string $key): string
+    {
+        return (string) ($snapshot[$key] ?? '');
+    }
+
+    private function formatWaybackTimestamp(string $timestamp): string
+    {
+        $date = DateTimeImmutable::createFromFormat('YmdHis', $timestamp, new DateTimeZone('UTC'));
+
+        if ($date === false) {
+            return $timestamp;
+        }
+
+        return $date->format('Y-m-d H:i:s').' UTC';
     }
 }
