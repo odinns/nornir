@@ -8,6 +8,7 @@ use App\Actions\Import\ImportWaybackAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
 use App\Data\Intake\RecordIntakeData;
+use App\Services\Wayback\WaybackClient;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 
@@ -23,6 +24,7 @@ class ImportWaybackCommand extends Command
         {--limit=100 : Maximum CDX captures to process}
         {--with-screenshots : Capture PNG screenshots of replay pages}
         {--mirror-assets : Mirror replay pages and assets with wget}
+        {--dry-run : Count matching CDX captures without writing importer state}
         {--delay-ms=2000 : Delay between Wayback requests in milliseconds}';
 
     protected $description = 'Import bounded Wayback captures as biographical evidence.';
@@ -30,6 +32,7 @@ class ImportWaybackCommand extends Command
     public function __construct(
         private readonly RecordIntakeAction $recordIntakeAction,
         private readonly ImportWaybackAction $importWaybackAction,
+        private readonly WaybackClient $waybackClient,
     ) {
         parent::__construct();
     }
@@ -45,6 +48,26 @@ class ImportWaybackCommand extends Command
 
         $limit = max(1, (int) $this->option('limit'));
         $delayMs = max(0, (int) $this->option('delay-ms'));
+        $from = $this->stringOption('from');
+        $to = $this->stringOption('to');
+
+        if ((bool) $this->option('dry-run')) {
+            $availableCaptures = $this->waybackClient->cdxCaptureCount(
+                scope: $scope,
+                matchMode: $match,
+                from: $from,
+                to: $to,
+                delayMs: $delayMs,
+            );
+
+            $this->info('Wayback dry run');
+            $this->line("Scope: {$scope}");
+            $this->line("Match mode: {$match}");
+            $this->line('Available CDX captures: '.$availableCaptures);
+            $this->line('Would process with current limit: '.min($availableCaptures, $limit));
+
+            return self::SUCCESS;
+        }
 
         $this->info("Recording intake for Wayback scope: {$scope}");
 
@@ -54,8 +77,8 @@ class ImportWaybackCommand extends Command
             sourceLocator: $scope,
             scopeSnapshot: array_filter([
                 'match_mode' => $match,
-                'from' => $this->stringOption('from'),
-                'to' => $this->stringOption('to'),
+                'from' => $from,
+                'to' => $to,
                 'limit' => $limit,
             ], static fn (mixed $value): bool => $value !== null),
             importerOptions: [
