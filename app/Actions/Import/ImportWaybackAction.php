@@ -101,6 +101,19 @@ class ImportWaybackAction
             }
 
             $replayUrl = $this->client->replayUrl($timestamp, $originalUrl);
+
+            if ($this->isDefaultExcludedUrl($originalUrl)) {
+                $this->upsertRejectedCapture($scopeId, $timestamp, $originalUrl, $replayUrl, $cdx, 'excluded-url');
+                $summary['captures']++;
+                $summary['rejected']++;
+
+                if (is_callable($progress)) {
+                    $progress('wayback_capture_rejected', ['captures' => $summary['captures']]);
+                }
+
+                continue;
+            }
+
             try {
                 $html = $this->client->replayHtml($timestamp, $originalUrl, $delayMs);
             } catch (Throwable $throwable) {
@@ -180,6 +193,46 @@ class ImportWaybackAction
                 'mimetype' => 'text/html',
                 'collapse' => 'digest',
             ], JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $cdx
+     */
+    private function upsertRejectedCapture(
+        int $scopeId,
+        string $timestamp,
+        string $originalUrl,
+        string $replayUrl,
+        array $cdx,
+        string $rejectReason,
+    ): int {
+        return $this->observationStore->upsertAndReturnId('wayback_captures', [
+            'wayback_scope_id' => $scopeId,
+            'timestamp' => $timestamp,
+            'original_url_hash' => hash('sha256', $originalUrl),
+        ], [
+            'captured_at' => $this->capturedAt($timestamp)->format('Y-m-d H:i:s'),
+            'original_url' => $originalUrl,
+            'replay_url' => $replayUrl,
+            'cdx_fields' => json_encode($cdx, JSON_THROW_ON_ERROR),
+            'page_key' => hash('sha256', $originalUrl),
+            'digest' => $this->nullableString($cdx['digest'] ?? null),
+            'verdict' => 'rejected',
+            'reject_reason' => $rejectReason,
+            'raw_replay_html' => null,
+            'extracted_authored_text' => null,
+            'title' => null,
+            'meta_description' => null,
+            'retrieval_metadata' => json_encode([
+                'retrieved_at' => now()->toISOString(),
+                'source' => 'internet-archive-wayback',
+                'skipped_replay_fetch' => true,
+            ], JSON_THROW_ON_ERROR),
+            'raw_cdx_json' => json_encode($cdx, JSON_THROW_ON_ERROR),
+            'biographical_surface' => null,
+            'timeline_anchor_date' => $this->capturedAt($timestamp)->toDateString(),
+            'evidence_summary' => null,
         ]);
     }
 
@@ -352,6 +405,16 @@ class ImportWaybackAction
         }
 
         return mb_convert_encoding($html, 'UTF-8', 'Windows-1252');
+    }
+
+    private function isDefaultExcludedUrl(string $originalUrl): bool
+    {
+        $path = strtolower((string) (parse_url($originalUrl, PHP_URL_PATH) ?? ''));
+
+        return in_array($path, [
+            '/cgi-bin/count.cgi',
+            '/cgi-bin/nph-count',
+        ], true);
     }
 
     /**
