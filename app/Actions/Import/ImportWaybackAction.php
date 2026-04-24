@@ -328,7 +328,12 @@ class ImportWaybackAction
         }
 
         $path = base_path('data/imports/wayback/screenshots/'.$scopeId.'/'.$timestamp.'-'.$captureId.'.png');
-        $result = $this->screenshotter->capture($replayUrl, $path);
+
+        try {
+            $result = $this->screenshotter->capture($replayUrl, $path);
+        } catch (Throwable) {
+            return false;
+        }
 
         DB::table('wayback_captures')->where('id', $captureId)->update([
             'screenshot_path' => $result['path'],
