@@ -1,0 +1,318 @@
+version: 1
+purpose: >
+  Seed exclusions for header-level correspondence analysis of Gmail imports.
+  This is for biographical reading and "human mail" slicing, not for import-time
+  filtering. It is intentionally blunt.
+
+notes:
+  - Start by excluding these buckets before trying to interpret a year socially.
+  - Keep newsletters and curated mailing lists out of the "human correspondence" pile.
+  - Allowlisted humans and admin contacts should win over broad exclusion heuristics.
+  - Seeded from observed mail patterns in 2002-2006.
+  - Person-role clarifications below are biography context, not exclusion rules.
+
+person_clarifications:
+  Stella Helena Hjelme:
+    role: mother
+  Erik Hjelme:
+    role: mother's spouse at the time
+    note: later Trine
+  Tine Brynjulfsson:
+    role: sister
+  Sophie Sørensen:
+    role: wife at the time
+    note: later ex-wife and mother of Jasmin
+  Rebecca:
+    role: paternity-fallout arc
+    note: major break of trust; Sophie became pregnant after a brief overlap and falsely presented the child as Odinn's
+  Bjarne Toftegård:
+    role: co-investor
+    note: tied to K/S investment projects
+  Dennis Fantoni:
+    role: friend
+    note: friend from teen years
+  Stacy Makdad:
+    role: personal assistant
+    note: frequent travel companion, including cruise; crush, but no romance; not the magnetic woman
+  Camilla Lee:
+    role: firedancer arc
+    note: start of the firedancer arc
+  Rhonda Cort:
+    role: magnetic woman
+    note: magnetic woman; crush, but no romance
+  Hanne Mercouffer:
+    role: travel companion
+    note: kind of random travel companion; not a major emotional arc
+  Hanne Brønd Holst:
+    role: major human arc
+    note: the juicy Hanne; distinct from Hanne Mercouffer
+  Julie Tchicai Iversen:
+    role: lover
+    note: lover in poly life; later roomed in Odinn's apartment after they broke up amicably
+  Anja Lysholm:
+    role: major poly figure
+    note: big figure in poly life; enduring crush, but nothing happened in private
+  Fiona Andersen:
+    role: brief sexual interest
+    note: brief sexual interest; not a major long-arc figure
+  Alma Dragon:
+    role: major poly relationship
+    note: multi-year poly relationship; later lived with Odinn; overlapped with Julie
+  Marlene Leth-Møller:
+    role: major romantic arc
+    note: sexual and love interest in late 2021; Sofie introduced her; triad-ish dynamic with Sofie and Marlene eventually broke down under tension; amplified the 2021 stress-breakdown; still a good friend and still encountered at Tantraklanen events; story is expected to be clearer in Messenger/SMS than Gmail
+
+exclude_buckets:
+  lists_and_newsletters:
+    senders:
+      - Owen Thomas <owen@ditherati.net>
+      - Paul Boutin <paul@paulboutin.com>
+      - pengenyhedsbrev <pengenyhedsbrev@lister.dr.dk>
+      - EuroInvestor <nyhedsbrev@euroinvestor.dk>
+      - EuroInvestor Modelportefølje <Johnny@euroinvestor.com>
+      - Forbrugerliv.dk <info@forbrugerliv.dk>
+      - Forbrugerliv.dk <info@postforbrugerliv.dk>
+      - newsletter@aok.dk
+      - Nyhedsbrev@xcse.dk
+      - noreply@copenhagenfilmfestival.com
+      - Inbox Astronomy <outreach@stsci.edu>
+      - ewire - Nyhedsbrev <nyhedsbrev@ewire.dk>
+      - Dansk Aktionærforening <daf@shareholders.dk>
+      - Dansk Aktionærforening <nyhedsbrev@shareholders.dk>
+      - Starbase1.com Hailing Frequencies <hailing@starbase1.com>
+    domains:
+      - lister.dr.dk
+      - ditherati.net
+      - euroinvestor.dk
+      - euroinvestor.com
+      - postforbrugerliv.dk
+      - aok.dk
+      - copenhagenfilmfestival.com
+      - ewire.dk
+      - shareholders.dk
+
+  travel_deals_and_booking:
+    senders:
+      - webster@ryanairmail.com
+      - Ryanair customers@mail.ryanairmail.com
+      - Rejsefeber.dk <nyhedsbrev@rejsefeber.dk>
+      - Flybillet.dk <list@flybillet.dk>
+      - SAS e-mail service <news@cmartpost.com>
+      - easyJet <newsletter@easyjetmail.com>
+      - blackhole@easyjet.com
+      - FDM travel Club <mailer@emailserver3.com>
+      - editor@hostelworld.com
+    domains:
+      - ryanairmail.com
+      - rejsefeber.dk
+      - flybillet.dk
+      - easyjetmail.com
+      - hostelworld.com
+
+  film_music_and_culture_promos:
+    senders:
+      - Biozonen - No Reply <Info@richardson.uni2.net>
+      - Biozonen <noreply@nordiskfilm.com>
+      - BioZonen <noreply@nordiskfilm.com>
+      - CinemaxX <filmklub@cinemaxx.dk>
+      - CinemaxX Filmklub Kobenhavn <filmklub@cinemaxx.dk>
+      - CD WOW! <members@cd-wow.com>
+      - CD WOW! <members@cd-wow.net>
+      - Loaded 24 7 <sales@loaded247.com>
+      - Loaded 24 7 <sales@loaded247.co.uk>
+      - Loaded 24 7 <sales@loadedmailer.co.uk>
+      - Warner Bros. <warnerbros@warnerbros.1nc025.com>
+      - Warner Bros. <warnerbros@email-warnerbros.com>
+      - iTunes Music Store <itunes@new-music.itunes.com>
+      - Apple <postholiday4_05dec@euromailer.lists.apple.com>
+      - Apple <AppleStore1733_06jan@euromailer.lists.apple.com>
+      - TVGuide.dk - Film i dag <noreply@tvguide.dk>
+      - TVGuide.dk MailService <noreply@tvguide.dk>
+    domains:
+      - nordiskfilm.com
+      - cinemaxx.dk
+      - cd-wow.com
+      - cd-wow.net
+      - loaded247.com
+      - loaded247.co.uk
+      - loadedmailer.co.uk
+      - new-music.itunes.com
+      - tvguide.dk
+
+  job_alerts_and_professional_feeds:
+    senders:
+      - OFiR-Job <Support.cv@dk.Ofir.com>
+      - StepStone CV <StepStone_CV.UM.A.41.1@marketing.stepstone.com>
+      - StepStone CV <StepStone_CV.UM.A.41.3@marketing.stepstone.com>
+      - StepStone CV <StepStone_CV.UM.A.41.4@marketing.stepstone.com>
+      - IT-Jobbank A/S <info@it-jobbank.dk>
+      - IT-Jobbanks Mailrobot <agent@it-jobbank.dk>
+      - www.poljob.dk <poljob@pol.dk>
+    domains:
+      - ofir.com
+      - marketing.stepstone.com
+      - it-jobbank.dk
+      - pol.dk
+
+  shopping_and_commerce:
+    senders:
+      - Amazon.co.uk <product-announce1@amazon.co.uk>
+      - Amazon.co.uk <amazon-offers@amazon.co.uk>
+      - eBay <eBay@reply3.ebay.com>
+      - odinns-qxl@odinns.dk
+      - QXL.dk <besvares_ikke@dk.mailing.qxl.dk>
+      - Just-Eat.dk <justin@just-eat.dk>
+      - Blockbuster <info@blockbuster.dk>
+      - BioBooking@biobooking.dk
+      - McAfee Dispatch <dispatch@mcafee.com>
+      - McAfee Security <subscriptions@mcafee.com>
+      - Hewlett-Packard <hpn@hp.ruk1.com>
+      - Hewlett-Packard <extranews@foryou.hp.com>
+      - My Sony <info@crm.sony-europe.com>
+      - SonyEricsson <reminder@SonyEricsson.com>
+      - DVD International <help@dvdinternational.com>
+      - Scorshop.dk <info@scorshop.dk>
+      - Orion shop <news@orion-shop.dk>
+    domains:
+      - amazon.co.uk
+      - ebay.com
+      - qxl.dk
+      - mcafee.com
+      - sony-europe.com
+      - sonyericsson.com
+
+  finance_and_market_alerts:
+    senders:
+      - Sydinvest Informerer <si@sydinvest.dk>
+      - SYDINVEST <si@sydinvest.dk>
+      - SkandiaBanken's post <post@skandiabanken.dk>
+      - Nordnet <nordnet@nordnet.dk>
+      - Folkeborsen <besvares_ikke@folkeborsen.dk>
+      - INFORMATION FRA FOLKEBØRSEN <information@folkeborsen.dk>
+    domains:
+      - sydinvest.dk
+      - skandiabanken.dk
+      - nordnet.dk
+      - folkeborsen.dk
+
+  dating_pickup_and_affiliate_swamp:
+    senders:
+      - meetic <meetic@meetic.com>
+      - Date.com <alert@date.com>
+      - Date.com <cupid@date.com>
+      - The Master <david@secretorgasmtips.com>
+      - Lance Mason <datingtips@pickup101.com>
+      - Dave M. <davem@insiderinternetdating.com>
+      - Rion Williams <rion@modelmagnet.com>
+      - Joseph Matthews <do-not-reply@artofapproaching.com>
+      - Carlos Xuma <advice@datingdynamics.com>
+      - Ross Jeffries <yatesj@ix.netcom.com>
+      - David DeAngelo <ddeangelo@doubleyourdating.com>
+      - Real Social Dynamics <advice@realsocialdynamics.com>
+      - derek@seductionscience.com
+      - The Art of the Pickup <newsletter@artofthepickup.com>
+      - Andre Chaperon <andre@andrechaperon.com>
+      - Donovan @ Attraction Chronicles Blog <attractionchronicles@gmail.com>
+      - Michael Nicholas <Michael@impactinfomarketing.com>
+      - Chris Carpenter <chris@affiliatejackpot.com>
+      - Style <manofstyle@gmail.com>
+      - NicheADay <nicheaday@nicheaday.com>
+      - Secrets of Internet Success <secrets@secrets-of-internet-success.com>
+      - Harris Fellman <harris@buzzim.com>
+      - Harris Fellman <training@12weekintensive.com>
+    domains:
+      - meetic.com
+      - date.com
+      - pickup101.com
+      - insiderinternetdating.com
+      - modelmagnet.com
+      - artofapproaching.com
+      - datingdynamics.com
+      - doubleyourdating.com
+      - realsocialdynamics.com
+      - seductionscience.com
+      - artofthepickup.com
+      - nicheaday.com
+      - affiliatejackpot.com
+
+  system_bounces_and_auto:
+    senders:
+      - DK Hostmaster info <info@dk-hostmaster.dk>
+      - REGNSERV@tdc.dk
+      - noreply@post.dk
+      - GIANT Company - Spam Inspector <spaminspector@giantcompany.com>
+      - Mail delivery failed: returning message to sender
+      - Message has been disinfected
+    subject_patterns:
+      - failure notice
+      - mail delivery failed
+      - message has been disinfected
+      - report submitted regarding
+      - someone just performed a search for reports about
+
+  obvious_spam_and_junk:
+    subject_patterns:
+      - viagra
+      - refinance
+      - enlarge your penis
+      - debt
+      - free shipping
+      - girls gone wild
+      - hot videos
+      - naked
+      - cialis
+      - xanax
+      - valium
+      - ambien
+      - work from home
+      - home based business
+      - prescription required
+      - singles
+      - horny
+      - babes
+
+allowlist:
+  likely_human_people:
+    - Erik Hjelme <erik@hjelmenet.dk>
+    - Erik Hjelme <eh@bane.dk>
+    - Erik Hjelme <eh@BANE.dk>
+    - Stella Helena Hjelme <stella@hjelmenet.dk>
+    - Nicole Mosso <mossoolga@yahoo.fr>
+    - Per Vixoe <zpev@nybolig.dk>
+    - Henrik Floor <hfl@nybolig.dk>
+    - Bjarne Toftegård <bjarne@toftegard.dk>
+    - Bjarne Toftegård <bt@forebygstress.dk>
+    - Inger B. Svejstrup <ibs@essex.dk>
+    - Karina og Christian <karinaogchr@mail.dk>
+    - Trevor Fernandes <trevor.fernandes@se.tiscali.com>
+
+  owned_addresses:
+    - Odinn Sørensen <odinn@odinns.dk>
+    - Odinn Sørensen - TELMORE <os@telmore.dk>
+    - Odinn Sørensen <os@telmore.dk>
+    - Odinn Sørensen <os@os.telmore.dk>
+    - odinn@goldware.dk
+    - odinn@odinns.dk
+    - os@telmore.dk
+    - sophie@odinns.dk
+
+  human_admin_contacts:
+    - DanBolig Ringsted <info@ringsted.danbolig.dk>
+    - EDC Strandfelt <299@edc.dk>
+    - Realmæglerne - Jørgen Cardel <jorgen@mailreal.dk>
+    - Hifigalleriet <info@hifigalleriet.dk>
+    - Audiosound - Danni <audiosound@audiosound.dk>
+    - Told og Skattestyrelsen <tastselv@tastselverhverv.toldskat.dk>
+    - tastselv@tastselvperson.toldskat.dk
+
+year_notes:
+  "2002":
+    - Still patchy and swampy. Human mail exists, but fossils dominate.
+  "2003":
+    - Transition year. More structure, still lots of list traffic and fake-human spam.
+  "2004":
+    - Mostly organized feeds and newsletters; little direct personal signal.
+  "2005":
+    - Family/admin and property signal becomes much clearer.
+  "2006":
+    - Dating, pickup, and affiliate swamp blooms hard; requires aggressive exclusion.
