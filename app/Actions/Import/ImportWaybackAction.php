@@ -92,6 +92,10 @@ class ImportWaybackAction
             'mirrors' => 0,
         ];
 
+        if (is_callable($progress)) {
+            $progress('wayback_captures_discovered', $summary);
+        }
+
         foreach ($captures as $cdx) {
             $timestamp = (string) ($cdx['timestamp'] ?? '');
             $originalUrl = (string) ($cdx['original'] ?? '');
@@ -108,7 +112,7 @@ class ImportWaybackAction
                 $summary['rejected']++;
 
                 if (is_callable($progress)) {
-                    $progress('wayback_capture_rejected', ['captures' => $summary['captures']]);
+                    $progress('wayback_capture_rejected', $summary);
                 }
 
                 continue;
@@ -122,7 +126,7 @@ class ImportWaybackAction
                 $summary['failed']++;
 
                 if (is_callable($progress)) {
-                    $progress('wayback_capture_failed', ['captures' => $summary['captures']]);
+                    $progress('wayback_capture_failed', $summary);
                 }
 
                 continue;
@@ -166,7 +170,7 @@ class ImportWaybackAction
             }
 
             if (is_callable($progress)) {
-                $progress('wayback_capture_completed', ['captures' => $summary['captures']]);
+                $progress('wayback_capture_completed', $summary);
             }
         }
 

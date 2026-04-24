@@ -159,6 +159,7 @@ it('imports wayback captures from the cli with useful output', function (): void
     ])
         ->expectsOutputToContain('Recording intake for Wayback scope')
         ->expectsOutputToContain('Importing Wayback captures')
+        ->expectsOutputToContain('Wayback progress: 1/1 processed')
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
