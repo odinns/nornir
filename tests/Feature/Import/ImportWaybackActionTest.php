@@ -111,6 +111,46 @@ it('normalizes legacy replay html to utf-8 before storing it', function (): void
     expect($capture->extracted_authored_text)->toContain('Født i København');
 });
 
+it('rejects default excluded counter cgi captures before replay fetch', function (): void {
+    $client = new class extends WaybackClient
+    {
+        public int $replayCalls = 0;
+
+        public function cdxCaptures(string $scope, string $matchMode, ?string $from, ?string $to, int $limit, int $delayMs): array
+        {
+            unset($scope, $matchMode, $from, $to, $limit, $delayMs);
+
+            return [[
+                'urlkey' => 'dk,odinns)/cgi-bin/nph-count',
+                'timestamp' => '20011028141543',
+                'original' => 'http://www.odinns.dk/cgi-bin/nph-count?width=5&link=odinns-20001020',
+                'mimetype' => 'text/html',
+                'statuscode' => '200',
+                'digest' => 'counter-digest',
+                'length' => '123',
+            ]];
+        }
+
+        public function replayHtml(string $timestamp, string $originalUrl, int $delayMs): string
+        {
+            unset($timestamp, $originalUrl, $delayMs);
+            $this->replayCalls++;
+
+            return '<html><body>counter</body></html>';
+        }
+    };
+
+    app()->instance(WaybackClient::class, $client);
+
+    $result = app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
+
+    expect($result->summary['captures'])->toBe(1);
+    expect($result->summary['rejected'])->toBe(1);
+    expect($client->replayCalls)->toBe(0);
+    expect(DB::table('wayback_captures')->where('timestamp', '20011028141543')->value('verdict'))->toBe('rejected');
+    expect(DB::table('wayback_captures')->where('timestamp', '20011028141543')->value('reject_reason'))->toBe('excluded-url');
+});
+
 it('hydrates screenshots and mirrors on later reruns without changing capture identity', function (): void {
     app()->instance(WaybackClient::class, new FakeWaybackClient);
     app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
