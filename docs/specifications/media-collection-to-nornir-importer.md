@@ -8,8 +8,9 @@ the files or re-scanning the filesystem.
 
 ## Source
 
-`monique` MySQL database (read-only). Connection details come from the `--source-dsn`
-flag or a named connection in `config/database.php`.
+`monique` MySQL database (read-only). Connection details come from the mostly-unique
+`.env` file path passed to the importer. Internal tests may still use named Laravel
+connections.
 
 ## Scope
 
@@ -25,8 +26,8 @@ Resource forks (`._`) are excluded by the basename filter.
 
 ```
 import:media-collection
+  {source}          Path to the mostly-unique app .env file
   {--volume=}      Volume label to restrict import (e.g. LIMA-2). Omit = all volumes.
-  --source-dsn=    Named DB connection or DSN for monique (required)
   {--dry-run}      Report counts without writing
   {--validate-only} Verify connection and scope without importing
 ```

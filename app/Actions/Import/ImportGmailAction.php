@@ -12,10 +12,12 @@ use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
 use App\Services\Gmail\GmailClientFactory;
+use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Throwable;
 
 class ImportGmailAction
 {
@@ -73,7 +75,10 @@ class ImportGmailAction
         $query = (string) ($dispatchPayload->scopeSnapshot['query'] ?? '');
 
         $client = $this->gmailClientFactory->make($dispatchPayload->sourceLocator, '');
-        $accountEmail = $client->getAccountEmail();
+        $accountEmail = $this->withAuthenticationRetry(
+            $client,
+            fn (): string => $client->getAccountEmail(),
+        );
 
         $accountId = $this->upsertAccount($accountEmail);
         $sourceSetId = $this->upsertSourceSet($dispatchPayload, $accountEmail, $query);
@@ -88,9 +93,13 @@ class ImportGmailAction
         $pageToken = null;
 
         do {
-            $page = $client->listMessages($query, $pageToken);
+            $page = $this->withAuthenticationRetry(
+                $client,
+                fn (): array => $client->listMessages($query, $pageToken),
+            );
             $stubs = $page['messages'];
             $pageToken = $page['nextPageToken'];
+            $existingMessageIds = $this->existingMessageIdsForStubs($stubs);
 
             $this->reportProgress($progress, 'messages_fetched', [
                 'count' => count($stubs),
@@ -103,7 +112,38 @@ class ImportGmailAction
                     throw new InvalidArgumentException('Malformed Gmail message: empty id field.');
                 }
 
-                $full = $client->getMessage($messageId);
+                if (isset($existingMessageIds[$messageId])) {
+                    $messageCount++;
+                    $reobservedMessages++;
+
+                    $this->observationStore->record(
+                        table: self::TABLE_MESSAGE_OBSERVATIONS,
+                        unique: [
+                            'gmail_message_id' => $existingMessageIds[$messageId],
+                            'gmail_source_set_id' => $sourceSetId,
+                        ],
+                    );
+
+                    $this->provenanceWriter->link(new WriteProvenanceLinkData(
+                        runId: $run->id,
+                        outputTarget: self::TABLE_MESSAGES.':'.$messageId,
+                        claimKey: 'imported-message',
+                        evidenceType: 'api-response',
+                        evidenceRef: 'gmail-api#message:'.$messageId,
+                    ));
+
+                    $this->reportProgress($progress, 'message_completed', [
+                        'messages' => $messageCount,
+                        'threads' => $threadCount,
+                    ]);
+
+                    continue;
+                }
+
+                $full = $this->withAuthenticationRetry(
+                    $client,
+                    fn (): array => $client->getMessage($messageId),
+                );
 
                 $threadId = (string) ($full['threadId'] ?? $stub['threadId']);
                 $threadRowId = $this->upsertThread($accountId, $threadId, $full, $threadCount);
@@ -156,6 +196,63 @@ class ImportGmailAction
             'labels' => $labelCount,
             'attachments' => $attachmentCount,
         ];
+    }
+
+    /**
+     * @param  list<array{id?: string, threadId?: string}>  $stubs
+     * @return array<string, int>
+     */
+    private function existingMessageIdsForStubs(array $stubs): array
+    {
+        $messageIds = array_values(array_filter(
+            array_map(
+                static fn (array $stub): ?string => isset($stub['id']) && $stub['id'] !== '' ? $stub['id'] : null,
+                $stubs,
+            ),
+        ));
+
+        if ($messageIds === []) {
+            return [];
+        }
+
+        /** @var array<string, int> $existing */
+        $existing = DB::table(self::TABLE_MESSAGES)
+            ->whereIn('message_id', $messageIds)
+            ->pluck('id', 'message_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return $existing;
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $operation
+     * @return T
+     */
+    private function withAuthenticationRetry(GmailApiClientInterface $client, callable $operation): mixed
+    {
+        try {
+            return $operation();
+        } catch (Throwable $exception) {
+            if (! $this->isAuthenticationFailure($exception)) {
+                throw $exception;
+            }
+
+            $client->refreshAuthentication();
+
+            return $operation();
+        }
+    }
+
+    private function isAuthenticationFailure(Throwable $exception): bool
+    {
+        if ($exception->getCode() === 401) {
+            return true;
+        }
+
+        return str_contains(strtolower($exception->getMessage()), 'invalid credentials');
     }
 
     private function upsertAccount(string $accountEmail): int
@@ -230,7 +327,7 @@ class ImportGmailAction
         $existing = DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id');
 
         $headers = $this->extractHeaders($fullMessage['payload'] ?? []);
-        $internalDate = isset($fullMessage['internalDate']) ? (int) $fullMessage['internalDate'] : null;
+        $internalDate = $this->normalizeInternalDate($fullMessage['internalDate'] ?? null);
 
         DB::table(self::TABLE_MESSAGES)->updateOrInsert(
             ['message_id' => $messageId],
@@ -245,9 +342,7 @@ class ImportGmailAction
                 'body_html' => $this->extractBody($fullMessage['payload'] ?? [], 'text/html'),
                 'raw_headers' => json_encode($fullMessage['payload']['headers'] ?? [], JSON_THROW_ON_ERROR),
                 'internal_date' => $internalDate,
-                'message_received_at' => $internalDate !== null
-                    ? CarbonImmutable::createFromTimestampMsUTC($internalDate)->toDateTimeString()
-                    : null,
+                'message_received_at' => $this->resolveMessageReceivedAt($internalDate, $headers),
                 'raw_payload' => json_encode($fullMessage['payload'] ?? [], JSON_THROW_ON_ERROR),
                 'updated_at' => now(),
                 'created_at' => now(),
@@ -258,6 +353,62 @@ class ImportGmailAction
             'id' => (int) DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id'),
             'wasRecentlyCreated' => $existing === null,
         ];
+    }
+
+    private function normalizeInternalDate(mixed $internalDate): ?int
+    {
+        if (! is_numeric($internalDate)) {
+            return null;
+        }
+
+        $timestampMs = (int) $internalDate;
+
+        if ($timestampMs < 0) {
+            return null;
+        }
+
+        try {
+            $receivedAt = CarbonImmutable::createFromTimestampMsUTC($timestampMs);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $this->isReasonableMessageTimestamp($receivedAt) ? $timestampMs : null;
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     */
+    private function resolveMessageReceivedAt(?int $internalDate, array $headers): ?string
+    {
+        if ($internalDate !== null) {
+            return CarbonImmutable::createFromTimestampMsUTC($internalDate)->toDateTimeString();
+        }
+
+        foreach (['X-Mail-Created-Date', 'Date'] as $headerName) {
+            $headerValue = $headers[$headerName] ?? null;
+
+            if (! is_string($headerValue) || $headerValue === '') {
+                continue;
+            }
+
+            try {
+                $receivedAt = CarbonImmutable::parse($headerValue)->utc();
+            } catch (Throwable) {
+                continue;
+            }
+
+            if ($this->isReasonableMessageTimestamp($receivedAt)) {
+                return $receivedAt->toDateTimeString();
+            }
+        }
+
+        return null;
+    }
+
+    private function isReasonableMessageTimestamp(CarbonImmutable $timestamp): bool
+    {
+        return $timestamp->year >= 1900 && $timestamp->year <= 2100;
     }
 
     /**

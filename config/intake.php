@@ -64,6 +64,7 @@ return [
         'media-collection' => [
             'importer_key' => 'media-collection',
             'access_modes' => [
+                'database',
                 'db-connection',
             ],
         ],

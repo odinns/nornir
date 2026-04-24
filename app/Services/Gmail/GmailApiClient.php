@@ -10,37 +10,33 @@ use RuntimeException;
 
 class GmailApiClient implements GmailApiClientInterface
 {
+    private Client $client;
+
     private Gmail $service;
+
+    private string $tokenPath;
 
     public function __construct(string $credentialsPath)
     {
-        $client = new Client;
-        $client->setAuthConfig($credentialsPath);
-        $client->setScopes([Gmail::GMAIL_READONLY]);
-        $client->setAccessType('offline');
+        $this->tokenPath = dirname($credentialsPath).'/token.json';
+        $this->client = new Client;
+        $this->client->setAuthConfig($credentialsPath);
+        $this->client->setScopes([Gmail::GMAIL_READONLY]);
+        $this->client->setAccessType('offline');
 
-        $tokenPath = dirname($credentialsPath).'/token.json';
-
-        if (file_exists($tokenPath)) {
-            $token = json_decode((string) file_get_contents($tokenPath), true);
+        if (file_exists($this->tokenPath)) {
+            $token = json_decode((string) file_get_contents($this->tokenPath), true);
 
             if (is_array($token)) {
-                $client->setAccessToken($token);
+                $this->client->setAccessToken($token);
             }
         }
 
-        if ($client->isAccessTokenExpired()) {
-            if ($client->getRefreshToken() !== null) {
-                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-                file_put_contents($tokenPath, json_encode($client->getAccessToken(), JSON_THROW_ON_ERROR));
-            } else {
-                throw new RuntimeException(
-                    "No valid token found. Run: php artisan gmail:auth {$credentialsPath}"
-                );
-            }
+        if ($this->client->isAccessTokenExpired()) {
+            $this->refreshAuthentication();
+        } else {
+            $this->service = new Gmail($this->client);
         }
-
-        $this->service = new Gmail($client);
     }
 
     public function getAccountEmail(): string
@@ -95,5 +91,37 @@ class GmailApiClient implements GmailApiClientInterface
         }
 
         return (array) json_decode((string) json_encode($result), true);
+    }
+
+    public function refreshAuthentication(): void
+    {
+        $refreshToken = $this->client->getRefreshToken();
+
+        if ($refreshToken === null) {
+            throw new RuntimeException('No valid Gmail refresh token found. Run: php artisan gmail:auth <credentials-path>');
+        }
+
+        $refreshedToken = $this->client->fetchAccessTokenWithRefreshToken($refreshToken);
+
+        if (($refreshedToken['error'] ?? null) !== null) {
+            $description = (string) ($refreshedToken['error_description'] ?? $refreshedToken['error']);
+
+            throw new RuntimeException('Could not refresh Gmail access token: '.$description);
+        }
+
+        $currentToken = $this->client->getAccessToken();
+
+        if (! is_array($currentToken)) {
+            throw new RuntimeException('Could not read refreshed Gmail access token.');
+        }
+
+        if (! array_key_exists('refresh_token', $currentToken)) {
+            $currentToken['refresh_token'] = $refreshToken;
+            $this->client->setAccessToken($currentToken);
+        }
+
+        file_put_contents($this->tokenPath, json_encode($currentToken, JSON_THROW_ON_ERROR));
+
+        $this->service = new Gmail($this->client);
     }
 }

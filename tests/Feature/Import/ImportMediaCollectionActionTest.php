@@ -347,6 +347,38 @@ it('restricts import to a single volume when --volume is given', function (): vo
     expect(DB::table('media_files')->first()->volume_label)->toBe('LIMA-2');
 });
 
+it('restricts import to a path prefix when one is given', function (): void {
+    $fixture = createMoniqueFixtureDatabase('media-path-prefix', [
+        [
+            'volume_label' => 'LIMA-2',
+            'directories' => [
+                [
+                    'full_path' => '/Volumes/LIMA-2/Pictures/2022/2022-01-01 A',
+                    'files' => [['basename' => 'keep.jpg', 'normalized_file_type' => 'image']],
+                ],
+                [
+                    'full_path' => '/Volumes/LIMA-2/Pictures Archive/2022/2022-01-01 B',
+                    'files' => [['basename' => 'skip.jpg', 'normalized_file_type' => 'image']],
+                ],
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'media-collection',
+        accessMode: 'db-connection',
+        sourceLocator: $fixture['connection_name'],
+        scopeSnapshot: ['source_dsn' => $fixture['connection_name'], 'volume' => null, 'path_prefix' => '/Volumes/LIMA-2/Pictures'],
+        importerOptions: ['volume' => null, 'path_prefix' => '/Volumes/LIMA-2/Pictures', 'dry_run' => false],
+    ));
+
+    $result = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
+
+    expect(DB::table('media_files')->count())->toBe(1);
+    expect(DB::table('media_files')->value('basename'))->toBe('keep.jpg');
+    expect($result->summary['path_prefix'])->toBe('/Volumes/LIMA-2/Pictures');
+});
+
 // ---------------------------------------------------------------------------
 // Dry run
 // ---------------------------------------------------------------------------

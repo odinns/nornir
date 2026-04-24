@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\File;
  *         }>
  *     }>
  * }>  $volumes
- * @return array{connection_name: string, database_path: string}
+ * @return array{connection_name: string, database_path: string, env_path: string}
  */
 function createMoniqueFixtureDatabase(string $name, array $volumes): array
 {
@@ -100,8 +100,16 @@ function createMoniqueFixtureDatabase(string $name, array $volumes): array
         'foreign_key_constraints' => true,
     ]);
 
+    $envPath = $root.'/mostly-unique.env';
+    File::put($envPath, implode(PHP_EOL, [
+        'DB_CONNECTION=sqlite',
+        'DB_DATABASE='.$databasePath,
+        '',
+    ]));
+
     return [
         'connection_name' => $connectionName,
         'database_path' => $databasePath,
+        'env_path' => $envPath,
     ];
 }
