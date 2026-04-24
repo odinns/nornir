@@ -40,9 +40,11 @@ class ImportRunExecutor
         try {
             $summary = $import($run);
             $writeArtifacts($run, $summary);
+            $completedRun = $this->runRecorder->complete($run);
+            $this->refreshRunSummaryArtifact($completedRun, $operation, $summary);
 
             return [
-                'run' => $this->runRecorder->complete($run),
+                'run' => $completedRun,
                 'summary' => $summary,
             ];
         } catch (Throwable $throwable) {
@@ -55,5 +57,23 @@ class ImportRunExecutor
     public function makeIdempotencyKey(ImporterDispatchData $dispatchPayload, string $operation): string
     {
         return $operation.':'.sha1($dispatchPayload->sourceLocator.'|'.json_encode($dispatchPayload->scopeSnapshot));
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function refreshRunSummaryArtifact(Run $run, string $operation, array $summary): void
+    {
+        if (! str_ends_with($operation, '-import')) {
+            return;
+        }
+
+        $sourceType = substr($operation, 0, -strlen('-import'));
+
+        if ($sourceType === false || $sourceType === '') {
+            return;
+        }
+
+        app(ImportArtifactWriter::class)->refreshRunSummary($run, $sourceType, $summary);
     }
 }

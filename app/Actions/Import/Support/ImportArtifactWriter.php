@@ -47,11 +47,7 @@ class ImportArtifactWriter
         ];
 
         File::put($importSummaryPath, json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-        File::put($runSummaryPath, json_encode([
-            'run_id' => $run->id,
-            'status' => $run->status,
-            'summary' => $summary,
-        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $this->writeRunSummaryFile($runSummaryPath, $run, $summary);
 
         $this->artifactRecorder->record(new RecordArtifactData(
             runId: $run->id,
@@ -68,5 +64,30 @@ class ImportArtifactWriter
             classification: 'diagnostic',
             metadata: $summary,
         ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    public function refreshRunSummary(Run $run, string $sourceType, array $summary): void
+    {
+        $runDirectory = base_path('data/runs/import');
+        File::ensureDirectoryExists($runDirectory);
+
+        $runSummaryPath = $runDirectory.'/'.$sourceType.'-import-run-'.$run->id.'.json';
+
+        $this->writeRunSummaryFile($runSummaryPath, $run, $summary);
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function writeRunSummaryFile(string $path, Run $run, array $summary): void
+    {
+        File::put($path, json_encode([
+            'run_id' => $run->id,
+            'status' => $run->status,
+            'summary' => $summary,
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
 }
