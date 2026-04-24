@@ -38,39 +38,7 @@ class WaybackClient
 
         $response = $this->getWithRetry('https://web.archive.org/cdx', $query, $delayMs);
 
-        $json = $response->json();
-
-        if (! is_array($json) || $json === []) {
-            return [];
-        }
-
-        $header = array_shift($json);
-
-        if (! is_array($header)) {
-            return [];
-        }
-
-        $captures = [];
-
-        foreach ($json as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            $capture = [];
-
-            foreach (array_values($header) as $index => $name) {
-                if (! is_string($name)) {
-                    continue;
-                }
-
-                $capture[$name] = $row[$index] ?? null;
-            }
-
-            $captures[] = $capture;
-        }
-
-        return $captures;
+        return $this->capturesFromJson($response->json());
     }
 
     public function cdxCaptureCount(
@@ -98,6 +66,35 @@ class WaybackClient
         }
 
         return max(0, count($json) - 1);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function cdxSnapshots(
+        string $scope,
+        string $matchMode,
+        ?string $from,
+        ?string $to,
+        bool $importableOnly,
+        int $delayMs,
+    ): array {
+        $query = array_filter([
+            'url' => $this->scopeForCdx($scope, $matchMode),
+            'output' => 'json',
+            'fl' => 'timestamp,original,statuscode,mimetype,digest,length',
+            'from' => $from,
+            'to' => $to,
+            'matchType' => $matchMode,
+        ], static fn (mixed $value): bool => $value !== null);
+
+        if ($importableOnly) {
+            $query['filter'] = ['statuscode:200', 'mimetype:text/html'];
+        }
+
+        $response = $this->getWithRetry('https://web.archive.org/cdx', $query, $delayMs);
+
+        return $this->capturesFromJson($response->json());
     }
 
     public function replayHtml(string $timestamp, string $originalUrl, int $delayMs): string
@@ -146,5 +143,43 @@ class WaybackClient
         }
 
         return $scope;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function capturesFromJson(mixed $json): array
+    {
+        if (! is_array($json) || $json === []) {
+            return [];
+        }
+
+        $header = array_shift($json);
+
+        if (! is_array($header)) {
+            return [];
+        }
+
+        $captures = [];
+
+        foreach ($json as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $capture = [];
+
+            foreach (array_values($header) as $index => $name) {
+                if (! is_string($name)) {
+                    continue;
+                }
+
+                $capture[$name] = $row[$index] ?? null;
+            }
+
+            $captures[] = $capture;
+        }
+
+        return $captures;
     }
 }

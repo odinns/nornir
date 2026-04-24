@@ -65,6 +65,67 @@ it('dry runs wayback capture counts without writing importer state', function ()
     expect(DB::table('runs')->count())->toBe(0);
 });
 
+it('lists paged wayback snapshots by datetime without writing importer state', function (): void {
+    Http::fake([
+        'https://web.archive.org/cdx?*' => Http::response([
+            [
+                'timestamp',
+                'original',
+                'statuscode',
+                'mimetype',
+                'digest',
+                'length',
+            ],
+            [
+                '20010202124700',
+                'http://odinns.dk:80/',
+                '200',
+                'text/html',
+                'digest-one',
+                '838',
+            ],
+            [
+                '20010309121155',
+                'http://odinns.dk:80/',
+                '200',
+                'text/html',
+                'digest-one',
+                '841',
+            ],
+            [
+                '20010331115511',
+                'http://www.odinns.dk:80/',
+                '302',
+                'warc/revisit',
+                'digest-two',
+                '847',
+            ],
+        ]),
+    ]);
+
+    $this->artisan('import:wayback', [
+        'scope' => 'https://odinns.dk/',
+        '--match' => 'exact',
+        '--dry-run' => true,
+        '--all-saves' => true,
+        '--list-snapshots' => true,
+        '--page' => 2,
+        '--per-page' => 2,
+        '--delay-ms' => 0,
+    ])
+        ->expectsOutputToContain('Available CDX saves: 3')
+        ->expectsOutputToContain('Showing snapshots 3-3 of 3')
+        ->expectsOutputToContain('2001-03-31 11:55:11 UTC')
+        ->expectsOutputToContain('20010331115511')
+        ->expectsOutputToContain('http://www.odinns.dk:80/')
+        ->assertSuccessful();
+
+    expect(DB::table('intake_records')->count())->toBe(0);
+    expect(DB::table('wayback_scopes')->count())->toBe(0);
+    expect(DB::table('wayback_captures')->count())->toBe(0);
+    expect(DB::table('runs')->count())->toBe(0);
+});
+
 it('imports wayback captures from the cli with useful output', function (): void {
     Http::fake([
         'https://web.archive.org/cdx?*' => Http::response([
