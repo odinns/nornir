@@ -70,7 +70,7 @@ class ImportRunExecutor
 
         $sourceType = substr($operation, 0, -strlen('-import'));
 
-        if ($sourceType === false || $sourceType === '') {
+        if ($sourceType === '') {
             return;
         }
 
