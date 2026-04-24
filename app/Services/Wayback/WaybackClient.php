@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services\Wayback;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 class WaybackClient
 {
+    private const array BACKOFF_MILLISECONDS = [1000, 3000, 10000, 30000];
+
+    private const array RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -114,19 +118,33 @@ class WaybackClient
      */
     private function getWithRetry(string $url, array $query, int $delayMs): Response
     {
-        $response = Http::retry(3, 500, static function (mixed $exception, mixed $request): bool {
-            unset($request);
+        $fullUrl = $this->urlWithQuery($url, $query);
+        $attempt = 0;
 
-            return str_contains(strtolower((string) $exception), 'timed out')
-                || str_contains(strtolower((string) $exception), 'connection');
-        })->get($url, $query);
+        while (true) {
+            try {
+                $response = Http::timeout(60)->get($fullUrl);
+            } catch (ConnectionException $connectionException) {
+                if (! $this->canRetry($attempt)) {
+                    throw $connectionException;
+                }
 
-        if (in_array($response->status(), [429, 500, 502, 503, 504], true)) {
-            $response = Http::retry(3, 1000)->get($url, $query);
+                $this->sleepBeforeRetry($attempt);
+                $attempt++;
+
+                continue;
+            }
+
+            if (! in_array($response->status(), self::RETRYABLE_STATUSES, true) || ! $this->canRetry($attempt)) {
+                break;
+            }
+
+            $this->sleepBeforeRetry($attempt);
+            $attempt++;
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException("Wayback request failed with HTTP {$response->status()} for {$url}.");
+            $response->throw();
         }
 
         if ($delayMs > 0) {
@@ -134,6 +152,55 @@ class WaybackClient
         }
 
         return $response;
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function urlWithQuery(string $url, array $query): string
+    {
+        if ($query === []) {
+            return $url;
+        }
+
+        return $url.'?'.$this->queryString($query);
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function queryString(array $query): string
+    {
+        $parts = [];
+
+        foreach ($query as $key => $value) {
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    $parts[] = $this->queryPart($key, $item);
+                }
+
+                continue;
+            }
+
+            $parts[] = $this->queryPart($key, $value);
+        }
+
+        return implode('&', $parts);
+    }
+
+    private function queryPart(string $key, mixed $value): string
+    {
+        return rawurlencode($key).'='.rawurlencode((string) $value);
+    }
+
+    private function canRetry(int $attempt): bool
+    {
+        return $attempt < count(self::BACKOFF_MILLISECONDS);
+    }
+
+    private function sleepBeforeRetry(int $attempt): void
+    {
+        usleep(self::BACKOFF_MILLISECONDS[$attempt] * 1000);
     }
 
     private function scopeForCdx(string $scope, string $matchMode): string
