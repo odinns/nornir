@@ -13,6 +13,7 @@ use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
+use Illuminate\Database\Connection;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -218,6 +219,10 @@ class ImportMediaCollectionAction
      */
     private function resolveTimestampColumns(ConnectionInterface $monique): array
     {
+        if (! $monique instanceof Connection) {
+            throw new InvalidArgumentException('Monique source connection must expose schema metadata.');
+        }
+
         $columns = array_fill_keys($monique->getSchemaBuilder()->getColumnListing('files'), true);
 
         $created = isset($columns['fs_created_at']) ? 'f.fs_created_at' : 'f.created_at_fs';

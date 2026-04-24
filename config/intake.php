@@ -68,5 +68,11 @@ return [
                 'db-connection',
             ],
         ],
+        'wayback' => [
+            'importer_key' => 'wayback',
+            'access_modes' => [
+                'web-api',
+            ],
+        ],
     ],
 ];

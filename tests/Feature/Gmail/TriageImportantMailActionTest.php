@@ -39,6 +39,8 @@ function bindGmailTriageClient(array $messages, mixed &$capturedQuery = null): v
             return 'odinn@example.com';
         }
 
+        public function refreshAuthentication(): void {}
+
         public function listMessages(string $query, ?string $pageToken = null): array
         {
             $this->capturedQuery = $query;

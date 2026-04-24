@@ -63,7 +63,7 @@ class RecordIntakeAction
 
     private function assertReachable(RecordIntakeData $data): void
     {
-        if ($data->accessMode === 'db-connection') {
+        if (in_array($data->accessMode, ['db-connection', 'web-api'], true)) {
             return;
         }
 
@@ -102,7 +102,7 @@ class RecordIntakeAction
 
     private function normalizeFilesystemPaths(RecordIntakeData $data): RecordIntakeData
     {
-        if ($data->accessMode === 'db-connection') {
+        if (in_array($data->accessMode, ['db-connection', 'web-api'], true)) {
             return $data;
         }
 
