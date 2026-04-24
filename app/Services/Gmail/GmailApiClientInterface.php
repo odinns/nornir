@@ -8,6 +8,8 @@ interface GmailApiClientInterface
 {
     public function getAccountEmail(): string;
 
+    public function refreshAuthentication(): void;
+
     /**
      * @return array{messages: list<array{id: string, threadId: string}>, nextPageToken: ?string}
      */

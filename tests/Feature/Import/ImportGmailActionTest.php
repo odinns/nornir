@@ -79,6 +79,10 @@ it('imports gmail messages into canonical tables and records a succeeded run', f
     expect($result->summary['threads'])->toBe(1);
     expect($result->summary['inserted_messages'])->toBe(2);
     expect($result->summary['reobserved_messages'])->toBe(0);
+
+    $runArtifact = json_decode(File::get(base_path('data/runs/import/gmail-import-run-'.$result->run->id.'.json')), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($runArtifact['status'])->toBe(Run::STATUS_SUCCEEDED);
 });
 
 it('is idempotent on rerun with the same messages', function (): void {
@@ -97,6 +101,41 @@ it('is idempotent on rerun with the same messages', function (): void {
     expect(DB::table('gmail_message_observations')->count())->toBe(1);
     expect($result2->summary['inserted_messages'])->toBe(0);
     expect($result2->summary['reobserved_messages'])->toBe(1);
+});
+
+it('skips full message fetches for messages that already exist', function (): void {
+    bindFakeGmailClient([buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])]);
+
+    $intake = makeGmailIntake();
+    app(ImportGmailAction::class)($intake->dispatchPayload);
+
+    bindFakeGmailClient([buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])]);
+    $fake = app(FakeGmailApiClient::class);
+
+    $result = app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect($fake->getMessageCalls)->toBe(0);
+    expect($result->summary['inserted_messages'])->toBe(0);
+    expect($result->summary['reobserved_messages'])->toBe(1);
+});
+
+it('refreshes auth and retries once when gmail returns invalid credentials mid-run', function (): void {
+    bindFakeGmailClient(
+        [buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])],
+        ['msg-001' => 1],
+    );
+
+    $fake = app(FakeGmailApiClient::class);
+
+    $result = app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect($fake->refreshAuthenticationCalls)->toBe(1);
+    expect($fake->getMessageCalls)->toBe(2);
+    expect(DB::table('gmail_messages')->count())->toBe(1);
+    expect($result->summary['inserted_messages'])->toBe(1);
+    expect($result->summary['reobserved_messages'])->toBe(0);
 });
 
 it('adds new messages on a subsequent run without losing prior ones', function (): void {
@@ -197,6 +236,37 @@ it('records attachment metadata without downloading binaries', function (): void
     expect($attachment->mime_type)->toBe('application/pdf');
     expect($attachment->size_bytes)->toBe(204800);
     expect($attachment->attachment_id)->toBe('attach-abc');
+});
+
+it('falls back to sane header dates when gmail internal date is absurd', function (): void {
+    bindFakeGmailClient([
+        buildGmailMessage([
+            'id' => 'msg-absurd-date',
+            'threadId' => 'thread-absurd-date',
+            'internalDate' => '-1000',
+            'payload' => [
+                'mimeType' => 'text/html',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'odinn.sorensen@gmail.com'],
+                    ['name' => 'Subject', 'value' => 'Indkøb'],
+                    ['name' => 'Date', 'value' => 'Mon, 01 Jan 4001 01:00:00 +0100'],
+                    ['name' => 'X-Mail-Created-Date', 'value' => 'Sun, 26 Jul 2015 19:07:15 +0200'],
+                ],
+                'body' => ['data' => base64_encode('Indkøb'), 'size' => 6],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    $result = app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+
+    $message = DB::table('gmail_messages')->where('message_id', 'msg-absurd-date')->first();
+
+    expect($message)->not->toBeNull()
+        ->and($message->internal_date)->toBeNull()
+        ->and($message->message_received_at)->toBe('2015-07-26 17:07:15');
 });
 
 it('records a failed run when a message is malformed', function (): void {

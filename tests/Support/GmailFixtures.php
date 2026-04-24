@@ -13,11 +13,15 @@ class FakeGmailApiClient implements GmailApiClientInterface
 {
     /** @var list<array<string, mixed>> */
     private array $messages;
+    public int $getMessageCalls = 0;
+    public int $refreshAuthenticationCalls = 0;
 
     /** @param list<array<string, mixed>> $messages */
     public function __construct(
         array $messages = [],
         private readonly string $accountEmail = 'test@example.com',
+        /** @var array<string, int> */
+        private array $authFailuresByMessageId = [],
     ) {
         $this->messages = $messages;
     }
@@ -49,6 +53,14 @@ class FakeGmailApiClient implements GmailApiClientInterface
      */
     public function getMessage(string $messageId): array
     {
+        $this->getMessageCalls++;
+
+        if (($this->authFailuresByMessageId[$messageId] ?? 0) > 0) {
+            $this->authFailuresByMessageId[$messageId]--;
+
+            throw new RuntimeException('Invalid Credentials', 401);
+        }
+
         foreach ($this->messages as $message) {
             if (($message['id'] ?? null) === $messageId) {
                 return $message;
@@ -56,6 +68,11 @@ class FakeGmailApiClient implements GmailApiClientInterface
         }
 
         throw new RuntimeException("FakeGmailApiClient: message {$messageId} not found");
+    }
+
+    public function refreshAuthentication(): void
+    {
+        $this->refreshAuthenticationCalls++;
     }
 }
 
@@ -101,17 +118,21 @@ function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
 /**
  * @param  list<array<string, mixed>>  $messages
  */
-function bindFakeGmailClient(array $messages): void
+function bindFakeGmailClient(array $messages, array $authFailuresByMessageId = []): void
 {
-    bindFakeGmailClientForAccount($messages);
+    bindFakeGmailClientForAccount($messages, 'test@example.com', $authFailuresByMessageId);
 }
 
 /**
  * @param  list<array<string, mixed>>  $messages
  */
-function bindFakeGmailClientForAccount(array $messages, string $accountEmail = 'test@example.com'): void
+function bindFakeGmailClientForAccount(
+    array $messages,
+    string $accountEmail = 'test@example.com',
+    array $authFailuresByMessageId = [],
+): void
 {
-    $fake = new FakeGmailApiClient($messages, $accountEmail);
+    $fake = new FakeGmailApiClient($messages, $accountEmail, $authFailuresByMessageId);
 
     app()->bind(GmailClientFactory::class, static fn (): GmailClientFactory => new class($fake) extends GmailClientFactory
     {
@@ -122,6 +143,8 @@ function bindFakeGmailClientForAccount(array $messages, string $accountEmail = '
             return $this->client;
         }
     });
+
+    app()->instance(FakeGmailApiClient::class, $fake);
 }
 
 /**
