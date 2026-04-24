@@ -21,6 +21,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
+use Throwable;
 
 class ImportWaybackAction
 {
@@ -86,6 +87,7 @@ class ImportWaybackAction
             'captures' => 0,
             'accepted' => 0,
             'rejected' => 0,
+            'failed' => 0,
             'screenshots' => 0,
             'mirrors' => 0,
         ];
@@ -99,7 +101,21 @@ class ImportWaybackAction
             }
 
             $replayUrl = $this->client->replayUrl($timestamp, $originalUrl);
-            $html = $this->client->replayHtml($timestamp, $originalUrl, $delayMs);
+            try {
+                $html = $this->client->replayHtml($timestamp, $originalUrl, $delayMs);
+            } catch (Throwable $throwable) {
+                $this->upsertFailedCapture($scopeId, $timestamp, $originalUrl, $replayUrl, $cdx, $throwable);
+                $summary['captures']++;
+                $summary['failed']++;
+
+                if (is_callable($progress)) {
+                    $progress('wayback_capture_failed', ['captures' => $summary['captures']]);
+                }
+
+                continue;
+            }
+
+            $html = $this->normalizeReplayHtml($html);
             $extracted = $this->textExtractor->extract($html);
             $classification = $this->classifier->classify($originalUrl, $html, $extracted['authored_text']);
             $captureId = $this->upsertCapture(
@@ -164,6 +180,46 @@ class ImportWaybackAction
                 'mimetype' => 'text/html',
                 'collapse' => 'digest',
             ], JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $cdx
+     */
+    private function upsertFailedCapture(
+        int $scopeId,
+        string $timestamp,
+        string $originalUrl,
+        string $replayUrl,
+        array $cdx,
+        Throwable $throwable,
+    ): int {
+        return $this->observationStore->upsertAndReturnId('wayback_captures', [
+            'wayback_scope_id' => $scopeId,
+            'timestamp' => $timestamp,
+            'original_url_hash' => hash('sha256', $originalUrl),
+        ], [
+            'captured_at' => $this->capturedAt($timestamp)->format('Y-m-d H:i:s'),
+            'original_url' => $originalUrl,
+            'replay_url' => $replayUrl,
+            'cdx_fields' => json_encode($cdx, JSON_THROW_ON_ERROR),
+            'page_key' => hash('sha256', $originalUrl),
+            'digest' => $this->nullableString($cdx['digest'] ?? null),
+            'verdict' => 'failed',
+            'reject_reason' => 'replay-fetch-failed',
+            'raw_replay_html' => null,
+            'extracted_authored_text' => null,
+            'title' => null,
+            'meta_description' => null,
+            'retrieval_metadata' => json_encode([
+                'retrieved_at' => now()->toISOString(),
+                'source' => 'internet-archive-wayback',
+                'failure' => $this->summarizeFailure($throwable),
+            ], JSON_THROW_ON_ERROR),
+            'raw_cdx_json' => json_encode($cdx, JSON_THROW_ON_ERROR),
+            'biographical_surface' => null,
+            'timeline_anchor_date' => $this->capturedAt($timestamp)->toDateString(),
+            'evidence_summary' => null,
         ]);
     }
 
@@ -287,5 +343,26 @@ class ImportWaybackAction
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function normalizeReplayHtml(string $html): string
+    {
+        if (mb_check_encoding($html, 'UTF-8')) {
+            return $html;
+        }
+
+        return mb_convert_encoding($html, 'UTF-8', 'Windows-1252');
+    }
+
+    /**
+     * @return array{class:string, message:string, code:int|string}
+     */
+    private function summarizeFailure(Throwable $throwable): array
+    {
+        return [
+            'class' => $throwable::class,
+            'message' => mb_strimwidth($throwable->getMessage(), 0, 500, '...'),
+            'code' => $throwable->getCode(),
+        ];
     }
 }

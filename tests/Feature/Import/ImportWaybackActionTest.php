@@ -47,6 +47,70 @@ it('keeps separate scope rows for the same locator with different boundaries', f
     expect(DB::table('wayback_scopes')->count())->toBe(2);
 });
 
+it('records replay fetch failures without aborting the import run', function (): void {
+    app()->instance(WaybackClient::class, new class extends WaybackClient
+    {
+        public function cdxCaptures(string $scope, string $matchMode, ?string $from, ?string $to, int $limit, int $delayMs): array
+        {
+            unset($scope, $matchMode, $from, $to, $limit, $delayMs);
+
+            return [
+                [
+                    'urlkey' => 'dk,odinns)/blocked',
+                    'timestamp' => '20051024073048',
+                    'original' => 'http://www.odinns.dk/blocked',
+                    'mimetype' => 'text/html',
+                    'statuscode' => '200',
+                    'digest' => 'blocked-digest',
+                    'length' => '1234',
+                ],
+                [
+                    'urlkey' => 'dk,odinns)/about',
+                    'timestamp' => '20060101000000',
+                    'original' => 'http://www.odinns.dk/about',
+                    'mimetype' => 'text/html',
+                    'statuscode' => '200',
+                    'digest' => 'ok-digest',
+                    'length' => '2345',
+                ],
+            ];
+        }
+
+        public function replayHtml(string $timestamp, string $originalUrl, int $delayMs): string
+        {
+            unset($originalUrl, $delayMs);
+
+            if ($timestamp === '20051024073048') {
+                throw new RuntimeException('HTTP request returned status code 403');
+            }
+
+            return '<html><head><title>About Odinn</title></head><body><p>I built Goldware.</p></body></html>';
+        }
+    });
+
+    $result = app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
+
+    expect($result->run->status)->toBe('succeeded');
+    expect($result->summary['captures'])->toBe(2);
+    expect($result->summary['accepted'])->toBe(1);
+    expect($result->summary['failed'])->toBe(1);
+    expect(DB::table('wayback_captures')->count())->toBe(2);
+    expect(DB::table('wayback_captures')->where('timestamp', '20051024073048')->value('verdict'))->toBe('failed');
+    expect(DB::table('wayback_captures')->where('timestamp', '20051024073048')->value('reject_reason'))->toBe('replay-fetch-failed');
+});
+
+it('normalizes legacy replay html to utf-8 before storing it', function (): void {
+    app()->instance(WaybackClient::class, new FakeWaybackClient("<html><head><title>Odinn S\xF8rensen</title></head><body><p>F\xF8dt i K\xF8benhavn.</p></body></html>"));
+
+    app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
+
+    $capture = DB::table('wayback_captures')->first();
+
+    expect($capture->title)->toBe('Odinn Sørensen');
+    expect($capture->raw_replay_html)->toContain('Sørensen');
+    expect($capture->extracted_authored_text)->toContain('Født i København');
+});
+
 it('hydrates screenshots and mirrors on later reruns without changing capture identity', function (): void {
     app()->instance(WaybackClient::class, new FakeWaybackClient);
     app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);

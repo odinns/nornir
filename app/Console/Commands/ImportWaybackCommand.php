@@ -79,6 +79,7 @@ class ImportWaybackCommand extends Command
                 'captures' => 'Processed captures',
                 'accepted' => 'Accepted captures',
                 'rejected' => 'Rejected captures',
+                'failed' => 'Failed captures',
                 'screenshots' => 'Screenshots hydrated',
                 'mirrors' => 'Mirrors hydrated',
             ],
