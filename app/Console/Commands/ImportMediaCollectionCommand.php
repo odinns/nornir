@@ -16,8 +16,9 @@ class ImportMediaCollectionCommand extends Command
     use InteractsWithImportConsole;
 
     protected $signature = 'import:media-collection
-        {--source-dsn= : Named DB connection or DSN for monique (required)}
+        {source : Path to the mostly-unique app .env file}
         {--volume= : Volume label to restrict import (e.g. LIMA-2). Omit for all volumes}
+        {--path-prefix= : Restrict import to directory paths under this absolute prefix}
         {--dry-run : Report counts without writing to media_files}';
 
     protected $description = 'Import photo and video records from the monique database into canonical media_files table.';
@@ -31,27 +32,25 @@ class ImportMediaCollectionCommand extends Command
 
     public function handle(): int
     {
-        $sourceDsn = $this->stringOption('source-dsn');
-
-        if ($sourceDsn === null || $sourceDsn === '') {
-            throw new InvalidArgumentException('--source-dsn is required.');
-        }
+        $source = $this->sourceArgument();
 
         $volume = $this->stringOption('volume');
+        $pathPrefix = $this->stringOption('path-prefix');
         $dryRun = (bool) $this->option('dry-run');
 
-        $this->info("Recording intake for media-collection source: {$sourceDsn}");
+        $this->info("Recording intake for media-collection source: {$source}");
 
         $intakeResult = ($this->recordIntakeAction)(new RecordIntakeData(
             sourceType: 'media-collection',
-            accessMode: 'db-connection',
-            sourceLocator: $sourceDsn,
+            accessMode: 'database',
+            sourceLocator: $source,
             scopeSnapshot: [
-                'source_dsn' => $sourceDsn,
                 'volume' => $volume,
+                'path_prefix' => $pathPrefix,
             ],
             importerOptions: [
                 'volume' => $volume,
+                'path_prefix' => $pathPrefix,
                 'dry_run' => $dryRun,
             ],
         ));
@@ -83,8 +82,9 @@ class ImportMediaCollectionCommand extends Command
             runStatus: $importResult->run->status,
             summary: $printableSummary,
             labels: [
-                'source_dsn' => 'Source DSN',
+                'source_dsn' => 'Source',
                 'volume' => 'Volume filter',
+                'path_prefix' => 'Path prefix',
                 'files_inspected' => 'Files inspected',
                 'files_imported' => 'Files imported',
                 'files_reobserved' => 'Files reobserved',

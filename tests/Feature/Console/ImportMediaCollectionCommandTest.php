@@ -31,7 +31,7 @@ it('imports media-collection rows from the cli with useful default output', func
     ]);
 
     $this->artisan('import:media-collection', [
-        '--source-dsn' => $fixture['connection_name'],
+        'source' => $fixture['env_path'],
     ])
         ->expectsOutputToContain('Recording intake for media-collection source')
         ->expectsOutputToContain('Importing media collection')
@@ -40,4 +40,36 @@ it('imports media-collection rows from the cli with useful default output', func
 
     expect(DB::table('intake_records')->count())->toBe(1);
     expect(DB::table('media_files')->count())->toBe(2);
+});
+
+it('restricts media-collection rows from the cli by path prefix', function (): void {
+    $fixture = createMoniqueFixtureDatabase('media-console-path-prefix', [
+        [
+            'volume_label' => 'LIMA-2',
+            'directories' => [
+                [
+                    'full_path' => '/Volumes/LIMA-2/Pictures/2022/2022-06-01 Test',
+                    'files' => [
+                        ['basename' => 'keep.jpg', 'normalized_file_type' => 'image'],
+                    ],
+                ],
+                [
+                    'full_path' => '/Volumes/LIMA-2/Pictures Archive/2022/2022-06-01 Test',
+                    'files' => [
+                        ['basename' => 'skip.jpg', 'normalized_file_type' => 'image'],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    $this->artisan('import:media-collection', [
+        'source' => $fixture['env_path'],
+        '--path-prefix' => '/Volumes/LIMA-2/Pictures',
+    ])
+        ->expectsOutputToContain('Import complete')
+        ->assertSuccessful();
+
+    expect(DB::table('media_files')->count())->toBe(1);
+    expect(DB::table('media_files')->value('basename'))->toBe('keep.jpg');
 });

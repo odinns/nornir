@@ -6,6 +6,7 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\ImportArtifactWriter;
 use App\Actions\Import\Support\ImportRunExecutor;
+use App\Actions\Import\Support\MoniqueSourceConnectionResolver;
 use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\MediaCollectionImportResultData;
 use App\Data\Intake\ImporterDispatchData;
@@ -25,6 +26,7 @@ class ImportMediaCollectionAction
     public function __construct(
         private readonly ImportRunExecutor $importRunExecutor,
         private readonly ImportArtifactWriter $importArtifactWriter,
+        private readonly MoniqueSourceConnectionResolver $moniqueSourceConnectionResolver,
         private readonly SourceObservationStore $sourceObservationStore,
         private readonly ProvenanceWriter $provenanceWriter,
     ) {}
@@ -57,9 +59,13 @@ class ImportMediaCollectionAction
         $sourceDsn = $dispatchPayload->sourceLocator;
         $options = $dispatchPayload->importerOptions;
         $volume = is_string($options['volume'] ?? null) && $options['volume'] !== '' ? $options['volume'] : null;
+        $pathPrefix = is_string($options['path_prefix'] ?? null) && $options['path_prefix'] !== ''
+            ? rtrim($options['path_prefix'], '/')
+            : null;
         $dryRun = (bool) ($options['dry_run'] ?? false);
 
         $monique = $this->resolveMoniqueConnection($sourceDsn);
+        $timestampColumns = $this->resolveTimestampColumns($monique);
 
         $counts = [
             'files_inspected' => 0,
@@ -74,7 +80,6 @@ class ImportMediaCollectionAction
             $query = $monique->table('files as f')
                 ->join('directories as d', 'f.directory_id', '=', 'd.id')
                 ->join('volumes as v', 'd.volume_id', '=', 'v.id')
-                ->where('d.full_path', 'like', '/Volumes/%/Pictures/%')
                 ->whereIn('f.normalized_file_type', ['image', 'video'])
                 ->where('f.basename', 'not like', '._%')
                 ->select([
@@ -86,13 +91,19 @@ class ImportMediaCollectionAction
                     'f.extension',
                     'f.normalized_file_type',
                     'f.size_bytes',
-                    'f.fs_created_at',
-                    'f.fs_modified_at',
+                    $timestampColumns['created'].' as fs_created_at',
+                    $timestampColumns['modified'].' as fs_modified_at',
                     'f.duplicate_key',
                 ])
                 ->orderBy('f.id')
                 ->limit(self::PAGE_SIZE)
                 ->offset($offset);
+
+            if ($pathPrefix !== null) {
+                $query->where('d.full_path', 'like', $pathPrefix.'/%');
+            } else {
+                $query->where('d.full_path', 'like', '/Volumes/%/Pictures/%');
+            }
 
             if ($volume !== null) {
                 $query->where('v.label', $volume);
@@ -176,6 +187,7 @@ class ImportMediaCollectionAction
         return [
             'source_dsn' => $dispatchPayload->sourceLocator,
             'volume' => $volume,
+            'path_prefix' => $pathPrefix,
             'files_inspected' => $counts['files_inspected'],
             'files_imported' => $counts['files_imported'],
             'files_reobserved' => $counts['files_reobserved'],
@@ -185,6 +197,10 @@ class ImportMediaCollectionAction
 
     private function resolveMoniqueConnection(string $sourceDsn): ConnectionInterface
     {
+        if (is_file($sourceDsn)) {
+            return $this->moniqueSourceConnectionResolver->connect($sourceDsn);
+        }
+
         $connections = config('database.connections');
 
         if (is_array($connections) && array_key_exists($sourceDsn, $connections)) {
@@ -192,9 +208,25 @@ class ImportMediaCollectionAction
         }
 
         throw new InvalidArgumentException(
-            "Monique connection [{$sourceDsn}] is not configured. "
-            .'Pass a named connection from config/database.php via --source-dsn.',
+            "Monique source [{$sourceDsn}] is not reachable. "
+            .'Pass a source env file path or a named connection from config/database.php.',
         );
+    }
+
+    /**
+     * @return array{created:string, modified:string}
+     */
+    private function resolveTimestampColumns(ConnectionInterface $monique): array
+    {
+        $columns = array_fill_keys($monique->getSchemaBuilder()->getColumnListing('files'), true);
+
+        $created = isset($columns['fs_created_at']) ? 'f.fs_created_at' : 'f.created_at_fs';
+        $modified = isset($columns['fs_modified_at']) ? 'f.fs_modified_at' : 'f.modified_at_fs';
+
+        return [
+            'created' => $created,
+            'modified' => $modified,
+        ];
     }
 
     private function extractEventLabel(string $directoryFullPath): ?string
