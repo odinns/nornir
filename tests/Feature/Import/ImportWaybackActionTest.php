@@ -203,6 +203,27 @@ it('hydrates screenshots and mirrors on later reruns without changing capture id
     expect(DB::table('provenance_links')->where('claim_key', 'hydrated-wayback-mirror')->count())->toBe(1);
 });
 
+it('does not abort an import when an optional screenshot fails', function (): void {
+    app()->instance(WaybackClient::class, new FakeWaybackClient);
+    app()->instance(WaybackScreenshotter::class, new class extends WaybackScreenshotter
+    {
+        public function capture(string $url, string $path): array
+        {
+            unset($url, $path);
+
+            throw new RuntimeException('screenshot refused');
+        }
+    });
+
+    $result = app(ImportWaybackAction::class)(makeWaybackIntake(withScreenshots: true)->dispatchPayload);
+
+    expect($result->run->status)->toBe('succeeded');
+    expect($result->summary['accepted'])->toBe(1);
+    expect($result->summary['screenshots'])->toBe(0);
+    expect(DB::table('wayback_captures')->count())->toBe(1);
+    expect(DB::table('wayback_captures')->value('screenshot_path'))->toBeNull();
+});
+
 function makeWaybackIntake(bool $withScreenshots = false, bool $mirrorAssets = false, string $matchMode = 'host'): object
 {
     return app(RecordIntakeAction::class)(new RecordIntakeData(
