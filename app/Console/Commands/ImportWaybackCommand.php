@@ -13,6 +13,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class ImportWaybackCommand extends Command
 {
@@ -127,7 +128,10 @@ class ImportWaybackCommand extends Command
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);
         $this->info('Importing Wayback captures');
 
-        $importResult = ($this->importWaybackAction)($intakeResult->dispatchPayload);
+        $importResult = ($this->importWaybackAction)(
+            $intakeResult->dispatchPayload,
+            $this->shouldPrintProgress() ? fn (string $event, array $summary): null => $this->printProgress($event, $summary) : null,
+        );
 
         $this->printImportCompletion(
             runId: $importResult->run->id,
@@ -156,6 +160,43 @@ class ImportWaybackCommand extends Command
         }
 
         return $scope;
+    }
+
+    private function shouldPrintProgress(): bool
+    {
+        return $this->getOutput()->getVerbosity() !== OutputInterface::VERBOSITY_QUIET;
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function printProgress(string $event, array $summary): null
+    {
+        if ($event === 'wayback_captures_discovered') {
+            $this->line('Wayback progress: discovered '.$this->integerSummaryValue($summary, 'cdx_captures').' CDX captures');
+
+            return null;
+        }
+
+        $this->line(sprintf(
+            'Wayback progress: %d/%d processed (%d accepted, %d rejected, %d failed, %d screenshots)',
+            $this->integerSummaryValue($summary, 'captures'),
+            $this->integerSummaryValue($summary, 'cdx_captures'),
+            $this->integerSummaryValue($summary, 'accepted'),
+            $this->integerSummaryValue($summary, 'rejected'),
+            $this->integerSummaryValue($summary, 'failed'),
+            $this->integerSummaryValue($summary, 'screenshots'),
+        ));
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function integerSummaryValue(array $summary, string $key): int
+    {
+        return (int) ($summary[$key] ?? 0);
     }
 
     private function printDryRunSummary(
