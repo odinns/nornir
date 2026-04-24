@@ -16,6 +16,55 @@ beforeEach(function (): void {
     File::deleteDirectory(base_path('data/intake'));
 });
 
+it('dry runs wayback capture counts without writing importer state', function (): void {
+    Http::fake([
+        'https://web.archive.org/cdx?*' => Http::response([
+            [
+                'urlkey',
+                'timestamp',
+                'original',
+                'mimetype',
+                'statuscode',
+                'digest',
+                'length',
+            ],
+            [
+                'dk,odinns)/',
+                '20010202124700',
+                'http://odinns.dk/',
+                'text/html',
+                '200',
+                'digest-one',
+                '1234',
+            ],
+            [
+                'dk,odinns)/about',
+                '20030102030405',
+                'http://odinns.dk/about',
+                'text/html',
+                '200',
+                'digest-two',
+                '2345',
+            ],
+        ]),
+    ]);
+
+    $this->artisan('import:wayback', [
+        'scope' => 'odinns.dk',
+        '--dry-run' => true,
+        '--delay-ms' => 0,
+    ])
+        ->expectsOutputToContain('Wayback dry run')
+        ->expectsOutputToContain('Available CDX captures: 2')
+        ->expectsOutputToContain('Would process with current limit: 2')
+        ->assertSuccessful();
+
+    expect(DB::table('intake_records')->count())->toBe(0);
+    expect(DB::table('wayback_scopes')->count())->toBe(0);
+    expect(DB::table('wayback_captures')->count())->toBe(0);
+    expect(DB::table('runs')->count())->toBe(0);
+});
+
 it('imports wayback captures from the cli with useful output', function (): void {
     Http::fake([
         'https://web.archive.org/cdx?*' => Http::response([

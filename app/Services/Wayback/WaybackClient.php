@@ -21,17 +21,22 @@ class WaybackClient
         int $limit,
         int $delayMs,
     ): array {
-        $response = $this->getWithRetry('https://web.archive.org/cdx', array_filter([
+        $query = array_filter([
             'url' => $this->scopeForCdx($scope, $matchMode),
             'output' => 'json',
             'fl' => 'urlkey,timestamp,original,mimetype,statuscode,digest,length',
             'filter' => ['statuscode:200', 'mimetype:text/html'],
             'collapse' => 'digest',
-            'limit' => $limit,
             'from' => $from,
             'to' => $to,
             'matchType' => $matchMode,
-        ], static fn (mixed $value): bool => $value !== null), $delayMs);
+        ], static fn (mixed $value): bool => $value !== null);
+
+        if ($limit > 0) {
+            $query['limit'] = $limit;
+        }
+
+        $response = $this->getWithRetry('https://web.archive.org/cdx', $query, $delayMs);
 
         $json = $response->json();
 
@@ -66,6 +71,33 @@ class WaybackClient
         }
 
         return $captures;
+    }
+
+    public function cdxCaptureCount(
+        string $scope,
+        string $matchMode,
+        ?string $from,
+        ?string $to,
+        int $delayMs,
+    ): int {
+        $response = $this->getWithRetry('https://web.archive.org/cdx', array_filter([
+            'url' => $this->scopeForCdx($scope, $matchMode),
+            'output' => 'json',
+            'fl' => 'timestamp',
+            'filter' => ['statuscode:200', 'mimetype:text/html'],
+            'collapse' => 'digest',
+            'from' => $from,
+            'to' => $to,
+            'matchType' => $matchMode,
+        ], static fn (mixed $value): bool => $value !== null), $delayMs);
+
+        $json = $response->json();
+
+        if (! is_array($json) || $json === []) {
+            return 0;
+        }
+
+        return max(0, count($json) - 1);
     }
 
     public function replayHtml(string $timestamp, string $originalUrl, int $delayMs): string
