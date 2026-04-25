@@ -24,7 +24,6 @@ beforeEach(function (): void {
 });
 
 it('traverses linkedin importer eloquent graph over imported archive data', function (): void {
-    /** @phpstan-ignore function.notFound */
     $fixture = createLinkedInFixtureArchive('linkedin-model-graph', [
         'messages' => [[
             'CONVERSATION ID' => 'conv-1',

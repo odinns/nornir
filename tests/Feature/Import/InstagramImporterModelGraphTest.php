@@ -21,7 +21,6 @@ beforeEach(function (): void {
 });
 
 it('traverses instagram importer eloquent graph over imported archive data', function (): void {
-    /** @phpstan-ignore function.notFound */
     $fixture = createInstagramFixtureArchive('instagram-model-graph', [
         'username' => 'odinn',
         'display_name' => 'Odinn Adalsteinsson',

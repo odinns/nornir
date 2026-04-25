@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Override;
 
 /**
  * @property int $id
@@ -27,7 +26,6 @@ class InstagramPost extends Model
 
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [

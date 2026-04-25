@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Odinns\CodingStyle\OdinnsRectorConfig;
 use Rector\Config\RectorConfig;
+use Rector\Php83\Rector\ClassMethod\AddOverrideAttributeToOverriddenMethodsRector;
 
 return static function (RectorConfig $rectorConfig): void {
     OdinnsRectorConfig::setup($rectorConfig);
@@ -15,5 +16,9 @@ return static function (RectorConfig $rectorConfig): void {
         __DIR__.'/database',
         __DIR__.'/routes',
         __DIR__.'/tests',
+    ]);
+
+    $rectorConfig->skip([
+        AddOverrideAttributeToOverriddenMethodsRector::class,
     ]);
 };

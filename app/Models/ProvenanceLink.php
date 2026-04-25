@@ -6,13 +6,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Override;
 
 class ProvenanceLink extends Model
 {
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [

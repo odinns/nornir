@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Override;
 
 /**
  * @property int $id
@@ -19,7 +18,6 @@ class IntakeRecord extends Model
 {
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [
