@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "48f0c96441d52bf825806141d145df6d",
+    "content-hash": "a05020ff53bf46e64e18457ed44c80cb",
     "packages": [
         {
             "name": "brick/math",
@@ -7665,11 +7665,17 @@
         },
         {
             "name": "odinns/coding-style",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "/Users/odinn/Projects/odinns/coding-style",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/odinns/coding-style.git",
                 "reference": "442e089dd77253908f504d9d75b6bf34c113326b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/odinns/coding-style/zipball/442e089dd77253908f504d9d75b6bf34c113326b",
+                "reference": "442e089dd77253908f504d9d75b6bf34c113326b",
+                "shasum": ""
             },
             "require": {
                 "driftingly/rector-laravel": "^2.3",
@@ -7689,31 +7695,7 @@
                     "Odinns\\CodingStyle\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Odinns\\CodingStyle\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest"
-                ],
-                "test:types": [
-                    "phpstan analyse"
-                ],
-                "test:refactor": [
-                    "rector process --dry-run"
-                ],
-                "test:all": [
-                    "@test:composer",
-                    "@test:types",
-                    "@test:refactor",
-                    "@test"
-                ],
-                "test:composer": [
-                    "composer validate --strict"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -7724,16 +7706,17 @@
             ],
             "description": "Shared Rector and PHPStan defaults for Laravel projects.",
             "keywords": [
+                "PHPStan",
                 "coding-style",
                 "larastan",
                 "laravel",
-                "phpstan",
                 "rector"
             ],
-            "transport-options": {
-                "symlink": false,
-                "relative": false
-            }
+            "support": {
+                "issues": "https://github.com/odinns/coding-style/issues",
+                "source": "https://github.com/odinns/coding-style/tree/1.0.0"
+            },
+            "time": "2026-04-25T09:41:13+00:00"
         },
         {
             "name": "pestphp/pest",
@@ -10310,9 +10293,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "odinns/coding-style": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

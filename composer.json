@@ -19,7 +19,7 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "odinns/coding-style": "*@dev",
+        "odinns/coding-style": "^1.0",
         "pestphp/pest": "4.4.6",
         "pestphp/pest-plugin-arch": "^4.0",
         "phpstan/phpstan": "^2.1",
@@ -95,13 +95,5 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true,
-    "repositories": [{
-        "name": "odinns-coding-style",
-        "options": {
-            "symlink": false
-        },
-        "type": "path",
-        "url": "/Users/odinn/Projects/odinns/coding-style"
-    }]
+    "prefer-stable": true
 }
