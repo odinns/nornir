@@ -22,6 +22,11 @@ Read the specs before inventing policy:
 - `./vendor/bin/rector process`
 - `./vendor/bin/phpstan analyse`
 
+Local search uses Scout with Meilisearch:
+
+- `meilisearch --db-path data/meilisearch --master-key local-dev-key`
+- `php artisan search:rebuild`
+
 Operational state stays out of git:
 
 - `data/`

@@ -9,7 +9,9 @@
         "php": "^8.4",
         "google/apiclient": "^2.0",
         "laravel/framework": "^13.0",
+        "laravel/scout": "^11.1",
         "laravel/tinker": "^3.0",
+        "meilisearch/meilisearch-php": "^1.16",
         "soundasleep/html2text": "^2.1"
     },
     "require-dev": {
