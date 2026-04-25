@@ -1,5 +1,6 @@
 includes:
     - vendor/odinns/coding-style/config/larastan.neon
+    - vendor/odinns/phpstan-pest-this/extension.neon
 
 parameters:
     level: 8
@@ -21,27 +22,3 @@ parameters:
     excludePaths:
         analyse:
             - routes/console.php
-
-parametersSchema:
-    pestClosureThisTypeMap: listOf(
-        structure([
-            pathContains: string()
-            class: string()
-        ])
-    )
-
-services:
-    -
-        class: Odinns\PhpStanPestThis\PestClosureThisTypeResolver
-        arguments:
-            pathToClassMap: %pestClosureThisTypeMap%
-
-    -
-        class: Odinns\PhpStanPestThis\PestFunctionParameterClosureThisExtension
-        tags:
-            - phpstan.functionParameterClosureThisExtension
-
-    -
-        class: Odinns\PhpStanPestThis\PestMethodParameterClosureThisExtension
-        tags:
-            - phpstan.methodParameterClosureThisExtension

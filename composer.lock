@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ed125a106a460d5827247ff78691fbc2",
+    "content-hash": "824aaf6cc4e06fcfd7738ead6c86868f",
     "packages": [
         {
             "name": "brick/math",
@@ -7720,16 +7720,16 @@
         },
         {
             "name": "odinns/phpstan-pest-this",
-            "version": "v0.1.0",
+            "version": "v1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/odinns/phpstan-pest-this.git",
-                "reference": "91e0fbeea665971f306d9a0e76e3d8b121998d08"
+                "reference": "f65fee782a09a3bdbed0d238bb24d97eb94159e5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/odinns/phpstan-pest-this/zipball/91e0fbeea665971f306d9a0e76e3d8b121998d08",
-                "reference": "91e0fbeea665971f306d9a0e76e3d8b121998d08",
+                "url": "https://api.github.com/repos/odinns/phpstan-pest-this/zipball/f65fee782a09a3bdbed0d238bb24d97eb94159e5",
+                "reference": "f65fee782a09a3bdbed0d238bb24d97eb94159e5",
                 "shasum": ""
             },
             "require": {
@@ -7777,7 +7777,7 @@
                 "issues": "https://github.com/odinns/phpstan-pest-this/issues",
                 "source": "https://github.com/odinns/phpstan-pest-this"
             },
-            "time": "2026-02-13T19:45:34+00:00"
+            "time": "2026-04-25T10:21:44+00:00"
         },
         {
             "name": "pestphp/pest",
