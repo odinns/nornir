@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Override;
 
 /**
  * @property int|null $message_count
@@ -24,7 +23,6 @@ class LinkedinConversation extends Model
 
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [

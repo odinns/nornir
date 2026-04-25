@@ -6,7 +6,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Override;
 
 /**
  * @property int $id
@@ -23,7 +22,6 @@ class GmailAttachment extends Model
 
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [

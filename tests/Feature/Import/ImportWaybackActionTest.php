@@ -248,7 +248,6 @@ class FakeWaybackClient extends WaybackClient
         public string $html = '<html><head><title>About Odinn</title></head><body><p>I built Goldware.</p></body></html>',
     ) {}
 
-    #[Override]
     public function cdxCaptures(string $scope, string $matchMode, ?string $from, ?string $to, int $limit, int $delayMs): array
     {
         unset($scope, $matchMode, $from, $to, $limit, $delayMs);
@@ -264,7 +263,6 @@ class FakeWaybackClient extends WaybackClient
         ]];
     }
 
-    #[Override]
     public function replayHtml(string $timestamp, string $originalUrl, int $delayMs): string
     {
         unset($timestamp, $originalUrl, $delayMs);

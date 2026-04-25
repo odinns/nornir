@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Override;
 
 /**
  * @property int $id
@@ -34,7 +33,6 @@ class TwitterArchive extends Model
 
     protected $guarded = [];
 
-    #[Override]
     protected function casts(): array
     {
         return [
