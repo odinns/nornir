@@ -1,12 +1,16 @@
+includes:
+    - vendor/odinns/coding-style/config/larastan.neon
+
 parameters:
     level: 8
     paths:
         - app
+        - bootstrap
         - config
         - database
         - routes
+        - tests
     tmpDir: storage/phpstan
-    treatPhpDocTypesAsCertain: true
     excludePaths:
         analyse:
             - routes/console.php
