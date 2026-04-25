@@ -26,6 +26,18 @@ Once the app scaffold exists, use these defaults:
 
 Follow Laravel conventions, 4-space indentation, and clear literal names. Prefer `Import` over `Ingest` in new code. Keep source-specific logic local to its importer; do not build giant switchboard commands. Prompt and skill assets MUST be versioned files, not inline strings in jobs or controllers.
 
+## Static Analysis Contracts
+
+PHPStan types are part of the code contract, not cleanup afterthoughts.
+
+- When returning associative arrays from actions, DTOs, fixtures, or helpers, declare the full array shape at the producer.
+- If a DTO exposes an array property, its constructor docblock MUST document the exact shape when keys are known.
+- Avoid `array<string, mixed>` unless the data is genuinely unknown external input.
+- Use `@phpstan-type` for repeated shapes instead of duplicating large shapes everywhere.
+- Initialize summary arrays with their full known key set before mutating counts.
+- If a test reads `$result->summary['foo']`, the result DTO must declare `foo`.
+- Prefer closed shapes for importer summaries, handoff scopes, fixture payloads, and command result data.
+
 ## Testing Guidelines
 
 Pest is the default framework. Pest architecture tests are mandatory and MUST enforce subsystem boundaries, dependency direction, and forbidden cross-layer access. Name tests by behavior, for example `it_imports_chatgpt_conversations_idempotently` or `it_blocks_unbounded_heimdallr_access`.
