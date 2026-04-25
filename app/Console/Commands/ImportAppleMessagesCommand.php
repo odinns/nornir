@@ -32,7 +32,7 @@ class ImportAppleMessagesCommand extends Command
     {
         $source = $this->sourceArgument();
         $accessMode = $this->resolveFilesystemAccessMode($source);
-        $scopeSnapshot = $this->buildScopeSnapshot($source, $accessMode);
+        $scopeSnapshot = $this->buildScopeSnapshot($source);
 
         $this->info("Recording intake for Apple Messages source: {$source}");
 
@@ -88,7 +88,7 @@ class ImportAppleMessagesCommand extends Command
     /**
      * @return array<string, mixed>
      */
-    private function buildScopeSnapshot(string $source, string $accessMode): array
+    private function buildScopeSnapshot(string $source): array
     {
         $attachmentsRoot = $this->stringOption('attachments-root');
         $acceptedRootPaths = [is_file($source) ? dirname($source) : $source];

@@ -589,7 +589,7 @@ class ImportTwitterArchiveAction
             throw new InvalidArgumentException("Malformed Twitter source file [{$relativePath}].");
         }
 
-        return array_values(array_filter($payload, static fn (mixed $row): bool => is_array($row)));
+        return array_values(array_filter($payload, is_array(...)));
     }
 
     /**
@@ -632,7 +632,7 @@ class ImportTwitterArchiveAction
             return [];
         }
 
-        return array_values(array_filter($media, static fn (mixed $item): bool => is_array($item)));
+        return array_values(array_filter($media, is_array(...)));
     }
 
     private function normalizeArchiveRelativePath(string $archivePath, ?string $relativePath): ?string

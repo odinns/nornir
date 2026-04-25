@@ -237,16 +237,7 @@ class ImportMediaCollectionAction
     private function extractEventLabel(string $directoryFullPath): ?string
     {
         $parts = array_values(array_filter(explode('/', $directoryFullPath)));
-
-        // Find the index of 'Pictures'
-        $picturesIndex = null;
-
-        foreach ($parts as $index => $part) {
-            if ($part === 'Pictures') {
-                $picturesIndex = $index;
-                break;
-            }
-        }
+        $picturesIndex = array_find_key($parts, fn ($part): bool => $part === 'Pictures');
 
         if ($picturesIndex === null) {
             return null;

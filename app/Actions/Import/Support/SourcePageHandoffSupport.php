@@ -92,10 +92,12 @@ class SourcePageHandoffSupport
         $normalizedPaths = [];
 
         foreach ($paths as $path) {
-            if (! is_string($path) || $path === '') {
+            if (! is_string($path)) {
                 continue;
             }
-
+            if ($path === '') {
+                continue;
+            }
             $normalizedPaths[] = $this->normalizePath($path);
         }
 

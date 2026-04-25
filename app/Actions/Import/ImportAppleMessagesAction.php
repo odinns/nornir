@@ -13,10 +13,12 @@ use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use PDO;
+use PDOStatement;
 
 class ImportAppleMessagesAction
 {
@@ -42,8 +44,8 @@ class ImportAppleMessagesAction
         $execution = $this->importRunExecutor->execute(
             dispatchPayload: $dispatchPayload,
             operation: 'apple-messages-import',
-            import: fn ($run): array => $this->importDatabase($dispatchPayload, $run, $progress),
-            writeArtifacts: function ($run, array $summary) use ($dispatchPayload): void {
+            import: fn (Run $run): array => $this->importDatabase($dispatchPayload, $run, $progress),
+            writeArtifacts: function (Run $run, array $summary) use ($dispatchPayload): void {
                 $this->writeArtifacts($run, $dispatchPayload, $summary);
             },
         );
@@ -308,15 +310,17 @@ class ImportAppleMessagesAction
         $resolvedPaths = [];
 
         foreach ($paths as $path) {
-            if (! is_string($path) || $path === '') {
+            if (! is_string($path)) {
                 continue;
             }
-
+            if ($path === '') {
+                continue;
+            }
             $resolvedPath = realpath($path);
             $resolvedPaths[] = $resolvedPath !== false ? $resolvedPath : $path;
         }
 
-        return array_values(array_unique(array_filter($resolvedPaths, 'is_file')));
+        return array_values(array_unique(array_filter($resolvedPaths, is_file(...))));
     }
 
     private function connectToAddressBookDatabase(string $databasePath): PDO
@@ -541,10 +545,15 @@ class ImportAppleMessagesAction
         $participantsByChat = [];
 
         foreach ($rows as $row) {
-            if (! is_array($row) || ! is_string($row['identifier'] ?? null) || $row['identifier'] === '') {
+            if (! is_array($row)) {
                 continue;
             }
-
+            if (! is_string($row['identifier'] ?? null)) {
+                continue;
+            }
+            if ($row['identifier'] === '') {
+                continue;
+            }
             $participantsByChat[(int) $row['chat_id']][] = [
                 'identifier' => $row['identifier'],
                 'service' => $this->nullableString($row['service'] ?? null),
@@ -901,7 +910,7 @@ class ImportAppleMessagesAction
         }
 
         $unixTimestamp = ((int) $timestamp / 1_000_000_000) + 978307200;
-        $dateTime = (new DateTimeImmutable('@'.(string) $unixTimestamp))->setTimezone(new \DateTimeZone('UTC'));
+        $dateTime = new DateTimeImmutable('@'.$unixTimestamp)->setTimezone(new DateTimeZone('UTC'));
 
         return $dateTime->format('Y-m-d H:i:s');
     }
@@ -994,7 +1003,7 @@ class ImportAppleMessagesAction
         return $trimmed === '' ? null : $trimmed;
     }
 
-    private function queryOrFail(PDO $sqlite, string $query): \PDOStatement
+    private function queryOrFail(PDO $sqlite, string $query): PDOStatement
     {
         $statement = $sqlite->query($query);
 

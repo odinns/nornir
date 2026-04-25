@@ -30,8 +30,8 @@ return new class extends Migration
                     DB::table('chatgpt_conversations')
                         ->where('id', $row->id)
                         ->update([
-                            'conversation_created_at' => self::normalizeTimestamp($row->source_create_time),
-                            'conversation_updated_at' => self::normalizeTimestamp($row->source_update_time),
+                            'conversation_created_at' => $this->normalizeTimestamp($row->source_create_time),
+                            'conversation_updated_at' => $this->normalizeTimestamp($row->source_update_time),
                         ]);
                 }
             });
@@ -44,8 +44,8 @@ return new class extends Migration
                     DB::table('chatgpt_messages')
                         ->where('id', $row->id)
                         ->update([
-                            'message_created_at' => self::normalizeTimestamp($row->source_create_time),
-                            'message_updated_at' => self::normalizeTimestamp($row->source_update_time),
+                            'message_created_at' => $this->normalizeTimestamp($row->source_create_time),
+                            'message_updated_at' => $this->normalizeTimestamp($row->source_update_time),
                         ]);
                 }
             });
@@ -62,7 +62,7 @@ return new class extends Migration
         });
     }
 
-    private static function normalizeTimestamp(mixed $value): ?string
+    private function normalizeTimestamp(mixed $value): ?string
     {
         if (! is_numeric($value)) {
             return null;

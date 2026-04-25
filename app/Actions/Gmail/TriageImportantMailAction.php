@@ -70,7 +70,7 @@ class TriageImportantMailAction
                 return $scoreComparison;
             }
 
-            return strcmp($right['received_at'], $left['received_at']);
+            return strcmp((string) $right['received_at'], (string) $left['received_at']);
         });
 
         $rankedItems = array_map(function (array $item): array {
@@ -115,7 +115,7 @@ class TriageImportantMailAction
 
         $receivedAt = $this->resolveReceivedAt($message);
 
-        if ($receivedAt === null || $receivedAt->lt($range->start) || ($range->end !== null && $receivedAt->gt($range->end))) {
+        if (! $receivedAt instanceof CarbonImmutable || $receivedAt->lt($range->start) || ($range->end instanceof CarbonImmutable && $receivedAt->gt($range->end))) {
             return null;
         }
 
@@ -124,7 +124,7 @@ class TriageImportantMailAction
             static fn (mixed $value): bool => is_string($value) && $value !== '',
         ));
 
-        $normalizedLabels = array_map('strtolower', $labels);
+        $normalizedLabels = array_map(strtolower(...), $labels);
         $body = $this->extractBodyText($payload);
         $analysisText = strtolower(trim(implode("\n", array_filter([
             $subject,
@@ -228,7 +228,7 @@ class TriageImportantMailAction
             'after:'.$range->start->startOfDay()->format('Y/m/d'),
         ];
 
-        if ($range->end !== null) {
+        if ($range->end instanceof CarbonImmutable) {
             $parts[] = 'before:'.$range->end->addDay()->startOfDay()->format('Y/m/d');
         }
 
@@ -256,8 +256,13 @@ class TriageImportantMailAction
 
             $name = $header['name'] ?? null;
             $value = $header['value'] ?? null;
-
-            if (! is_string($name) || ! is_string($value) || $name === '') {
+            if (! is_string($name)) {
+                continue;
+            }
+            if (! is_string($value)) {
+                continue;
+            }
+            if ($name === '') {
                 continue;
             }
 

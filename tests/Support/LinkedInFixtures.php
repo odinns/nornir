@@ -373,13 +373,14 @@ function writeLinkedInCsv(string $path, array $rows, ?string $rawContent = null,
     }
 
     $headers = $forcedHeaders ?? array_keys($rows[0] ?? []);
-    fputcsv($handle, $headers);
+    fputcsv($handle, $headers, escape: '\\');
 
     foreach ($rows as $row) {
         fputcsv($handle, array_map(
             static fn (string $header): string => $row[$header] ?? '',
             $headers,
-        ));
+        ),
+            escape: '\\');
     }
 
     fclose($handle);
@@ -404,18 +405,19 @@ function writeLinkedInConnectionsCsv(string $path, array $rows, ?string $rawCont
         throw new RuntimeException("Unable to open fixture CSV [{$path}] for writing.");
     }
 
-    fputcsv($handle, ['Notes:']);
-    fputcsv($handle, ['When exporting your connection data, you may notice missing email addresses.']);
-    fputcsv($handle, []);
+    fputcsv($handle, ['Notes:'], escape: '\\');
+    fputcsv($handle, ['When exporting your connection data, you may notice missing email addresses.'], escape: '\\');
+    fputcsv($handle, [], escape: '\\');
 
     $headers = ['First Name', 'Last Name', 'URL', 'Email Address', 'Company', 'Position', 'Connected On'];
-    fputcsv($handle, $headers);
+    fputcsv($handle, $headers, escape: '\\');
 
     foreach ($rows as $row) {
         fputcsv($handle, array_map(
             static fn (string $header): string => $row[$header] ?? '',
             $headers,
-        ));
+        ),
+            escape: '\\');
     }
 
     fclose($handle);

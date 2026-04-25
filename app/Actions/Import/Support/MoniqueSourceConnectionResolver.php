@@ -89,8 +89,10 @@ class MoniqueSourceConnectionResolver
 
         foreach (preg_split('/\r\n|\r|\n/', $contents) ?: [] as $line) {
             $trimmed = trim($line);
-
-            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+            if ($trimmed === '') {
+                continue;
+            }
+            if (str_starts_with($trimmed, '#')) {
                 continue;
             }
 

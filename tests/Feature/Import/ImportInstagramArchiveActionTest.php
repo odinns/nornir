@@ -328,7 +328,7 @@ it('handles carousel posts with multiple media items', function (): void {
     expect(DB::table('instagram_posts')->first()->media_count)->toBe(3);
     expect(DB::table('instagram_media_refs')->where('media_type', 'post')->count())->toBe(3);
     // All media refs point to the same post
-    expect(DB::table('instagram_media_refs')->where('instagram_post_id', '!=', null)->count())->toBe(3);
+    expect(DB::table('instagram_media_refs')->whereNotNull('instagram_post_id')->count())->toBe(3);
 });
 
 it('imports account from personal information', function (): void {

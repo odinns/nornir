@@ -11,20 +11,17 @@ use Illuminate\Support\Facades\File;
 
 class FakeGmailApiClient implements GmailApiClientInterface
 {
-    /** @var list<array<string, mixed>> */
-    private array $messages;
     public int $getMessageCalls = 0;
+
     public int $refreshAuthenticationCalls = 0;
 
     /** @param list<array<string, mixed>> $messages */
     public function __construct(
-        array $messages = [],
+        private readonly array $messages = [],
         private readonly string $accountEmail = 'test@example.com',
         /** @var array<string, int> */
-        private array $authFailuresByMessageId = [],
-    ) {
-        $this->messages = $messages;
-    }
+        private array $authFailuresByMessageId = []
+    ) {}
 
     public function getAccountEmail(): string
     {
@@ -130,8 +127,7 @@ function bindFakeGmailClientForAccount(
     array $messages,
     string $accountEmail = 'test@example.com',
     array $authFailuresByMessageId = [],
-): void
-{
+): void {
     $fake = new FakeGmailApiClient($messages, $accountEmail, $authFailuresByMessageId);
 
     app()->bind(GmailClientFactory::class, static fn (): GmailClientFactory => new class($fake) extends GmailClientFactory

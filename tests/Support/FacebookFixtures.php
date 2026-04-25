@@ -147,7 +147,7 @@ function createFacebookFixtureArchive(string $name, array $dataset): array
         $archivePath.'/your_facebook_activity/comments_and_reactions/likes_and_reactions.json',
         json_encode(array_map(static fn (array $reaction): array => [
             'timestamp' => $reaction['timestamp'],
-            'fbid' => (string) ($reaction['timestamp'].'-reaction'),
+            'fbid' => $reaction['timestamp'].'-reaction',
             'label_values' => [
                 [
                     'label' => 'Reaktion',

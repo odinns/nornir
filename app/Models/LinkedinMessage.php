@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Override;
 
 /**
  * @property string|null $content
@@ -20,6 +21,7 @@ class LinkedinMessage extends Model
 
     protected $guarded = [];
 
+    #[Override]
     protected function casts(): array
     {
         return [

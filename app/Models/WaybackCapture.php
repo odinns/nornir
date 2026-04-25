@@ -7,6 +7,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Override;
 
 /**
  * @property int $id
@@ -29,6 +30,7 @@ class WaybackCapture extends Model
         return $this->belongsTo(WaybackScope::class, 'wayback_scope_id');
     }
 
+    #[Override]
     protected function casts(): array
     {
         return [

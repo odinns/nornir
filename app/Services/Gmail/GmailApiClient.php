@@ -10,11 +10,11 @@ use RuntimeException;
 
 class GmailApiClient implements GmailApiClientInterface
 {
-    private Client $client;
+    private readonly Client $client;
 
     private Gmail $service;
 
-    private string $tokenPath;
+    private readonly string $tokenPath;
 
     public function __construct(string $credentialsPath)
     {

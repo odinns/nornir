@@ -44,7 +44,7 @@ class BuildInstagramSourcePageHandoffAction
         $accountIds = $snapshotIds === []
             ? []
             : DB::table(self::TABLE_PROFILE_SNAPSHOTS)
-                ->whereIn('id', array_map('intval', $snapshotIds))
+                ->whereIn('id', array_map(intval(...), $snapshotIds))
                 ->distinct()
                 ->pluck('instagram_account_id')
                 ->map(static fn (mixed $id): int => (int) $id)
@@ -56,7 +56,7 @@ class BuildInstagramSourcePageHandoffAction
             $accountIds = $postIds === []
                 ? []
                 : DB::table(self::TABLE_POSTS)
-                    ->whereIn('id', array_map('intval', $postIds))
+                    ->whereIn('id', array_map(intval(...), $postIds))
                     ->distinct()
                     ->pluck('instagram_account_id')
                     ->map(static fn (mixed $id): int => (int) $id)

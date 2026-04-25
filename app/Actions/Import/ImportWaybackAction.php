@@ -99,8 +99,10 @@ class ImportWaybackAction
         foreach ($captures as $cdx) {
             $timestamp = (string) ($cdx['timestamp'] ?? '');
             $originalUrl = (string) ($cdx['original'] ?? '');
-
-            if ($timestamp === '' || $originalUrl === '') {
+            if ($timestamp === '') {
+                continue;
+            }
+            if ($originalUrl === '') {
                 continue;
             }
 
