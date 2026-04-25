@@ -11,8 +11,9 @@ use App\Data\Import\GmailImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
-use App\Services\Gmail\GmailClientFactory;
 use App\Services\Gmail\GmailApiClientInterface;
+use App\Services\Gmail\GmailClientFactory;
+use App\Services\Gmail\GmailHtmlBodyTextExtractor;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,7 @@ class ImportGmailAction
         private readonly ImportArtifactWriter $importArtifactWriter,
         private readonly ProvenanceWriter $provenanceWriter,
         private readonly GmailClientFactory $gmailClientFactory,
+        private readonly GmailHtmlBodyTextExtractor $htmlBodyTextExtractor,
         private readonly SourceObservationStore $observationStore,
     ) {}
 
@@ -328,6 +330,8 @@ class ImportGmailAction
 
         $headers = $this->extractHeaders($fullMessage['payload'] ?? []);
         $internalDate = $this->normalizeInternalDate($fullMessage['internalDate'] ?? null);
+        $bodyPlain = $this->extractBody($fullMessage['payload'] ?? [], 'text/plain');
+        $bodyHtml = $this->extractBody($fullMessage['payload'] ?? [], 'text/html');
 
         DB::table(self::TABLE_MESSAGES)->updateOrInsert(
             ['message_id' => $messageId],
@@ -338,8 +342,8 @@ class ImportGmailAction
                 'cc_header' => $headers['Cc'] ?? null,
                 'subject' => $headers['Subject'] ?? null,
                 'snippet' => isset($fullMessage['snippet']) ? (string) $fullMessage['snippet'] : null,
-                'body_plain' => $this->extractBody($fullMessage['payload'] ?? [], 'text/plain'),
-                'body_html' => $this->extractBody($fullMessage['payload'] ?? [], 'text/html'),
+                'body_plain' => $this->bodyPlainForStorage($bodyPlain, $bodyHtml),
+                'body_html' => $bodyHtml,
                 'raw_headers' => json_encode($fullMessage['payload']['headers'] ?? [], JSON_THROW_ON_ERROR),
                 'internal_date' => $internalDate,
                 'message_received_at' => $this->resolveMessageReceivedAt($internalDate, $headers),
@@ -353,6 +357,15 @@ class ImportGmailAction
             'id' => (int) DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id'),
             'wasRecentlyCreated' => $existing === null,
         ];
+    }
+
+    private function bodyPlainForStorage(?string $bodyPlain, ?string $bodyHtml): ?string
+    {
+        if ($bodyPlain !== null && trim($bodyPlain) !== '') {
+            return $bodyPlain;
+        }
+
+        return $this->htmlBodyTextExtractor->extract($bodyHtml);
     }
 
     private function normalizeInternalDate(mixed $internalDate): ?int

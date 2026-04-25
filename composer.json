@@ -9,7 +9,8 @@
         "php": "^8.4",
         "google/apiclient": "^2.0",
         "laravel/framework": "^13.0",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "soundasleep/html2text": "^2.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

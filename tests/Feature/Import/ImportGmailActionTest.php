@@ -103,6 +103,75 @@ it('is idempotent on rerun with the same messages', function (): void {
     expect($result2->summary['reobserved_messages'])->toBe(1);
 });
 
+it('keeps plain body text when html is also present', function (): void {
+    bindFakeGmailClient([
+        buildGmailMessage([
+            'id' => 'msg-plain-wins',
+            'threadId' => 'thread-plain-wins',
+            'payload' => [
+                'mimeType' => 'multipart/alternative',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'sender@example.com'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Plain wins'],
+                ],
+                'body' => ['size' => 0, 'data' => ''],
+                'parts' => [
+                    [
+                        'mimeType' => 'text/plain',
+                        'body' => ['data' => base64_encode("Plain body\n"), 'size' => 11],
+                        'headers' => [],
+                        'parts' => [],
+                    ],
+                    [
+                        'mimeType' => 'text/html',
+                        'body' => ['data' => base64_encode('<p>HTML body</p>'), 'size' => 16],
+                        'headers' => [],
+                        'parts' => [],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
+
+    $message = DB::table('gmail_messages')->where('message_id', 'msg-plain-wins')->first();
+
+    expect($message->body_plain)->toBe("Plain body\n")
+        ->and($message->body_html)->toBe('<p>HTML body</p>');
+});
+
+it('renders html only messages into body plain without changing body html', function (): void {
+    $html = '<p>Hello <strong>Odinn</strong></p><p><a href="https://example.com">Read more</a></p>';
+
+    bindFakeGmailClient([
+        buildGmailMessage([
+            'id' => 'msg-html-only',
+            'threadId' => 'thread-html-only',
+            'payload' => [
+                'mimeType' => 'text/html',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'sender@example.com'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'HTML only'],
+                ],
+                'body' => ['data' => base64_encode($html), 'size' => strlen($html)],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
+
+    $message = DB::table('gmail_messages')->where('message_id', 'msg-html-only')->first();
+
+    expect($message->body_plain)
+        ->toContain('Hello Odinn')
+        ->toContain('Read more')
+        ->and($message->body_html)->toBe($html);
+});
+
 it('skips full message fetches for messages that already exist', function (): void {
     bindFakeGmailClient([buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])]);
 
