@@ -70,7 +70,7 @@ it('prints triage results as json through the command', function (): void {
 });
 
 it('fails clearly when the Gmail credentials path is missing', function (): void {
-    config()->set('gmail_triage.credentials_path', null);
+    config()->set('gmail_triage.credentials_path');
 
     $this->artisan('gmail:triage-important', [
         '--window' => 'last 7 days',

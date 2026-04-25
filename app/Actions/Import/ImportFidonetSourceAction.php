@@ -292,7 +292,7 @@ class ImportFidonetSourceAction
                     $referencedExternalIds,
                     $referencedMsgnos,
                 );
-                $isSynthetic = $rootToken === 'singleton:'.((string) ($message->external_id ?? $message->msgno));
+                $isSynthetic = $rootToken === 'singleton:'.(($message->external_id ?? $message->msgno));
                 $groupKey = $rootToken;
                 $sourceMethod = $isSynthetic ? 'singleton' : 'reply_chain';
             }

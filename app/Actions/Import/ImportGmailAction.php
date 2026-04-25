@@ -400,8 +400,10 @@ class ImportGmailAction
 
         foreach (['X-Mail-Created-Date', 'Date'] as $headerName) {
             $headerValue = $headers[$headerName] ?? null;
-
-            if (! is_string($headerValue) || $headerValue === '') {
+            if (! is_string($headerValue)) {
+                continue;
+            }
+            if ($headerValue === '') {
                 continue;
             }
 

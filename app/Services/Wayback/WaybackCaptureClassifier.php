@@ -35,7 +35,7 @@ final readonly class WaybackCaptureClassifier
             }
         }
 
-        $surface = $this->surface($url, $text);
+        $surface = $this->surface($url);
 
         return [
             'verdict' => 'accepted',
@@ -58,7 +58,7 @@ final readonly class WaybackCaptureClassifier
         ];
     }
 
-    private function surface(string $url, string $text): string
+    private function surface(string $url): string
     {
         if (preg_match('~/(about|om|bio|cv|resume)(?:[/._-]|$)~', $url) === 1) {
             return 'about';

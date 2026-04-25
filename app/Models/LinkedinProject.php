@@ -7,6 +7,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Override;
 
 /**
  * @property CarbonImmutable|null $started_on
@@ -19,6 +20,7 @@ class LinkedinProject extends Model
 
     protected $guarded = [];
 
+    #[Override]
     protected function casts(): array
     {
         return [

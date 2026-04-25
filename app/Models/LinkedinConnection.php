@@ -7,6 +7,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Override;
 
 /**
  * @property CarbonImmutable|null $connected_at
@@ -18,6 +19,7 @@ class LinkedinConnection extends Model
 
     protected $guarded = [];
 
+    #[Override]
     protected function casts(): array
     {
         return [

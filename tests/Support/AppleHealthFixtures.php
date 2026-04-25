@@ -96,19 +96,19 @@ function createAppleHealthFixtureExport(string $name, array $dataset = []): arra
             ];
 
             if (($workout['total_energy_burned'] ?? null) !== null) {
-                $attributes['totalEnergyBurned'] = (string) $workout['total_energy_burned'];
+                $attributes['totalEnergyBurned'] = $workout['total_energy_burned'];
             }
 
             if (($workout['total_energy_burned_unit'] ?? null) !== null) {
-                $attributes['totalEnergyBurnedUnit'] = (string) $workout['total_energy_burned_unit'];
+                $attributes['totalEnergyBurnedUnit'] = $workout['total_energy_burned_unit'];
             }
 
             if (($workout['total_distance'] ?? null) !== null) {
-                $attributes['totalDistance'] = (string) $workout['total_distance'];
+                $attributes['totalDistance'] = $workout['total_distance'];
             }
 
             if (($workout['total_distance_unit'] ?? null) !== null) {
-                $attributes['totalDistanceUnit'] = (string) $workout['total_distance_unit'];
+                $attributes['totalDistanceUnit'] = $workout['total_distance_unit'];
             }
 
             $compiledAttributes = collect($attributes)

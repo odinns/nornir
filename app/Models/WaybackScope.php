@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Override;
 
 /**
  * @property int $id
@@ -25,6 +26,7 @@ class WaybackScope extends Model
         return $this->hasMany(WaybackCapture::class);
     }
 
+    #[Override]
     protected function casts(): array
     {
         return [

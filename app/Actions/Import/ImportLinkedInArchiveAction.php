@@ -815,7 +815,7 @@ class ImportLinkedInArchiveAction
             throw new InvalidArgumentException("Malformed LinkedIn source file [{$file}].");
         }
 
-        $header = fgetcsv($handle);
+        $header = fgetcsv($handle, escape: '\\');
 
         if ($header === false) {
             fclose($handle);
@@ -830,11 +830,13 @@ class ImportLinkedInArchiveAction
 
         $rows = [];
 
-        while (($row = fgetcsv($handle)) !== false) {
-            if ($row === [null] || count(array_filter($row, static fn (mixed $value): bool => is_string($value) && trim($value) !== '')) === 0) {
+        while (($row = fgetcsv($handle, escape: '\\')) !== false) {
+            if ($row === [null]) {
                 continue;
             }
-
+            if (count(array_filter($row, static fn (mixed $value): bool => is_string($value) && trim($value) !== '')) === 0) {
+                continue;
+            }
             $rows[] = $this->combineRow($header, $row, $file);
         }
 
@@ -859,7 +861,7 @@ class ImportLinkedInArchiveAction
         $headers = null;
         $rows = [];
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, escape: '\\')) !== false) {
             if ($headers === null) {
                 if (($row[0] ?? null) === 'First Name' && ($row[1] ?? null) === 'Last Name') {
                     $headers = array_map(
@@ -870,8 +872,10 @@ class ImportLinkedInArchiveAction
 
                 continue;
             }
-
-            if ($row === [null] || count(array_filter($row, static fn (mixed $value): bool => is_string($value) && trim($value) !== '')) === 0) {
+            if ($row === [null]) {
+                continue;
+            }
+            if (count(array_filter($row, static fn (mixed $value): bool => is_string($value) && trim($value) !== '')) === 0) {
                 continue;
             }
 
@@ -948,7 +952,7 @@ class ImportLinkedInArchiveAction
         }
 
         return array_values(array_filter(array_map(
-            static fn (string $url): string => trim($url),
+            trim(...),
             explode(',', $value),
         ), static fn (string $url): bool => $url !== ''));
     }

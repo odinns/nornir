@@ -6,6 +6,7 @@ namespace App\Services\Gmail;
 
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
+use Throwable;
 
 class GmailTriageDateRangeParser
 {
@@ -102,7 +103,7 @@ class GmailTriageDateRangeParser
     {
         try {
             return CarbonImmutable::parse($input, $this->timezone());
-        } catch (\Throwable) {
+        } catch (Throwable) {
             throw $this->invalidDateInput($input);
         }
     }

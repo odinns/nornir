@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\LinkedinPerson;
+
 require_once __DIR__.'/../../Support/LinkedInFixtures.php';
 
 use App\Actions\Import\ImportLinkedInArchiveAction;
@@ -81,7 +83,7 @@ it('traverses linkedin importer eloquent graph over imported archive data', func
 
     expect($profileSnapshot->person)->not->toBeNull();
 
-    /** @var \App\Models\LinkedinPerson $profilePerson */
+    /** @var LinkedinPerson $profilePerson */
     $profilePerson = $profileSnapshot->person;
 
     expect($profilePerson->display_name)->toBe('Odinn Adalsteinsson')

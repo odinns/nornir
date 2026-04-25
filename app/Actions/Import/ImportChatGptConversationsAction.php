@@ -30,8 +30,8 @@ class ImportChatGptConversationsAction
         $execution = $this->importRunExecutor->execute(
             dispatchPayload: $dispatchPayload,
             operation: 'chatgpt-import',
-            import: fn ($run): array => DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run, $progress)),
-            writeArtifacts: function ($run, array $summary) use ($dispatchPayload): void {
+            import: fn (Run $run): array => DB::transaction(fn (): array => $this->importFiles($dispatchPayload, $run, $progress)),
+            writeArtifacts: function (Run $run, array $summary) use ($dispatchPayload): void {
                 $this->writeArtifacts($run, $dispatchPayload, $summary);
             },
         );
@@ -222,7 +222,7 @@ class ImportChatGptConversationsAction
 
         $files = glob(rtrim($dispatchPayload->sourceLocator, '/').'/'.$pattern);
 
-        return $files === false ? [] : array_values(array_filter($files, 'is_file'));
+        return $files === false ? [] : array_values(array_filter($files, is_file(...)));
     }
 
     private function isValidConversation(mixed $conversation): bool
@@ -400,8 +400,10 @@ class ImportChatGptConversationsAction
             }
 
             $assetPointer = $part['asset_pointer'] ?? null;
-
-            if (! is_string($assetPointer) || $assetPointer === '') {
+            if (! is_string($assetPointer)) {
+                continue;
+            }
+            if ($assetPointer === '') {
                 continue;
             }
 

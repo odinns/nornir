@@ -9,7 +9,6 @@ use App\Actions\Intake\RecordIntakeAction;
 use App\Console\Commands\Concerns\InteractsWithImportConsole;
 use App\Data\Intake\RecordIntakeData;
 use Illuminate\Console\Command;
-use InvalidArgumentException;
 
 class ImportMediaCollectionCommand extends Command
 {

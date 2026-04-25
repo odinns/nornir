@@ -307,7 +307,7 @@ class ImportFacebookArchiveAction
                     outputTarget: 'facebook_posts:'.$postRow['id'],
                     claimKey: 'imported-post',
                     evidenceType: 'source-file',
-                    evidenceRef: basename($path).'#post:'.$canonicalKey,
+                    evidenceRef: basename((string) $path).'#post:'.$canonicalKey,
                 ));
 
                 $count++;
@@ -438,7 +438,7 @@ class ImportFacebookArchiveAction
                     outputTarget: 'facebook_reactions:'.$reactionRow['id'],
                     claimKey: 'imported-reaction',
                     evidenceType: 'source-file',
-                    evidenceRef: basename($path).'#reaction:'.$canonicalKey,
+                    evidenceRef: basename((string) $path).'#reaction:'.$canonicalKey,
                 ));
 
                 $count++;
