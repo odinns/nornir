@@ -10,13 +10,18 @@ uses(RefreshDatabase::class);
 
 it('dry runs without writing body plain values', function (): void {
     insertGmailBackfillMessage('msg-001', null, '<p>Hello <strong>Odinn</strong></p>');
+    insertGmailBackfillMessage('msg-empty', null, '<div><br></div>');
 
     $this->artisan('gmail:backfill-body-plain', ['--dry-run' => true])
-        ->expectsOutputToContain('Candidates: 1')
-        ->expectsOutputToContain('Dry run: no rows updated.')
+        ->expectsOutputToContain('Candidates: 2')
+        ->expectsOutputToContain('Would update: 1')
+        ->expectsOutputToContain('Would skip empty: 1')
+        ->expectsOutputToContain('Failed conversions: 0')
+        ->expectsOutputToContain('Dry run: rendered candidates but wrote no rows.')
         ->assertSuccessful();
 
     expect(DB::table('gmail_messages')->where('message_id', 'msg-001')->value('body_plain'))->toBeNull();
+    expect(DB::table('gmail_messages')->where('message_id', 'msg-empty')->value('body_plain'))->toBeNull();
 });
 
 it('fills only missing plain bodies and does not overwrite existing text', function (): void {
@@ -69,6 +74,33 @@ it('rolls back a failed batch and stops', function (): void {
     });
 
     $this->artisan('gmail:backfill-body-plain', ['--chunk' => 2])
+        ->expectsOutputToContain('Failed batch:')
+        ->assertFailed();
+
+    expect(DB::table('gmail_messages')->whereNotNull('body_plain')->count())->toBe(0);
+});
+
+it('dry run reports conversion failures and writes nothing', function (): void {
+    insertGmailBackfillMessage('msg-ok', null, '<p>Safe text</p>');
+    insertGmailBackfillMessage('msg-fail', null, '<p>Explode text</p>');
+
+    app()->bind(GmailHtmlBodyTextExtractor::class, static fn (): GmailHtmlBodyTextExtractor => new class extends GmailHtmlBodyTextExtractor
+    {
+        public function extract(?string $html): ?string
+        {
+            if ($html !== null && str_contains($html, 'Explode')) {
+                throw new RuntimeException('Extractor failed.');
+            }
+
+            return parent::extract($html);
+        }
+    });
+
+    $this->artisan('gmail:backfill-body-plain', ['--dry-run' => true, '--chunk' => 2])
+        ->expectsOutputToContain('Candidates: 2')
+        ->expectsOutputToContain('Would update: 1')
+        ->expectsOutputToContain('Would skip empty: 0')
+        ->expectsOutputToContain('Failed conversions: 1')
         ->expectsOutputToContain('Failed batch:')
         ->assertFailed();
 

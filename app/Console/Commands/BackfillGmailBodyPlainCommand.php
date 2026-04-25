@@ -44,15 +44,13 @@ class BackfillGmailBodyPlainCommand extends Command
 
         $this->line('Candidates: '.$candidateCount);
 
-        if ($this->option('dry-run')) {
-            $this->line('Dry run: no rows updated.');
-
-            return self::SUCCESS;
-        }
-
         $updated = 0;
+        $wouldUpdate = 0;
+        $wouldSkipEmpty = 0;
+        $failedConversions = 0;
         $processed = 0;
         $lastId = 0;
+        $isDryRun = (bool) $this->option('dry-run');
 
         while ($limit === null || $processed < $limit) {
             $remaining = $limit === null ? $chunkSize : min($chunkSize, $limit - $processed);
@@ -70,6 +68,43 @@ class BackfillGmailBodyPlainCommand extends Command
 
             if ($rows->isEmpty()) {
                 break;
+            }
+
+            if ($isDryRun) {
+                $batchFailedConversions = 0;
+
+                foreach ($rows as $row) {
+                    try {
+                        $bodyPlain = $this->htmlBodyTextExtractor->extract($row->body_html);
+                    } catch (Throwable) {
+                        $batchFailedConversions++;
+
+                        continue;
+                    }
+
+                    if ($bodyPlain === null) {
+                        $wouldSkipEmpty++;
+
+                        continue;
+                    }
+
+                    $wouldUpdate++;
+                }
+
+                $failedConversions += $batchFailedConversions;
+                $processed += $rows->count();
+                $lastId = (int) $rows->last()->id;
+
+                if ($batchFailedConversions > 0) {
+                    $this->error($this->failedBatchMessage($rows));
+                    $this->line('Would update: '.$wouldUpdate);
+                    $this->line('Would skip empty: '.$wouldSkipEmpty);
+                    $this->line('Failed conversions: '.$failedConversions);
+
+                    return self::FAILURE;
+                }
+
+                continue;
             }
 
             try {
@@ -103,19 +138,22 @@ class BackfillGmailBodyPlainCommand extends Command
                     return $batchUpdated;
                 });
             } catch (Throwable $exception) {
-                $this->error(sprintf(
-                    'Failed batch: ids %d-%d, rows %d. %s',
-                    (int) $rows->first()->id,
-                    (int) $rows->last()->id,
-                    $rows->count(),
-                    $exception->getMessage(),
-                ));
+                $this->error($this->failedBatchMessage($rows, $exception->getMessage()));
 
                 return self::FAILURE;
             }
 
             $processed += $rows->count();
             $lastId = (int) $rows->last()->id;
+        }
+
+        if ($isDryRun) {
+            $this->line('Would update: '.$wouldUpdate);
+            $this->line('Would skip empty: '.$wouldSkipEmpty);
+            $this->line('Failed conversions: '.$failedConversions);
+            $this->line('Dry run: rendered candidates but wrote no rows.');
+
+            return self::SUCCESS;
         }
 
         $this->line('Updated: '.$updated);
@@ -166,5 +204,17 @@ class BackfillGmailBodyPlainCommand extends Command
             })
             ->whereNotNull('body_html')
             ->whereRaw(self::NON_BLANK_BODY_HTML_SQL);
+    }
+
+    private function failedBatchMessage(mixed $rows, ?string $reason = null): string
+    {
+        $message = sprintf(
+            'Failed batch: ids %d-%d, rows %d.',
+            (int) $rows->first()->id,
+            (int) $rows->last()->id,
+            $rows->count(),
+        );
+
+        return $reason === null ? $message : $message.' '.$reason;
     }
 }
