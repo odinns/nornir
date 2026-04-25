@@ -36,7 +36,7 @@ Receive bounded source material or source descriptors and turn them into tracked
 - every intake gets a source type and scope
 - every intake records where the source actually lives
 - local file-backed intake may point at one explicit path or a bounded list of explicit root paths
-- those paths may live outside the Nornir repo, for example a sibling project checkout such as `../llm-wiki`
+- those paths may live outside the Nornir repo, for example a sibling source-archive directory such as `../personal-archives`
 - API-backed intake records must capture the access mode, account or connection identity, scope expression, and the timestamp or cursor boundary used for the fetch
 - intake must persist enough source-descriptor detail to replay or audit an incremental sync without guessing
 - external collections may be referenced without copying files

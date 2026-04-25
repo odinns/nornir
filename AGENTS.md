@@ -2,18 +2,16 @@
 
 ## Project Structure & Module Organization
 
-This repository currently holds the system and implementation specs for Nornir. Start with [docs/nornir-spec.md](/Users/odinn/Projects/odinns/nornir/docs/nornir-spec.md), then read [docs/specifications/README.md](/Users/odinn/Projects/odinns/nornir/docs/specifications/README.md). Detailed backend contracts live in `docs/specifications/`, including subsystem specs like `muninn-biography-pipeline.md` and source importer specs such as `chatgpt-to-nornir-importer.md`.
+This repository holds the Laravel implementation and specs for Nornir. Start with [docs/nornir-spec.md](/Users/odinn/Projects/odinns/nornir/docs/nornir-spec.md), then read [docs/specifications/README.md](/Users/odinn/Projects/odinns/nornir/docs/specifications/README.md). Detailed backend contracts live in `docs/specifications/`, including subsystem specs like `muninn-biography-pipeline.md` and source importer specs such as `chatgpt-to-nornir-importer.md`.
 
-Planned application code MUST follow Laravel conventions: `app/`, `config/`, `database/`, `resources/`, `routes/`, and `tests/`. Generated and source data must stay out of git: `data/` and `wiki/` are ignored. Use `data/sources/` for local non-versioned source material, from single files like CVs and personality tests to larger dumps such as a Tantraviking site snapshot.
+Application code MUST follow Laravel conventions: `app/`, `config/`, `database/`, `resources/`, `routes/`, and `tests/`. Generated and source data must stay out of git: `data/` and `wiki/` are ignored. Use `data/sources/` for local non-versioned source material, from single files like CVs and personality tests to larger dumps such as a Tantraviking site snapshot.
 
 ## Build, Test, and Development Commands
 
-There is no runnable Laravel app yet, so current work is documentation-first.
+This is a runnable Laravel app. Current work is backend-first and CLI-first; Mimir UI work is still deferred.
 
 - `rg -n "term" docs/specifications` searches the spec set quickly.
 - `git status --short` shows pending changes.
-
-Once the app scaffold exists, use these defaults:
 
 - `composer test` runs the Pest suite.
 - `./vendor/bin/pest` runs all tests.
@@ -84,7 +82,7 @@ Push back on requests that conflict with the specs, blur important boundaries, o
 
 Use Runes as the active backlog for Nornir. Load the external skill at `/Users/odinn/Projects/runes/SKILL.md` for task capture, task updates, attachments, and project bootstrap, and treat that skill as the source of truth for writing into the Runes repo.
 
-The canonical project backlog lives in `/Users/odinn/Projects/runes/nornir/`. `docs/plans/` is legacy planning history, not the live roadmap.
+The canonical project backlog lives in `/Users/odinn/Projects/runes/nornir/`. Legacy private planning history belongs outside the public repo under ignored local storage, not in `docs/`.
 
 ## Execution workflow
 

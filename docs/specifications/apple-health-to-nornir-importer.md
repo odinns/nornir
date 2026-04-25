@@ -12,7 +12,6 @@ Apple Health `eksport.xml` from an export directory or direct file path.
 
 - source path
 - optional direct XML file path instead of directory
-- dry-run or validate-only flags when the importer framework grows into them
 
 ## Output structure
 
@@ -50,9 +49,10 @@ Preserve Apple Health record types, workout activity types, source app metadata,
 - timestamp normalization is explicit
 - handoff scope derives from canonical rows only
 
-## Wiki compilation handoff
+## Source handoff
 
 - source pages compile from canonical Apple Health rows
+- handoff scope derives from source sets and canonical row counts
 
 ## Forbidden behavior
 

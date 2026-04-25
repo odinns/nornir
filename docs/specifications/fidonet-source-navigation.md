@@ -2,7 +2,7 @@
 
 ## Start here
 
-Primary input is the existing canonical FidoNet database rather than a pretend archive.
+Primary input is the existing canonical GoldED/FidoNet database rather than a pretend archive. That companion source is not public yet.
 
 ## Canonical source
 

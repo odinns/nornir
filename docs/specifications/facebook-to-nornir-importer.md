@@ -12,7 +12,6 @@ Facebook export archive JSON under approved category roots.
 
 - archive path
 - optional category or thread scope filters later if needed
-- dry-run or validate-only flags
 
 ## Output structure
 
@@ -76,9 +75,10 @@ Preserve:
 - attachment reference integrity
 - timestamp conversion matches the source epoch values without local-time drift
 
-## Wiki compilation handoff
+## Source handoff
 
 - source pages and evidence bundles derive from MySQL rows for Messenger, profile, social graph, and authored activity
+- handoff is built from canonical `facebook_*` rows and observation boundaries
 
 ## Forbidden behavior
 

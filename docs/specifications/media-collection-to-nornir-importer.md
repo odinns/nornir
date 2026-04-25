@@ -6,6 +6,8 @@ Bridge photo and video records from the `monique` MySQL database into Nornir's c
 `media_files` table so they can support biographical timeline evidence without copying
 the files or re-scanning the filesystem.
 
+`monique` / mostly-unique is an unpublished companion project at the moment. Public users should treat this importer as an external-database bridge pattern until that source is available.
+
 ## Source
 
 `monique` MySQL database (read-only). Connection details come from the mostly-unique
@@ -28,8 +30,8 @@ Resource forks (`._`) are excluded by the basename filter.
 import:media-collection
   {source}          Path to the mostly-unique app .env file
   {--volume=}      Volume label to restrict import (e.g. LIMA-2). Omit = all volumes.
+  {--path-prefix=} Restrict import to directory paths under this absolute prefix.
   {--dry-run}      Report counts without writing
-  {--validate-only} Verify connection and scope without importing
 ```
 
 ## Canonical storage

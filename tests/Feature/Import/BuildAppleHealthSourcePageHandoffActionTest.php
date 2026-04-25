@@ -97,7 +97,7 @@ it('builds the apple health handoff from canonical rows without rescanning the r
     $fixture = createAppleHealthFixtureExport('apple-health-handoff-no-raw', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '99',

@@ -13,7 +13,6 @@ Phase 1 is archive-only. No scraping. No API mode.
 ## Inputs
 
 - archive path
-- dry-run or validate-only flags later if needed
 
 ## Output structure
 
@@ -92,7 +91,7 @@ Do not pretend the source gives a reliable global LinkedIn account id. In phase 
 - validate message identity and conversation grouping remain stable across reruns
 - validate timestamp parsing per file family
 
-## Wiki compilation handoff
+## Source handoff
 
 - source pages and evidence bundles derive from canonical rows only
 - handoff is built from canonical `linkedin_*` rows, not by rescanning raw CSV files

@@ -100,7 +100,7 @@ class AuthGmailCommand extends Command
         $this->line("Token path: {$tokenPath}");
         $this->line('');
         $this->line('You can now run:');
-        $this->line("  php artisan import:gmail {$credentialsPath} --account=YOUR_EMAIL --query=\"from:me\"");
+        $this->line("  php artisan import:gmail {$credentialsPath} --query=\"from:me\"");
 
         return self::SUCCESS;
     }

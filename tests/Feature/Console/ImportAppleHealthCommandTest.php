@@ -57,7 +57,7 @@ it('stays quiet when quiet mode is requested', function (): void {
     $fixture = createAppleHealthFixtureExport('apple-health-console-quiet', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '88',

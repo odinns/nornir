@@ -11,7 +11,6 @@ Twitter/X export archive datasets under an approved archive root, validated agai
 ## Inputs
 
 - archive path
-- optional validate-only or dry-run flags
 
 For the current phase-1 slice, the importer should expect and use these paths when present:
 
@@ -84,7 +83,7 @@ Phase 1 must preserve:
 - validate archive-relative media references and report missing files clearly
 - preserve original source timestamp strings and normalize canonical datetimes to UTC without local-time drift
 
-## Wiki compilation handoff
+## Source handoff
 
 - source pages and timeline evidence compile from canonical tweet, note-tweet, and profile rows only
 - likes, social graph, and deferred archive datasets must not leak into the handoff during phase 1

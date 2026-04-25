@@ -2,16 +2,15 @@
 
 ## Goal
 
-Provide a future-safe importer for bounded Instagram archive data without pretending the source is broader or cleaner than it is.
+Import bounded Instagram archive data without pretending the source is broader or cleaner than it is.
 
 ## Canonical source
 
-Supported archive export or official API response.
+Supported archive export. Official API response support is deferred.
 
 ## Inputs
 
 - bounded archive root path or API scope config
-- dry-run or validate-only flags
 
 For the current archive-backed phase-1 slice, the importer should expect and use these paths when present:
 
@@ -48,8 +47,8 @@ Do not widen the phase-1 data model to include every archive surface just becaus
 
 ## Import rules
 
-- archive-first when possible
-- API second when stable and permitted
+- archive-first
+- API support only when stable and permitted in a later slice
 - handle sparse or tiny datasets gracefully
 - use file-specific extractors for known archive slices instead of a generic archive parser
 - import account metadata, profile snapshot fields, post captions, timestamps, and media refs from the accepted phase-1 files
@@ -73,7 +72,7 @@ Do not widen the phase-1 data model to include every archive surface just becaus
 - allow partial archive import when only the supported profile and post slices are present
 - validate referenced media paths relative to the accepted archive root and report missing paths clearly
 
-## Wiki compilation handoff
+## Source handoff
 
 - produce source pages and timeline-supporting evidence only when data exists
 
@@ -97,5 +96,5 @@ For phase 1, handoff should be limited to imported account/profile and post evid
 ## Acceptance checks
 
 - Instagram phase 1 can be implemented from this spec without inventing source policy
-- Instagram can be added later without redesigning the importer framework
+- Instagram can evolve later without redesigning the importer framework
 - the importer can process a sparse archive containing only profile and post slices
