@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a05020ff53bf46e64e18457ed44c80cb",
+    "content-hash": "ed125a106a460d5827247ff78691fbc2",
     "packages": [
         {
             "name": "brick/math",
@@ -7717,6 +7717,67 @@
                 "source": "https://github.com/odinns/coding-style/tree/1.0.0"
             },
             "time": "2026-04-25T09:41:13+00:00"
+        },
+        {
+            "name": "odinns/phpstan-pest-this",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/odinns/phpstan-pest-this.git",
+                "reference": "91e0fbeea665971f306d9a0e76e3d8b121998d08"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/odinns/phpstan-pest-this/zipball/91e0fbeea665971f306d9a0e76e3d8b121998d08",
+                "reference": "91e0fbeea665971f306d9a0e76e3d8b121998d08",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2",
+                "phpstan/phpstan": "^2.1.38"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.5"
+            },
+            "bin": [
+                "tools/generate-pest-proxy.php"
+            ],
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Odinns\\PhpStanPestThis\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Odinn Adalsteinsson",
+                    "homepage": "https://github.com/odinns"
+                }
+            ],
+            "description": "PHPStan extensions to infer Pest closure $this type from test file mappings.",
+            "homepage": "https://github.com/odinns/phpstan-pest-this",
+            "keywords": [
+                "PHPStan",
+                "pest",
+                "static-analysis",
+                "testing"
+            ],
+            "support": {
+                "issues": "https://github.com/odinns/phpstan-pest-this/issues",
+                "source": "https://github.com/odinns/phpstan-pest-this"
+            },
+            "time": "2026-02-13T19:45:34+00:00"
         },
         {
             "name": "pestphp/pest",

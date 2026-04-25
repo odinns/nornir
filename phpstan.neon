@@ -11,6 +11,37 @@ parameters:
         - routes
         - tests
     tmpDir: storage/phpstan
+    pestClosureThisTypeMap:
+        -
+            pathContains: '/tests/Feature/'
+            class: Tests\TestCase
+        -
+            pathContains: '/tests/Unit/'
+            class: Tests\TestCase
     excludePaths:
         analyse:
             - routes/console.php
+
+parametersSchema:
+    pestClosureThisTypeMap: listOf(
+        structure([
+            pathContains: string()
+            class: string()
+        ])
+    )
+
+services:
+    -
+        class: Odinns\PhpStanPestThis\PestClosureThisTypeResolver
+        arguments:
+            pathToClassMap: %pestClosureThisTypeMap%
+
+    -
+        class: Odinns\PhpStanPestThis\PestFunctionParameterClosureThisExtension
+        tags:
+            - phpstan.functionParameterClosureThisExtension
+
+    -
+        class: Odinns\PhpStanPestThis\PestMethodParameterClosureThisExtension
+        tags:
+            - phpstan.methodParameterClosureThisExtension
