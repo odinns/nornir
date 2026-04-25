@@ -10,9 +10,9 @@ Local Apple Messages `chat.db` database or equivalent structured export.
 
 ## Inputs
 
-- source path
-- optional source-set label
-- dry-run or validate-only flags
+- source path to `chat.db` or a directory containing `chat.db`
+- optional `--attachments-root=`
+- optional repeated `--contacts-db=`
 
 ## Output structure
 
@@ -26,6 +26,7 @@ Local Apple Messages `chat.db` database or equivalent structured export.
 - `apple_messages_participants`
 - `apple_messages_conversations`
 - `apple_messages_attachments`
+- source observation records as required by the current schema
 
 ## Data model
 
@@ -46,9 +47,10 @@ Preserve message ids, timestamps, direction, participant identifiers, and attach
 - participant mapping sanity
 - attachment reference handling
 
-## Wiki compilation handoff
+## Source handoff
 
 - source pages and Muninn evidence derive from canonical message rows
+- handoff scopes are resolved from canonical rows, not by rescanning `chat.db`
 
 ## Forbidden behavior
 

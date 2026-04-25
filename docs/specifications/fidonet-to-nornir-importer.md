@@ -6,7 +6,7 @@ Integrate canonical FidoNet message data into Nornir with derived cleanup and th
 
 ## Canonical source
 
-Existing FidoNet database.
+Existing GoldED/FidoNet database. This companion source is not public yet.
 
 ## Inputs
 
@@ -44,7 +44,7 @@ Track canonical message ids, area identity, cleanup views, and thread projection
 - canonical-id preservation
 - derived thread integrity
 
-## Wiki compilation handoff
+## Source handoff
 
 - source and evidence pages build from canonical references plus derived views
 

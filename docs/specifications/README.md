@@ -2,6 +2,8 @@
 
 This directory turns the top-level system spec into implementation-grade contracts.
 
+Nornir is no longer documentation-only. The current app has working CLI importers, canonical MySQL tables, intake/run/provenance plumbing, source handoff builders, and Scout search projection. Treat these specs as living contracts: when implementation changes source scope, table shape, command behavior, or handoff boundaries, update the relevant spec in the same slice.
+
 Read in this order:
 
 1. `spec-conventions.md`
@@ -15,6 +17,20 @@ Read in this order:
 9. subsystem specs
 10. source navigation and importer specs
 
+Implemented importer families today:
+
+- ChatGPT exports
+- Facebook exports
+- X/Twitter exports
+- LinkedIn exports
+- Instagram exports
+- Gmail API
+- Apple Messages `chat.db`
+- Apple Health `export.xml` / `eksport.xml`
+- Wayback Machine CDX captures
+- media collection bridge from the unpublished Monique/mostly-unique database
+- FidoNet bridge from an unpublished GoldED/FidoNet database
+
 Ground rules:
 
 - MySQL is the canonical working store for imported source material unless a source already has a justified external canonical database.
@@ -23,4 +39,6 @@ Ground rules:
 - `data/` is non-versioned operational output, including local source drops under `data/sources/`.
 - external raw material stays outside git.
 - importer means source-specific normalization into Nornir.
-- Mimir is intentionally last.
+- source handoffs are bounded compile/evidence contracts over canonical rows.
+- Mimir is intentionally last; current operation is CLI/backend-first.
+- Monique/media-collection and FidoNet are real local integrations, but public users need the companion databases before those commands are useful.

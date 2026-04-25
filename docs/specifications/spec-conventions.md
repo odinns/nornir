@@ -74,7 +74,7 @@ Use this order:
 7. Import rules
 8. Incremental behavior
 9. Validation
-10. Wiki compilation handoff
+10. Source handoff
 11. Forbidden behavior
 12. Review checklist
 13. Acceptance checks

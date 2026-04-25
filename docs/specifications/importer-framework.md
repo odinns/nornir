@@ -14,14 +14,14 @@ Define how source-specific importers plug into Nornir without collapsing into on
 
 - intake handoff payloads
 - source-local configuration
-- optional dry-run and validation mode flags
+- source-local dry-run and validation mode flags when implemented
 
 ## Outputs
 
 - canonical normalized rows in MySQL
 - run records
 - artifacts under `data/imports/` and `data/runs/`
-- wiki compilation handoff payloads
+- bounded source/evidence handoff payloads
 
 ## Storage and state
 
@@ -52,15 +52,15 @@ Define how source-specific importers plug into Nornir without collapsing into on
 - source-scoped import command
 - shared run recorder
 - validation result contract
-- wiki handoff contract
+- source handoff contract
 
-### Wiki handoff contract
+### Source handoff contract
 
 An importer handoff must identify:
 
 - source type
 - canonical row set or scope to compile from
-- whether the handoff is for source pages, evidence bundles, or both
+- whether the handoff is for source pages, evidence bundles, review artifacts, or a narrower downstream slice
 - the owning run id
 
 ## Validation and testing

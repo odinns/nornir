@@ -111,7 +111,7 @@ it('reruns idempotently for the same apple health export', function (): void {
     $fixture = createAppleHealthFixtureExport('apple-health-import-repeat', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '1234',
@@ -149,7 +149,7 @@ it('keeps older canonical rows when a later export is incomplete', function (): 
         'records' => [
             [
                 'type' => 'HKQuantityTypeIdentifierStepCount',
-                'source_name' => 'Odinns iPhone Thirteen Pro',
+                'source_name' => 'Sample iPhone Thirteen Pro',
                 'source_version' => '17.4',
                 'unit' => 'count',
                 'value' => '100',
@@ -159,7 +159,7 @@ it('keeps older canonical rows when a later export is incomplete', function (): 
             ],
             [
                 'type' => 'HKQuantityTypeIdentifierStepCount',
-                'source_name' => 'Odinns iPhone Thirteen Pro',
+                'source_name' => 'Sample iPhone Thirteen Pro',
                 'source_version' => '17.4',
                 'unit' => 'count',
                 'value' => '200',
@@ -172,7 +172,7 @@ it('keeps older canonical rows when a later export is incomplete', function (): 
     $truncatedFixture = createAppleHealthFixtureExport('apple-health-import-truncated', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '200',
@@ -291,7 +291,7 @@ it('records importer artifacts and provenance links for imported apple health ro
     $fixture = createAppleHealthFixtureExport('apple-health-import-artifacts', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '345',

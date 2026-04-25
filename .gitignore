@@ -17,6 +17,9 @@
 /public/hot
 /public/storage
 /data
+/docs/data
+/docs/plans
+/docs/*bug-report*.md
 /wiki
 /storage/*.key
 /storage/pail

@@ -4,7 +4,7 @@
 
 The media collection is a set of photo and video archives spread across multiple external
 drives. It has already been indexed by the `mostly-unique` tool into a MySQL database
-called `monique`. Nornir reads from that database — it does not walk the filesystem.
+called `monique`. Nornir reads from that database — it does not walk the filesystem. That companion project is not public yet.
 
 ## Canonical source
 
@@ -50,7 +50,7 @@ Event directory basenames are inconsistent. Known patterns:
 | `YYYY-MM-DD` | `2007-03-24` |
 | `YYYY-Mmm Label` | `2011-xxxx` |
 | Label only | `Lesbos 2013`, `SD Kort 1 4GB` |
-| Device name | `Odinns iPhone 5`, `Jasmins iPhone 4S` |
+| Device name | `Sample iPhone 5`, `Family iPhone 4S` |
 | iOS hash | `860OKMZO` |
 
 Date extraction from basename is opportunistic. A null `event_date` is normal and not an error.
@@ -84,8 +84,8 @@ Most file basenames are camera-sequential and carry no useful information
 (`P1120883.JPG`, `DSC_0001.JPG`, `IMG_2700.JPG`). A meaningful minority encode
 real signal — people's names, event descriptions, or descriptive labels:
 
-- `rhondacort-and-odinnsorensen-200x200.jpg`
-- `podinn15.jpg`
+- `person-a-and-person-b-200x200.jpg`
+- `portrait15.jpg`
 - `midsommerfest 2010.png`
 
 Basenames must be stored verbatim. The compilation layer is responsible for

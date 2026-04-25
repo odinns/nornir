@@ -1,498 +1,369 @@
-# Nornir — System Specification (v1)
+# Nornir System Specification
 
-## purpose
+Nornir is a Laravel-based system for importing, processing, understanding, and presenting personal source material.
 
-Nornir is a Laravel-based system for ingesting, processing, understanding, and presenting personal source material.
+It replaces ad-hoc archive scripts with a coherent local application that supports:
 
-It replaces ad-hoc scripts with a coherent application that supports:
+- bounded intake of private and public source material
+- source-specific import into canonical MySQL tables
+- auditable runs, artifacts, and provenance links
+- cross-source search
+- evidence-bound biography reconstruction
+- evidence-supported personality and pattern work
+- eventual web presentation through Mimir
 
-- intake of raw material
-- structured ingestion
-- biography reconstruction
-- personality modeling
-- query and exploration
-- visual presentation of timelines, connections, and arcs
+Nornir is not a wiki. `wiki/` is generated output. The system of record is the database plus the original source archives and external references.
 
-Nornir is not a wiki.
-It is a system that continuously processes and relates life data over time.
+## Current Implementation
 
----
+The current app is backend-first and CLI-first.
 
-# core concepts
+Implemented:
 
-## Nornir
-The overall system.
+- Laravel 13 application
+- MySQL canonical storage
+- intake records
+- run/event/artifact/provenance infrastructure
+- importer commands and actions
+- source handoff builders
+- Scout/Meilisearch search projection
+- Gmail OAuth/API import and triage
+- Pest feature/unit/architecture tests
+- PHPStan, Pint, and Rector gates
+
+Not yet implemented as a polished product surface:
+
+- Mimir web UI
+- durable Muninn biography workbench
+- full Huginn personality synthesis
+- generic public importers for Monique and FidoNet companion databases
+
+## Core Concepts
+
+### Nornir
+
+The overall application.
 
 Responsible for:
+
 - orchestration
 - lifecycle management
-- coordinating flows across all subsystems
+- coordinating source import, search, evidence, and presentation flows
 
----
+### Intake
 
-## Muninn (biography)
+The shallow boundary where source material enters the system.
 
-The evidence-based layer.
+Intake records:
+
+- source type
+- access mode
+- concrete source locator
+- accepted scope
+- importer options
+- review manifest path
+
+Intake does not normalize source content. It records what was accepted and hands a bounded payload to the importer.
+
+### Import
+
+The source-specific normalization layer.
+
+Importers:
+
+- read one accepted source shape
+- preserve source ids and timestamps
+- write canonical source-prefixed tables
+- record import runs and artifacts
+- remain idempotent across reruns
+- avoid destructive deletion when later exports are thinner
+- emit enough scope for a handoff
+
+Current source families:
+
+- ChatGPT
+- Facebook
+- X/Twitter
+- LinkedIn
+- Instagram
+- Gmail
+- Apple Messages
+- Apple Health
+- Wayback Machine
+- media collection bridge from Monique/mostly-unique
+- FidoNet bridge from GoldED/FidoNet
+
+### Source Handoffs
+
+A handoff is a bounded compile/evidence contract over canonical rows.
+
+It says:
+
+- which source is involved
+- which run owns the slice
+- which canonical tables matter
+- which row set or source-set ids define the boundary
+- how many rows are inside the slice
+
+The handoff is not source data. It is the label that lets later biography tooling work from the right canonical slice without rescanning raw archives or querying too broadly.
+
+### Muninn
+
+The evidence-based biography layer.
 
 Responsible for:
-- sources
-- extraction
+
+- dated facts
 - events
-- timeline
-- people
-- places
-- arcs
-- provenance
-
-Principles:
-- all outputs must be traceable to sources
-- interpretation is constrained
-- chronology is primary
-
----
-
-## Huginn (personality)
-
-The interpretive layer.
-
-Responsible for:
-- patterns
-- preferences
-- behaviors
-- working style
-- recurring themes
-- evolving self-models
-
-Principles:
-- interpretation is allowed
-- outputs must be supported by evidence
-- synthesis across sources is expected
-
----
-
-## Mimir (web layer)
-
-The presentation and interaction surface.
-
-Responsible for:
-- UI
-- query surface
-- assembling data for views
-- exposing system knowledge to the user
-
-Mimir does not contain core domain logic.
-
----
-
-## Heimdallr (external access)
-
-The controlled boundary to external sources.
-
-Responsible for:
-- reading external data sources
-- searching remote/project contexts
-- fetching bounded content
-- enforcing access rules
-- passing data into intake
-
-Principles:
-- read-only in v1
-- strictly bounded access
-- explicit allow rules
-- no uncontrolled traversal
-
----
-
-# system lifecycle
-
-## 1. intake
-
-Raw material enters the system.
-
-Examples:
-- file imports
-- archive uploads
-- synced directories
-- externally fetched material
-
-Output:
-- intake records
-- stored raw files
-- metadata
-
----
-
-## 2. import
-
-Raw material is normalized into internal records.
-
-Examples:
-- SMS message
-- email
-- document
-- conversation fragment
-
-Output:
-- source items
-- normalized content
-- import runs
-- metadata
-
-Notes:
-- imported raw and normalized source truth lives canonically in MySQL
-- generated markdown remains on disk
-- raw source material and generated outputs are not version controlled
-- local `data/sources/` may hold non-versioned source material such as archives, CVs, personality tests, or site dumps
-
----
-
-## 3. Muninn processing
-
-Biography extraction.
-
-Produces:
-- events
-- time ranges
+- timeline candidates
 - people
 - places
 - arcs
 - relationships
+- evidence bundles
 
-All outputs must maintain provenance.
+Principles:
 
----
+- all claims must be traceable to sources
+- chronology is primary
+- contradictions are surfaced, not smoothed away
+- interpretation is constrained
 
-## 4. Huginn processing
+### Huginn
 
-Personality analysis.
+The interpretive personality and pattern layer.
 
-Produces:
-- observations
-- patterns
-- behavioral models
+Responsible for:
+
+- recurring behaviors
+- preferences
+- working style
+- personal patterns
 - thematic clusters
+- evolving self-models
 
-Outputs must link back to supporting evidence.
+Principles:
 
----
+- interpretation is allowed
+- outputs must be evidence-supported
+- synthesis across sources is expected
+- Huginn must not overwrite Muninn's factual boundary
 
-## 5. presentation (Mimir)
+### Mimir
 
-System is exposed through a web interface.
+The eventual presentation and interaction surface.
 
-Provides:
-- timeline
-- graph views
+Responsible for:
+
+- UI
+- query surface
+- timeline and source exploration
+- graph and arc views
+- assembling view data from backend contracts
+
+Mimir does not own core domain logic. It waits for stable backend data products instead of bending the architecture around an early UI.
+
+### Heimdallr
+
+The controlled boundary to external sources.
+
+Responsible for:
+
+- bounded read access
+- source registration
+- fetch operations
+- access rules
+- handoff into intake
+
+Principles:
+
+- read-only by default
+- explicit allow rules
+- no uncontrolled traversal
+- no autonomous crawling
+
+## System Lifecycle
+
+### 1. Intake
+
+Raw material or source descriptors enter the system.
+
+Examples:
+
+- local archive paths
+- extracted provider exports
+- Apple Messages `chat.db`
+- Apple Health XML
+- Gmail API query scopes
+- Wayback host/prefix/exact URL scopes
+- external database connection descriptors
+
+Output:
+
+- intake record
+- review manifest
+- importer dispatch payload
+
+### 2. Import
+
+The source-specific importer normalizes the accepted source into canonical rows.
+
+Examples:
+
+- Gmail message and thread rows
+- Facebook Messenger threads and posts
+- LinkedIn positions, messages, recommendations, and endorsements
+- Twitter authored tweets and media refs
+- Apple Messages conversations and participants
+- Apple Health records and workouts
+- Wayback captures
+
+Output:
+
+- source-prefixed canonical tables
+- source-set or observation rows where needed
+- run/event/artifact rows
+- provenance links where applicable
+
+### 3. Search Projection
+
+Search builders turn canonical rows into disposable `search_documents` rows and Scout/Meilisearch documents.
+
+Search projection is derived state. Rebuild it when the canonical rows or builders change.
+
+### 4. Handoff
+
+`handoff:*` commands produce bounded `WikiCompilationHandoffData` payloads from canonical rows.
+
+The downstream layer should consume handoffs instead of raw archives.
+
+### 5. Muninn Processing
+
+Muninn resolves evidence into biography-facing structures:
+
+- event candidates
+- timelines
+- people and place references
 - arcs
-- personality insights
-- source exploration
-- query interface
+- evidence bundles
 
----
+This layer is specified and partly scaffolded, but the durable workbench is still upcoming.
 
-# architectural stance
+### 6. Huginn Processing
 
-Use Laravel conventions.
+Huginn synthesizes evidence-supported patterns and personality observations.
 
-Do NOT introduce artificial domain folder structures.
+This layer comes after the evidence contracts are solid enough to keep interpretation honest.
 
-DDD is expressed through:
-- naming
-- boundaries
-- responsibilities
-- dependency direction
+### 7. Presentation
 
----
+Mimir eventually exposes the system through a web UI.
 
-# application structure
+Until then, the useful surfaces are CLI commands, MySQL, generated handoffs, search, and review artifacts.
 
-app/
-  Http/
-    Controllers/Mimir/
-    Requests/Mimir/
-    Resources/Mimir/
+## Data Strategy
 
-  Models/
+Tracked in git:
 
-  Services/
-    Nornir/
-    Muninn/
-    Huginn/
-    Mimir/
-    Heimdallr/
-    Intake/
-    Import/
-    Graph/
+- application code
+- migrations
+- tests
+- configuration templates
+- specs and docs
 
-  Actions/
-    Intake/
-    Import/
-    Muninn/
-    Huginn/
-    Heimdallr/
+Never tracked in git:
 
-  Jobs/
-    Intake/
-    Import/
-    Muninn/
-    Huginn/
-    Heimdallr/
+- raw archives
+- extracted exports
+- OAuth tokens
+- credentials
+- generated markdown
+- run artifacts
+- database dumps
 
-  Data/
-    Muninn/
-    Huginn/
-    Heimdallr/
-    Shared/
+Local ignored roots:
 
-  Support/
-    Shared/
+- `data/`
+- `wiki/`
 
----
+Canonical imported source truth lives in MySQL. Generated markdown is output, not source truth.
 
-# responsibility boundaries
+## Application Structure
 
-## Services/Intake
-- accept raw material
-- store files
-- create intake records
+Use Laravel conventions. Do not add artificial domain architecture when the framework already gives good places to put things.
 
-## Services/Import
-- parse raw data
-- normalize into source items
-- track import runs
+Current important areas:
 
-## Services/Muninn
-- build timeline
-- extract events and arcs
-- maintain provenance
+- `app/Actions/Import/`
+- `app/Actions/Intake/`
+- `app/Actions/Gmail/`
+- `app/Console/Commands/`
+- `app/Data/`
+- `app/Models/`
+- `app/Search/`
+- `app/Services/Gmail/`
+- `app/Services/Nornir/`
+- `app/Services/Wayback/`
+- `database/migrations/`
+- `tests/Feature/`
+- `tests/Unit/`
+- `tests/Architecture/`
 
-## Services/Huginn
-- generate observations
-- detect patterns
-- synthesize models
-
-## Services/Mimir
-- assemble view data
-- power UI queries
-- aggregate domain outputs
-
-## Services/Heimdallr
-- access external sources
-- fetch bounded content
-- enforce access policies
-- hand data to intake
-
-## Services/Nornir
-- orchestrate flows
-- coordinate rebuilds
-- manage system-level operations
-
----
-
-# dependency rules
+## Dependency Rules
 
 Allowed:
 
-- Controllers → Services/Mimir
-- Services/Mimir → Services/Muninn, Services/Huginn
-- Services/Nornir → Services/Import, Services/Muninn, Services/Huginn
-- Services/Heimdallr → Services/Intake
+- commands call actions
+- import actions write canonical source tables
+- handoff actions read canonical rows
+- search builders read canonical rows and write derived search documents
+- Muninn consumes canonical rows and handoffs
+- Huginn consumes evidence-supported outputs
+- Mimir consumes backend contracts
 
 Forbidden:
 
-- Muninn → Heimdallr
-- Huginn → Heimdallr
-- Controllers → raw models for logic
-- Heimdallr → UI logic
+- importers writing biography/personality conclusions
+- Muninn or Huginn fetching raw external data directly
+- source-specific branching monoliths
+- Mimir owning core domain rules
+- generated claims without provenance
 
----
+## Provenance
 
-# data strategy
+Every derived or claim-bearing output must be traceable to:
 
-Hybrid approach.
-
-## file-backed
-- generated markdown
-- generated operational artifacts
-- optional local raw staging, not version controlled
-
-## database-backed
-- sources
-- intake batches
-- import runs
-- source items
-- events
-- arcs
-- observations
-- patterns
-- relations
-
----
-
-# core models
-
-## Source
-Represents a source origin.
-
-## IntakeBatch
-Represents a raw intake operation.
-
-## SourceItem
-Normalized unit of content.
-
-## ImportRun
-Tracks imports.
-
-## BiographyEvent
-Timeline event.
-
-## Arc
-Narrative strand.
-
-## Person
-Entity.
-
-## Place
-Entity.
-
-## Observation
-Personality insight.
-
-## Pattern
-Higher-level synthesis.
-
-## Connection
-Graph relation.
-
-## EvidenceLink
-Links derived data to source material.
-
----
-
-# provenance
-
-Every derived object must be traceable to:
-
-- source item(s)
+- source row or evidence bundle
 - import/process run
-- origin file or fragment
+- origin file, API scope, or external reference
 
 Applies to:
+
 - events
 - arcs
 - observations
 - patterns
+- compiled pages
+- review bundles
 
----
-
-# Heimdallr scope (v1)
-
-Include:
-- external source registration
-- bounded read access
-- search where available
-- fetch operations
-- import into intake
-- run tracking
-
-Exclude:
-- write operations
-- full synchronization
-- autonomous crawling
-- complex auth models
-
----
-
-# Mimir views (v1)
-
-## dashboard
-- recent activity
-- quick navigation
-
-## timeline
-- infinite scroll
-- chronological events
-- filters
-
-## event detail
-- event data
-- connections
-- source trace
-
-## arcs
-- grouped narrative strands
-
-## connections
-- graph view
-
-## personality
-- observations
-- patterns
-- evidence
-
-## sources
-- intake and import overview
-
-## query interface
-- system-level exploration
-
----
-
-# AI integration
+## AI Integration
 
 AI usage must be:
 
 - orchestrated by code
 - logged
-- repeatable
+- repeatable enough to audit
 - tied to runs and outputs
+- constrained by evidence
 
-Use cases:
-- extraction
-- classification
-- summarization
-- pattern detection
-- synthesis
+AI outputs are candidates and interpretations. They are never silent truth.
 
-AI outputs are:
-- candidates
-- interpretations
-- never silent truth
-
----
-
-# processing modes
-
-## full rebuild
-Reprocess everything.
-
-## incremental
-Process new data only.
-
-## targeted
-Reprocess subset.
-
----
-
-# guiding principles
+## Guiding Principles
 
 - keep biography and personality separate
 - preserve provenance everywhere
+- keep source boundaries explicit
+- import broadly enough to preserve truth, then select downstream
 - favor clarity over cleverness
-- avoid over-engineering
-- keep system inspectable
+- prefer source-specific correctness over fake universal models
 - prioritize usefulness over completeness
-
----
-
-# summary
-
-Nornir is a system that:
-
-- ingests raw life data
-- structures it into biography (Muninn)
-- interprets it into personality (Huginn)
-- exposes it through a web layer (Mimir)
-- accesses external sources through a controlled boundary (Heimdallr)
-
-The system is designed to evolve continuously rather than reach a fixed final state.

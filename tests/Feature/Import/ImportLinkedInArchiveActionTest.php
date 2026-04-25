@@ -254,14 +254,23 @@ it('stores multiple linkedin message attachments in one json column', function (
 });
 
 it('imports messages with very long recipient lists', function (): void {
+    $recipients = array_map(
+        static fn (int $number): string => 'Synthetic Recipient '.$number,
+        range(1, 32),
+    );
+    $recipientUrls = array_map(
+        static fn (int $number): string => 'https://www.linkedin.com/in/synthetic-recipient-'.$number,
+        range(1, 32),
+    );
+
     $fixture = createLinkedInFixtureArchive('linkedin-import-long-recipients', [
         'messages' => [[
             'CONVERSATION ID' => 'conv-long-recipients',
             'CONVERSATION TITLE' => '',
-            'FROM' => 'ibrahim aminu',
-            'SENDER PROFILE URL' => 'https://www.linkedin.com/in/ibrahim-aminu-b460aa9',
-            'TO' => 'BILYAMINU ALIYU,LinkedIn Member,Aladetohun Ayomide,LinkedIn Member,Sam Antori,Idiare Atimomo,Frank Addai,LinkedIn Member,Al Stansfield (The Blind Marketer),LinkedIn Member,LinkedIn Member,zayyad abubakar,Yemi Arawore,FAISAL ABUKUR,Adeniji Ayodeji,LinkedIn Member,Suzanna Abbott,aipl amnesh,ALH XIXIMOH Adamu,Mansir Abubakar,Carmen Loreto Acevedo Santana,Manie Amari,Andy Harrington (LION)andy@powertoachieve.co.uk,Zakareya Allach,Alex Albert,Diwan Syed Ehsan Ahmed,Tech Vlogging,Malik Anas,LinkedIn Member,Balkisu Abidina,Dawn Abraham,Florina Alazaroaei,David Alex,dando abubaker,muhammad adamu,Julie Arellano,Temogen Amato',
-            'RECIPIENT PROFILE URLS' => 'https://www.linkedin.com/in/bilyaminu-aliyu-1a31384b,https://www.linkedin.com/in/aladetohun-ayomide-423171b,https://www.linkedin.com/in/samantori,https://www.linkedin.com/in/idiare-atimomo,https://www.linkedin.com/in/yournetbizlive,https://www.linkedin.com/in/theblindmarketer,https://www.linkedin.com/in/zayyad-abubakar-710004a6,https://www.linkedin.com/in/yemi-arawore-4780089,https://www.linkedin.com/in/faisal-abukur-5aba7126,https://www.linkedin.com/in/adenijiayodeji,https://www.linkedin.com/in/suzannaabbott,https://www.linkedin.com/in/aipl-amnesh-303a2624,https://www.linkedin.com/in/alh-xiximoh-adamu-65655079,https://www.linkedin.com/in/mansir-abubakar-5aa82983,https://www.linkedin.com/in/carmen-loreto-acevedo-santana-14a04930,https://www.linkedin.com/in/manie-amari-a742a354,https://www.linkedin.com/in/andy-harrington-lion-andy-powertoachieve-co-uk-bb4294b,https://www.linkedin.com/in/zakareya-allach-6a18009b,https://www.linkedin.com/in/mralexalbert,https://www.linkedin.com/in/diwan-syed-ehsan-ahmed-33952641,https://www.linkedin.com/in/techvlogging,https://www.linkedin.com/in/malik-anas-1805255b,https://www.linkedin.com/in/balkisu-abidina-7446b22b,https://www.linkedin.com/in/qualifiedlifecoach,https://www.linkedin.com/in/florina-alazaroaei-40a38bb1,https://www.linkedin.com/in/dismart,https://www.linkedin.com/in/dando-abubaker-7b4a5ba8,https://www.linkedin.com/in/muhammad-adamu-60266214,https://www.linkedin.com/in/julie-arellano-b89a3749,https://www.linkedin.com/in/temogen',
+            'FROM' => 'Synthetic Sender',
+            'SENDER PROFILE URL' => 'https://www.linkedin.com/in/synthetic-sender',
+            'TO' => implode(',', $recipients),
+            'RECIPIENT PROFILE URLS' => implode(',', $recipientUrls),
             'DATE' => '2023-01-05 05:38:55 UTC',
             'SUBJECT' => '',
             'CONTENT' => 'Okay',
@@ -283,5 +292,5 @@ it('imports messages with very long recipient lists', function (): void {
     app(ImportLinkedInArchiveAction::class)($intake->dispatchPayload);
 
     expect(DB::table('linkedin_messages')->value('content'))->toBe('Okay');
-    expect(DB::table('linkedin_messages')->value('to_display'))->toContain('BILYAMINU ALIYU');
+    expect(DB::table('linkedin_messages')->value('to_display'))->toContain('Synthetic Recipient 1');
 });

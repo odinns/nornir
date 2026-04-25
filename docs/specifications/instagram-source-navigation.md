@@ -2,7 +2,7 @@
 
 ## Start here
 
-This is a planned optional source, expected to use export archives first and official API access where appropriate and permitted.
+Primary input is a downloadable Instagram archive. Official API access may become useful later, but the implemented path is archive-first.
 
 The current grounded source shape is a downloadable Meta archive rooted like:
 
@@ -59,6 +59,6 @@ The current grounded source shape is a downloadable Meta archive rooted like:
 
 ## Bottom line
 
-Instagram is planned, optional, and bounded by supported access modes.
+Instagram is implemented as a bounded archive importer for the honest phase-1 slice.
 
 For phase 1, the honest bounded archive slice is profile/account metadata, posts, profile photo refs, and optional stories. Messages, followers, likes, comments, login history, and ads exist in the archive but are intentionally deferred.

@@ -13,7 +13,7 @@ it('builds an apple health source-page handoff from the latest successful import
     $fixture = createAppleHealthFixtureExport('apple-health-handoff-cli', [
         'records' => [[
             'type' => 'HKQuantityTypeIdentifierStepCount',
-            'source_name' => 'Odinns iPhone Thirteen Pro',
+            'source_name' => 'Sample iPhone Thirteen Pro',
             'source_version' => '17.4',
             'unit' => 'count',
             'value' => '111',

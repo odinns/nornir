@@ -16,6 +16,7 @@ Primary input is Gmail via official API access or approved export data.
 - messages
 - labels
 - attachments metadata
+- source sets that bind a run to one query slice
 
 ## Important entities
 
@@ -24,16 +25,19 @@ Primary input is Gmail via official API access or approved export data.
 - messages
 - labels
 - attachment references
+- source-set observations
 
 ## Traversal rules
 
 - import by explicit query or history scope
 - preserve Gmail ids and label state
+- preserve the query scope as part of the source set
 
 ## Safe access rules
 
 - bounded query only
 - explicit account configuration
+- no import without `--query`
 
 ## Parser notes
 

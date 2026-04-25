@@ -14,7 +14,7 @@ ChatGPT export conversation JSON files.
 - export path
 - optional additional export roots when the source is split across an approved bounded list of local paths
 - optional archive label
-- dry-run or validate-only flags
+- optional `--glob=` for conversation file discovery under a local path root
 
 ## Output structure
 
@@ -55,7 +55,7 @@ Use stable export identifiers for conversations, nodes, messages, and assets.
 - message-role preservation
 - transcript derivation consistency
 
-## Wiki compilation handoff
+## Source handoff
 
 - compile source summaries from normalized rows, not raw file rescans
 - mark ChatGPT handoff as broad canonical evidence; downstream biography compilation must apply a relevance filter before treating chats as biography material

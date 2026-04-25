@@ -73,7 +73,7 @@ flowchart TD
 Examples of source-specific identity:
 
 - Gmail: `account_email`, `query`
-- SMS: `source_locator`, `attachments_root`
+- Apple Messages: `source_locator`, `attachments_root`
 - Instagram: `username`
 - Media collection: `volumes`, `volume_filter`
 
@@ -86,7 +86,7 @@ That boundary can be expressed in different ways depending on the source.
 
 ### Archive-style sources
 
-For sources like SMS or ChatGPT, the boundary is usually a `source_set`.
+For sources like Apple Messages or ChatGPT, the boundary is usually a `source_set`.
 
 ```mermaid
 flowchart LR
@@ -167,7 +167,7 @@ flowchart LR
     C --> D[Produce evidence bundle, review artifact, or durable page]
 ```
 
-The downstream tool should not care whether the source was Gmail, SMS, Instagram, or something else ugly.
+The downstream tool should not care whether the source was Gmail, Apple Messages, Instagram, or something else ugly.
 It should care that the handoff gives it a stable bounded slice and enough provenance to refuse nonsense.
 
 ## Mental model
@@ -178,7 +178,7 @@ If it helps, think of the handoff as a shipping label.
 - the handoff is the label saying which boxes belong on this truck
 - the compiler is the truck
 
-Without the label, the truck either grabs everything or starts rummaging through the loading dock like a confused raccoon.
+Without the label, the truck either grabs everything or starts rummaging through the loading dock with no idea what belongs in the shipment.
 
 ## Current rule of thumb
 
