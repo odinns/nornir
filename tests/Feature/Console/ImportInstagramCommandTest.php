@@ -17,7 +17,7 @@ beforeEach(function (): void {
 it('imports instagram archives from the cli with useful default output', function (): void {
     $fixture = createInstagramFixtureArchive('instagram-console');
 
-    $this->artisan('import:instagram', [
+    artisanCommand($this, 'import:instagram', [
         'source' => $fixture['archive_path'],
     ])
         ->expectsOutputToContain('Recording intake for Instagram source')

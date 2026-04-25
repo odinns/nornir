@@ -72,7 +72,7 @@ it('prints triage results as json through the command', function (): void {
 it('fails clearly when the Gmail credentials path is missing', function (): void {
     config()->set('gmail_triage.credentials_path');
 
-    $this->artisan('gmail:triage-important', [
+    artisanCommand($this, 'gmail:triage-important', [
         '--window' => 'last 7 days',
         '--json' => true,
     ])
@@ -83,7 +83,7 @@ it('fails clearly when the Gmail credentials path is missing', function (): void
 it('fails clearly when the limit is invalid', function (): void {
     config()->set('gmail_triage.credentials_path', '/tmp/fake-credentials.json');
 
-    $this->artisan('gmail:triage-important', [
+    artisanCommand($this, 'gmail:triage-important', [
         '--window' => 'last 7 days',
         '--limit' => '0',
         '--json' => true,

@@ -54,13 +54,18 @@ trait InteractsWithImportConsole
 
     protected function sourceArgument(): string
     {
-        $source = $this->argument('source');
+        $source = $this->argument($this->sourceArgumentName());
 
         if (! is_string($source) || $source === '') {
             throw new InvalidArgumentException('Source locator is not reachable.');
         }
 
         return $source;
+    }
+
+    protected function sourceArgumentName(): string
+    {
+        return 'source';
     }
 
     protected function stringOption(string $name): ?string

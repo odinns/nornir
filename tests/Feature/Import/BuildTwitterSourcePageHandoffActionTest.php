@@ -79,7 +79,9 @@ it('builds the twitter handoff from canonical rows without rescanning the raw so
 
     $handoff = app(BuildTwitterSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, accounts:int, profile_snapshots:int, tweets:int, note_tweets:int, media_refs:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'accounts' => 1,
         'profile_snapshots' => 1,

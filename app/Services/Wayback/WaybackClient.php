@@ -200,7 +200,7 @@ class WaybackClient
 
     private function sleepBeforeRetry(int $attempt): void
     {
-        usleep(self::BACKOFF_MILLISECONDS[$attempt] * 1000);
+        usleep((self::BACKOFF_MILLISECONDS[$attempt] ?? 30000) * 1000);
     }
 
     private function scopeForCdx(string $scope, string $matchMode): string

@@ -29,7 +29,7 @@ it('builds a fidonet source-page handoff from the latest successful import run',
 
     app(ImportFidonetSourceAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:fidonet-source-pages')
+    artisanCommand($this, 'handoff:fidonet-source-pages')
         ->expectsOutputToContain('Building FidoNet source-page handoff')
         ->expectsOutputToContain('Source locator: '.$fixture['env_path'])
         ->expectsOutputToContain('Message count: 3')

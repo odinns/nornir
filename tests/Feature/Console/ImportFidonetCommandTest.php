@@ -17,7 +17,7 @@ beforeEach(function (): void {
 it('imports fidonet sources from the cli with useful default output', function (): void {
     $fixture = createFidonetFixtureSource('fidonet-console');
 
-    $this->artisan('import:fidonet', [
+    artisanCommand($this, 'import:fidonet', [
         'source' => $fixture['env_path'],
     ])
         ->expectsOutputToContain('Recording intake for FidoNet source')

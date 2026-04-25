@@ -40,7 +40,7 @@ it('builds a gmail source-page handoff from the cli', function (): void {
     $intake = makeGmailIntake('from:me');
     $importResult = app(ImportGmailAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:gmail-source-pages', [
+    artisanCommand($this, 'handoff:gmail-source-pages', [
         '--run-id' => $importResult->run->id,
     ])
         ->expectsOutputToContain('Building Gmail source-page handoff')

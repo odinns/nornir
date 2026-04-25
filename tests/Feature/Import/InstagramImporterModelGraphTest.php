@@ -89,9 +89,10 @@ it('traverses instagram importer eloquent graph over imported archive data', fun
         ->orderBy('uri')
         ->firstOrFail();
 
+    $postFromMediaRef = $postMediaRef->post ?? throw new RuntimeException('Expected post media ref to belong to a post.');
     expect($postMediaRef->post)->not->toBeNull()
-        ->and($postMediaRef->post->is($post))->toBeTrue()
-        ->and($postMediaRef->post->account->is($account))->toBeTrue()
+        ->and($postFromMediaRef->is($post))->toBeTrue()
+        ->and($postFromMediaRef->account->is($account))->toBeTrue()
         ->and($postMediaRef->account->is($account))->toBeTrue();
 
     $story = InstagramMediaRef::query()

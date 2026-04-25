@@ -64,7 +64,9 @@ it('records a local path intake with an explicit list of bounded roots', functio
         'accepted_root_paths' => [$primaryRoot, $secondaryRoot],
         'relative_glob' => 'conversations/**/*.json',
     ]);
-    expect($result->dispatchPayload->scopeSnapshot['accepted_root_paths'])->toBe([
+    /** @var array{accepted_root_paths:list<string>} $scopeSnapshot */
+    $scopeSnapshot = $result->dispatchPayload->scopeSnapshot;
+    expect($scopeSnapshot['accepted_root_paths'])->toBe([
         $primaryRoot,
         $secondaryRoot,
     ]);
@@ -92,11 +94,15 @@ it('normalizes persisted filesystem paths to absolute paths', function (): void 
 
     expect($result->intakeRecord->source_locator)->toBe($primaryRoot);
     expect($result->dispatchPayload->sourceLocator)->toBe($primaryRoot);
-    expect($result->intakeRecord->scope_snapshot['accepted_root_paths'])->toBe([
+    /** @var array{accepted_root_paths:list<string>} $intakeScopeSnapshot */
+    $intakeScopeSnapshot = $result->intakeRecord->scope_snapshot;
+    expect($intakeScopeSnapshot['accepted_root_paths'])->toBe([
         $primaryRoot,
         $secondaryRoot,
     ]);
-    expect($result->dispatchPayload->scopeSnapshot['accepted_root_paths'])->toBe([
+    /** @var array{accepted_root_paths:list<string>} $dispatchScopeSnapshot */
+    $dispatchScopeSnapshot = $result->dispatchPayload->scopeSnapshot;
+    expect($dispatchScopeSnapshot['accepted_root_paths'])->toBe([
         $primaryRoot,
         $secondaryRoot,
     ]);

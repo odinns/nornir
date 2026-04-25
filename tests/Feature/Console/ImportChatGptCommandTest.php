@@ -20,7 +20,7 @@ it('imports chatgpt exports from the cli with useful default output', function (
         [buildConsoleChatGptConversation('console-conversation-2')],
     ]);
 
-    $this->artisan('import:chatgpt', [
+    artisanCommand($this, 'import:chatgpt', [
         'source' => $exportRoot,
     ])
         ->expectsOutputToContain('Recording intake for ChatGPT source')
@@ -42,7 +42,7 @@ it('can import an archive path explicitly from the cli', function (): void {
         buildConsoleChatGptConversation(),
     ]);
 
-    $this->artisan('import:chatgpt', [
+    artisanCommand($this, 'import:chatgpt', [
         'source' => $archivePath,
         '--archive-label' => 'console-archive',
     ])->assertSuccessful();
@@ -58,7 +58,7 @@ it('supports additional allowed roots for local path imports', function (): void
     $secondaryRoot = storage_path('framework/testing/chatgpt-secondary-'.bin2hex(random_bytes(4)));
     File::ensureDirectoryExists($secondaryRoot);
 
-    $this->artisan('import:chatgpt', [
+    artisanCommand($this, 'import:chatgpt', [
         'source' => $primaryRoot,
         '--root' => [$secondaryRoot],
     ])->assertSuccessful();
@@ -74,12 +74,15 @@ it('stays quiet when quiet mode is requested', function (): void {
         buildConsoleChatGptConversation(),
     ]);
 
-    $this->artisan('import:chatgpt', [
+    artisanCommand($this, 'import:chatgpt', [
         'source' => $exportRoot,
         '--quiet' => true,
     ])->assertSuccessful();
 });
 
+/**
+ * @param  list<array<string, mixed>>|list<list<array<string, mixed>>>  $conversations
+ */
 function createConsoleChatGptExportDirectory(array $conversations): string
 {
     $path = storage_path('framework/testing/chatgpt-console-'.bin2hex(random_bytes(4)));
@@ -97,6 +100,9 @@ function createConsoleChatGptExportDirectory(array $conversations): string
     return $path;
 }
 
+/**
+ * @param  list<array<string, mixed>>|list<list<array<string, mixed>>>  $payload
+ */
 function isConsoleConversationList(array $payload): bool
 {
     if ($payload === []) {
@@ -106,6 +112,9 @@ function isConsoleConversationList(array $payload): bool
     return is_array($payload[0] ?? null) && array_key_exists('mapping', $payload[0]);
 }
 
+/**
+ * @param  list<array<string, mixed>>  $conversations
+ */
 function createConsoleChatGptArchiveFile(array $conversations): string
 {
     $directory = storage_path('framework/testing/chatgpt-archive-'.bin2hex(random_bytes(4)));
@@ -120,6 +129,9 @@ function createConsoleChatGptArchiveFile(array $conversations): string
     return $path;
 }
 
+/**
+ * @return array<string, mixed>
+ */
 function buildConsoleChatGptConversation(string $conversationId = 'console-conversation-1'): array
 {
     return [

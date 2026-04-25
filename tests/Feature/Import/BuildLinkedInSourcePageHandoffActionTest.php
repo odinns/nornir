@@ -79,7 +79,9 @@ it('builds the linkedin handoff from canonical rows without rescanning the raw s
 
     $handoff = app(BuildLinkedInSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, profile_snapshots:int, positions:int, endorsements:int, conversations:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'profile_snapshots' => 1,
         'positions' => 1,

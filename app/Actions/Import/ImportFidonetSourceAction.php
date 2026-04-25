@@ -275,6 +275,7 @@ class ImportFidonetSourceAction
             }
         }
 
+        /** @var array<string, array{derived_thread_key:string, source_method:string, is_synthetic:bool, confidence:string|null, messages:list<object{id:int, msgno:int, external_id:string|null, subject:string, from_name:string, from_address:string|null, to_name:string, to_address:string|null, body_text:string, reply_to_msgno:int|null, reply_to_external_id:string|null, reply1st_msgno:int|null, replynext_msgno:int|null, thread_key:string|null, posted_at:mixed, arrived_at:mixed, raw_metadata_json:string|null}>, selected:bool}> $groups */
         $groups = [];
 
         foreach ($messages as $message) {

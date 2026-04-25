@@ -24,7 +24,7 @@ it('builds a twitter source-page handoff from the latest successful import run',
 
     $importResult = app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:twitter-source-pages')
+    artisanCommand($this, 'handoff:twitter-source-pages')
         ->expectsOutputToContain('Building Twitter source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$fixture['archive_path'])

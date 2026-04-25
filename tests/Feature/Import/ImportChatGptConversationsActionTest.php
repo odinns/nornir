@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Actions\Import\ImportChatGptConversationsAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\ChatGptConversation;
+use App\Models\ChatGptMessage;
+use App\Models\ChatGptMessagePart;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,14 +47,13 @@ it('imports a chatgpt export into canonical tables while preserving graph struct
     expect(DB::table('chatgpt_message_parts')->count())->toBe(4);
     expect(DB::table('chatgpt_assets')->count())->toBe(1);
 
-    $assistantMessage = DB::table('chatgpt_messages')
+    $assistantMessage = ChatGptMessage::query()
         ->where('message_id', 'assistant-conversation-1')
-        ->first();
+        ->firstOrFail();
 
-    expect($assistantMessage)->not->toBeNull();
     expect($assistantMessage->author_role)->toBe('assistant');
 
-    $assistantParts = DB::table('chatgpt_message_parts')
+    $assistantParts = ChatGptMessagePart::query()
         ->where('chatgpt_message_id', $assistantMessage->id)
         ->orderBy('part_index')
         ->pluck('text_part')
@@ -83,24 +85,22 @@ it('stores normalized utc datetimes alongside raw source times', function (): vo
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
 
-    $conversation = DB::table('chatgpt_conversations')
+    $conversation = ChatGptConversation::query()
         ->where('conversation_id', 'conversation-1')
-        ->first();
+        ->firstOrFail();
 
-    $assistantMessage = DB::table('chatgpt_messages')
+    $assistantMessage = ChatGptMessage::query()
         ->where('message_id', 'assistant-conversation-1')
-        ->first();
+        ->firstOrFail();
 
-    expect($conversation)->not->toBeNull();
     expect($conversation->source_create_time)->toBeFloat();
     expect($conversation->source_update_time)->toBeFloat();
-    expect($conversation->conversation_created_at)->toBe('2023-10-17 07:32:42');
-    expect($conversation->conversation_updated_at)->toBe('2023-10-17 07:45:05');
+    expect($conversation->conversation_created_at?->toDateTimeString())->toBe('2023-10-17 07:32:42');
+    expect($conversation->conversation_updated_at?->toDateTimeString())->toBe('2023-10-17 07:45:05');
 
-    expect($assistantMessage)->not->toBeNull();
     expect($assistantMessage->source_create_time)->toBeFloat();
     expect($assistantMessage->source_update_time)->toBeNull();
-    expect($assistantMessage->message_created_at)->toBe('2023-10-17 07:35:22');
+    expect($assistantMessage->message_created_at?->toDateTimeString())->toBe('2023-10-17 07:35:22');
     expect($assistantMessage->message_updated_at)->toBeNull();
 });
 
@@ -258,9 +258,8 @@ it('fails clearly on malformed export data', function (): void {
     expect(fn () => app(ImportChatGptConversationsAction::class)($intake->dispatchPayload))
         ->toThrow(InvalidArgumentException::class, 'Malformed ChatGPT conversation payload');
 
-    $failedRun = Run::query()->latest('id')->first();
+    $failedRun = Run::query()->latest('id')->firstOrFail();
 
-    expect($failedRun)->not->toBeNull();
     expect($failedRun->status)->toBe(Run::STATUS_FAILED);
     expect($failedRun->failure_summary)->toContain('Malformed ChatGPT conversation payload');
 });
@@ -283,11 +282,18 @@ it('records importer artifacts and provenance links for the imported rows', func
 
     $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
-    $artifactLocators = $result->run->artifacts()->orderBy('id')->pluck('locator')->all();
+    $artifactLocators = $result->run->artifacts()
+        ->orderBy('id')
+        ->pluck('locator')
+        ->map(static fn (mixed $locator): string => (string) $locator)
+        ->all();
 
     expect($artifactLocators)->toHaveCount(2);
-    expect($artifactLocators[0])->toContain('data/imports/chatgpt/');
-    expect($artifactLocators[1])->toContain('data/runs/import/');
+
+    $importArtifact = $artifactLocators[0] ?? throw new RuntimeException('Expected ChatGPT import artifact locator.');
+    $runArtifact = $artifactLocators[1] ?? throw new RuntimeException('Expected ChatGPT run artifact locator.');
+    expect($importArtifact)->toContain('data/imports/chatgpt/');
+    expect($runArtifact)->toContain('data/runs/import/');
 
     $links = ProvenanceLink::query()
         ->where('run_id', $result->run->id)

@@ -54,14 +54,16 @@ it('builds a compile-facing handoff from canonical media_files rows', function (
 
     $importResult = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
     $handoff = app(BuildMediaSourcePageHandoffAction::class)($importResult->run->id);
+    /** @var array{row_counts:array{media_files:int}, tables:list<string>, volumes:list<string>, volume_filter:?string} $scope */
+    $scope = $handoff->canonicalScope;
 
     expect($handoff->sourceType)->toBe('media-collection');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
-    expect($handoff->canonicalScope['row_counts']['media_files'])->toBe(3);
-    expect($handoff->canonicalScope['tables'])->toBe(['media_files']);
-    expect($handoff->canonicalScope['volumes'])->toEqualCanonicalizing(['LIMA-1', 'LIMA-2']);
-    expect($handoff->canonicalScope['volume_filter'])->toBeNull();
+    expect($scope['row_counts']['media_files'])->toBe(3);
+    expect($scope['tables'])->toBe(['media_files']);
+    expect($scope['volumes'])->toEqualCanonicalizing(['LIMA-1', 'LIMA-2']);
+    expect($scope['volume_filter'])->toBeNull();
 });
 
 it('respects volume scope — counts and volumes list are filtered to the run scope', function (): void {
@@ -110,10 +112,12 @@ it('respects volume scope — counts and volumes list are filtered to the run sc
     $importResult = app(ImportMediaCollectionAction::class)($scopedIntake->dispatchPayload);
 
     $handoff = app(BuildMediaSourcePageHandoffAction::class)($importResult->run->id);
+    /** @var array{row_counts:array{media_files:int}, volumes:list<string>, volume_filter:?string} $scope */
+    $scope = $handoff->canonicalScope;
 
-    expect($handoff->canonicalScope['row_counts']['media_files'])->toBe(2);
-    expect($handoff->canonicalScope['volumes'])->toBe(['LIMA-2']);
-    expect($handoff->canonicalScope['volume_filter'])->toBe('LIMA-2');
+    expect($scope['row_counts']['media_files'])->toBe(2);
+    expect($scope['volumes'])->toBe(['LIMA-2']);
+    expect($scope['volume_filter'])->toBe('LIMA-2');
 });
 
 it('rejects runs that are not successful media-collection imports', function (): void {

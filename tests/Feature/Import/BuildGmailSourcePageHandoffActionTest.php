@@ -41,13 +41,15 @@ it('builds a compile-facing handoff from canonical gmail rows', function (): voi
     $intake = makeGmailIntake('from:me');
     $importResult = app(ImportGmailAction::class)($intake->dispatchPayload);
     $handoff = app(BuildGmailSourcePageHandoffAction::class)($importResult->run->id);
-    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
+    /** @var array{account_email:string, query:string, tables:list<string>, source_set_ids:list<int>, handoff_scope:array{source_set_ids:list<int>, selection_mode:string}, row_counts:array{source_sets:int, threads:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    $sourceSetIds = $scope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('gmail');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($sourceSetIds)->toHaveCount(1);
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'account_email' => 'test@example.com',
         'query' => 'from:me',
         'tables' => [
@@ -86,11 +88,13 @@ it('scopes gmail handoff to the requested run boundary for the same account', fu
 
     $betaResult = app(ImportGmailAction::class)(makeGmailIntake('label:beta')->dispatchPayload);
     $handoff = app(BuildGmailSourcePageHandoffAction::class)($betaResult->run->id);
+    /** @var array{account_email:string, query:string, source_set_ids:list<int>, row_counts:array{source_sets:int, threads:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
 
-    expect($handoff->canonicalScope['account_email'])->toBe('shared@example.com');
-    expect($handoff->canonicalScope['query'])->toBe('label:beta');
-    expect($handoff->canonicalScope['source_set_ids'])->toHaveCount(1);
-    expect($handoff->canonicalScope['row_counts'])->toBe([
+    expect($scope['account_email'])->toBe('shared@example.com');
+    expect($scope['query'])->toBe('label:beta');
+    expect($scope['source_set_ids'])->toHaveCount(1);
+    expect($scope['row_counts'])->toBe([
         'source_sets' => 1,
         'threads' => 1,
         'messages' => 1,

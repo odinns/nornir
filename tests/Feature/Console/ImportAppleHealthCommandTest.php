@@ -37,7 +37,7 @@ it('imports apple health exports from the cli with useful default output', funct
         ]],
     ]);
 
-    $this->artisan('import:apple-health', [
+    artisanCommand($this, 'import:apple-health', [
         'source' => $fixture['root_path'],
     ])
         ->expectsOutputToContain('Recording intake for Apple Health source')
@@ -67,7 +67,7 @@ it('stays quiet when quiet mode is requested', function (): void {
         ]],
     ]);
 
-    $this->artisan('import:apple-health', [
+    artisanCommand($this, 'import:apple-health', [
         'source' => $fixture['root_path'],
         '--quiet' => true,
     ])->assertSuccessful();

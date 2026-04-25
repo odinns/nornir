@@ -44,6 +44,7 @@ class ImportInstagramArchiveAction
             },
         );
 
+        /** @var array{run: Run, summary: array{username:string, posts:int, inserted_posts:int, reobserved_posts:int, media_refs:int, profile_photos:int, stories:int, stories_skipped:bool}} $execution */
         return new InstagramImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -51,7 +52,7 @@ class ImportInstagramArchiveAction
     }
 
     /**
-     * @return array<string, int|string|bool>
+     * @return array{username:string, posts:int, inserted_posts:int, reobserved_posts:int, media_refs:int, profile_photos:int, stories:int, stories_skipped:bool}
      */
     private function importArchive(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

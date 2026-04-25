@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Import\ImportGmailAction;
+use App\Models\GmailAccount;
+use App\Models\GmailAttachment;
+use App\Models\GmailMessage;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -66,11 +69,14 @@ it('imports gmail messages into canonical tables and records a succeeded run', f
     expect(DB::table('gmail_message_labels')->count())->toBe(3); // INBOX×2 + UNREAD×1
     expect(DB::table('gmail_attachments')->count())->toBe(0);
 
-    $account = DB::table('gmail_accounts')->first();
+    $account = GmailAccount::firstOrFail();
     expect($account->account_email)->toBe('test@example.com');
     expect($account->access_mode)->toBe('api');
 
     $sourceSet = DB::table('gmail_source_sets')->first();
+    if ($sourceSet === null) {
+        throw new RuntimeException('Expected Gmail source set row.');
+    }
     expect($sourceSet->account_email)->toBe('test@example.com');
     expect($sourceSet->query)->toBe('from:me');
     expect($sourceSet->access_mode)->toBe('api');
@@ -136,7 +142,7 @@ it('keeps plain body text when html is also present', function (): void {
 
     app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
 
-    $message = DB::table('gmail_messages')->where('message_id', 'msg-plain-wins')->first();
+    $message = GmailMessage::query()->where('message_id', 'msg-plain-wins')->firstOrFail();
 
     expect($message->body_plain)->toBe("Plain body\n")
         ->and($message->body_html)->toBe('<p>HTML body</p>');
@@ -164,7 +170,7 @@ it('renders html only messages into body plain without changing body html', func
 
     app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload);
 
-    $message = DB::table('gmail_messages')->where('message_id', 'msg-html-only')->first();
+    $message = GmailMessage::query()->where('message_id', 'msg-html-only')->firstOrFail();
 
     expect($message->body_plain)
         ->toContain('Hello Odinn')
@@ -300,7 +306,7 @@ it('records attachment metadata without downloading binaries', function (): void
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('gmail_attachments')->count())->toBe(1);
 
-    $attachment = DB::table('gmail_attachments')->first();
+    $attachment = GmailAttachment::firstOrFail();
     expect($attachment->filename)->toBe('report.pdf');
     expect($attachment->mime_type)->toBe('application/pdf');
     expect($attachment->size_bytes)->toBe(204800);
@@ -331,11 +337,10 @@ it('falls back to sane header dates when gmail internal date is absurd', functio
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
 
-    $message = DB::table('gmail_messages')->where('message_id', 'msg-absurd-date')->first();
+    $message = GmailMessage::query()->where('message_id', 'msg-absurd-date')->firstOrFail();
 
-    expect($message)->not->toBeNull()
-        ->and($message->internal_date)->toBeNull()
-        ->and($message->message_received_at)->toBe('2015-07-26 17:07:15');
+    expect($message->internal_date)->toBeNull()
+        ->and($message->message_received_at?->toDateTimeString())->toBe('2015-07-26 17:07:15');
 });
 
 it('records a failed run when a message is malformed', function (): void {

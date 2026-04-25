@@ -54,18 +54,20 @@ it('builds a compile-facing handoff from canonical instagram rows', function ():
 
     $importResult = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
     $handoff = app(BuildInstagramSourcePageHandoffAction::class)($importResult->run->id);
+    /** @var array{username:string, tables:list<string>, row_counts:array{posts:int, media_refs:int}} $scope */
+    $scope = $handoff->canonicalScope;
 
     expect($handoff->sourceType)->toBe('instagram');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
-    expect($handoff->canonicalScope['username'])->toBe('handoff_user');
-    expect($handoff->canonicalScope['tables'])->toBe([
+    expect($scope['username'])->toBe('handoff_user');
+    expect($scope['tables'])->toBe([
         'instagram_accounts',
         'instagram_profile_snapshots',
         'instagram_posts',
         'instagram_media_refs',
     ]);
-    expect($handoff->canonicalScope['row_counts'])->toBe([
+    expect($scope['row_counts'])->toBe([
         'posts' => 2,
         'media_refs' => 4,
     ]);
@@ -90,8 +92,10 @@ it('builds instagram handoff without rereading raw archive files', function (): 
 
     $handoff = app(BuildInstagramSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['username'])->toBe('canonical_only_user');
-    expect($handoff->canonicalScope['row_counts']['posts'])->toBe(1);
+    /** @var array{username:string, row_counts:array{posts:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['username'])->toBe('canonical_only_user');
+    expect($scope['row_counts']['posts'])->toBe(1);
 });
 
 it('rejects runs that are not successful instagram imports', function (): void {

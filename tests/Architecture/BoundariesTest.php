@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 arch('the application follows the Laravel preset')
+    // @phpstan-ignore-next-line method.notFound
     ->preset()
     ->laravel();
 

@@ -12,7 +12,7 @@ it('dry runs without writing body plain values', function (): void {
     insertGmailBackfillMessage('msg-001', null, '<p>Hello <strong>Odinn</strong></p>');
     insertGmailBackfillMessage('msg-empty', null, '<div><br></div>');
 
-    $this->artisan('gmail:backfill-body-plain', ['--dry-run' => true])
+    artisanCommand($this, 'gmail:backfill-body-plain', ['--dry-run' => true])
         ->expectsOutputToContain('Candidates: 2')
         ->expectsOutputToContain('Would update: 1')
         ->expectsOutputToContain('Would skip empty: 1')
@@ -30,7 +30,7 @@ it('fills only missing plain bodies and does not overwrite existing text', funct
     insertGmailBackfillMessage('msg-existing', 'Original plain text', '<p>Do not use me</p>');
     insertGmailBackfillMessage('msg-no-html', null, null);
 
-    $this->artisan('gmail:backfill-body-plain', ['--chunk' => 2])
+    artisanCommand($this, 'gmail:backfill-body-plain', ['--chunk' => 2])
         ->expectsOutputToContain('Candidates: 2')
         ->expectsOutputToContain('Updated: 2')
         ->assertSuccessful();
@@ -49,7 +49,7 @@ it('honors the limit option', function (): void {
     insertGmailBackfillMessage('msg-001', null, '<p>First</p>');
     insertGmailBackfillMessage('msg-002', null, '<p>Second</p>');
 
-    $this->artisan('gmail:backfill-body-plain', ['--limit' => 1])
+    artisanCommand($this, 'gmail:backfill-body-plain', ['--limit' => 1])
         ->expectsOutputToContain('Candidates: 1')
         ->expectsOutputToContain('Updated: 1')
         ->assertSuccessful();
@@ -73,7 +73,7 @@ it('rolls back a failed batch and stops', function (): void {
         }
     });
 
-    $this->artisan('gmail:backfill-body-plain', ['--chunk' => 2])
+    artisanCommand($this, 'gmail:backfill-body-plain', ['--chunk' => 2])
         ->expectsOutputToContain('Failed batch:')
         ->assertFailed();
 
@@ -96,7 +96,7 @@ it('dry run reports conversion failures and writes nothing', function (): void {
         }
     });
 
-    $this->artisan('gmail:backfill-body-plain', ['--dry-run' => true, '--chunk' => 2])
+    artisanCommand($this, 'gmail:backfill-body-plain', ['--dry-run' => true, '--chunk' => 2])
         ->expectsOutputToContain('Candidates: 2')
         ->expectsOutputToContain('Would update: 1')
         ->expectsOutputToContain('Would skip empty: 0')

@@ -5,6 +5,10 @@ declare(strict_types=1);
 use App\Actions\Import\ImportInstagramArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\InstagramAccount;
+use App\Models\InstagramMediaRef;
+use App\Models\InstagramPost;
+use App\Models\InstagramProfileSnapshot;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -92,11 +96,11 @@ it('imports posts with captions and timestamps', function (): void {
     expect($result->summary['inserted_posts'])->toBe(2);
     expect($result->summary['reobserved_posts'])->toBe(0);
 
-    $first = DB::table('instagram_posts')->orderBy('post_timestamp')->first();
+    $first = InstagramPost::query()->orderBy('post_timestamp')->firstOrFail();
     expect($first->caption)->toBe('First post caption');
-    expect((int) $first->post_timestamp)->toBe(1_704_362_115);
+    expect($first->post_timestamp)->toBe(1_704_362_115);
 
-    $second = DB::table('instagram_posts')->orderBy('post_timestamp', 'desc')->first();
+    $second = InstagramPost::query()->orderByDesc('post_timestamp')->firstOrFail();
     expect($second->caption)->toBeNull();
 });
 
@@ -124,17 +128,17 @@ it('imports media refs for posts', function (): void {
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('instagram_posts')->count())->toBe(1);
-    expect(DB::table('instagram_posts')->first()->media_count)->toBe(2);
+    expect(InstagramPost::firstOrFail()->media_count)->toBe(2);
 
-    $postMediaRefs = DB::table('instagram_media_refs')
-        ->where('media_type', 'post')
-        ->orderBy('uri')
-        ->get();
-    expect($postMediaRefs)->toHaveCount(2);
-    expect($postMediaRefs[0]->uri)->toBe('media/posts/202401/a.jpg');
-    expect($postMediaRefs[0]->title)->toBe('caption');
-    expect($postMediaRefs[1]->uri)->toBe('media/posts/202401/b.jpg');
-    expect($postMediaRefs[1]->title)->toBeNull();
+    expect(InstagramMediaRef::query()->where('media_type', 'post')->count())->toBe(2);
+
+    $firstRef = InstagramMediaRef::query()->where('media_type', 'post')->orderBy('uri')->firstOrFail();
+    expect($firstRef->uri)->toBe('media/posts/202401/a.jpg');
+    expect($firstRef->title)->toBe('caption');
+
+    $secondRef = InstagramMediaRef::query()->where('media_type', 'post')->orderByDesc('uri')->firstOrFail();
+    expect($secondRef->uri)->toBe('media/posts/202401/b.jpg');
+    expect($secondRef->title)->toBeNull();
 });
 
 it('imports profile photos', function (): void {
@@ -157,7 +161,7 @@ it('imports profile photos', function (): void {
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect($result->summary['profile_photos'])->toBe(1);
 
-    $photo = DB::table('instagram_media_refs')->where('media_type', 'profile_photo')->first();
+    $photo = InstagramMediaRef::query()->where('media_type', 'profile_photo')->firstOrFail();
     expect($photo->uri)->toBe('media/profile/202207/avatar.jpg');
     expect($photo->instagram_post_id)->toBeNull();
 });
@@ -325,7 +329,7 @@ it('handles carousel posts with multiple media items', function (): void {
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('instagram_posts')->count())->toBe(1);
-    expect(DB::table('instagram_posts')->first()->media_count)->toBe(3);
+    expect(InstagramPost::firstOrFail()->media_count)->toBe(3);
     expect(DB::table('instagram_media_refs')->where('media_type', 'post')->count())->toBe(3);
     // All media refs point to the same post
     expect(DB::table('instagram_media_refs')->whereNotNull('instagram_post_id')->count())->toBe(3);
@@ -352,7 +356,7 @@ it('imports account from personal information', function (): void {
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('instagram_accounts')->count())->toBe(1);
 
-    $account = DB::table('instagram_accounts')->first();
+    $account = InstagramAccount::firstOrFail();
     expect($account->username)->toBe('odinnadalsteinsson');
     expect($account->display_name)->toBe('Odinn Adalsteinsson');
     expect($account->email)->toBe('odinn@example.com');
@@ -360,7 +364,7 @@ it('imports account from personal information', function (): void {
     expect($account->access_mode)->toBe('local-path');
 
     expect(DB::table('instagram_profile_snapshots')->count())->toBe(1);
-    $snapshot = DB::table('instagram_profile_snapshots')->first();
+    $snapshot = InstagramProfileSnapshot::firstOrFail();
     expect($snapshot->instagram_account_id)->toBe($account->id);
     expect($snapshot->username)->toBe('odinnadalsteinsson');
     expect($snapshot->display_name)->toBe('Odinn Adalsteinsson');

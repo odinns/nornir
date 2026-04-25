@@ -42,6 +42,7 @@ class ImportFacebookArchiveAction
             },
         );
 
+        /** @var array{run: Run, summary: array{source_file:string, source_set_id:int, people:int, profile_snapshots:int, social_edges:int, threads:int, messages:int, posts:int, comments:int, reactions:int, attachments:int, inserted_messages:int, reobserved_messages:int}} $execution */
         return new FacebookImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -49,7 +50,7 @@ class ImportFacebookArchiveAction
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array{source_file:string, source_set_id:int, people:int, profile_snapshots:int, social_edges:int, threads:int, messages:int, posts:int, comments:int, reactions:int, attachments:int, inserted_messages:int, reobserved_messages:int}
      */
     private function importArchive(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {
@@ -119,11 +120,12 @@ class ImportFacebookArchiveAction
         $threadSummary = $this->importThreads($archivePath, $archiveId, $run, $observedPeople, $progress);
         $summary['threads'] = $threadSummary['threads'];
         $summary['messages'] = $threadSummary['messages'];
-        $summary['attachments'] = $threadSummary['attachments'] + (int) $summary['attachments'];
+        $summary['attachments'] = $threadSummary['attachments'] + (int) ($summary['attachments'] ?? 0);
         $summary['inserted_messages'] = $threadSummary['inserted_messages'];
         $summary['reobserved_messages'] = $threadSummary['reobserved_messages'];
         $summary['people'] = count($observedPeople);
 
+        /** @var array{source_file:string, source_set_id:int, people:int, profile_snapshots:int, social_edges:int, threads:int, messages:int, posts:int, comments:int, reactions:int, attachments:int, inserted_messages:int, reobserved_messages:int} $summary */
         return $summary;
     }
 
@@ -299,7 +301,7 @@ class ImportFacebookArchiveAction
                         postId: $postRow['id'],
                         rawAttachment: $attachment['raw_attachment'],
                     );
-                    $summary['attachments']++;
+                    $summary['attachments'] = (int) ($summary['attachments'] ?? 0) + 1;
                 }
 
                 $this->provenanceWriter->link(new WriteProvenanceLinkData(

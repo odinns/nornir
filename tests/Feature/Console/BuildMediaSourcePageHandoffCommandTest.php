@@ -42,7 +42,7 @@ it('builds a media-collection source-page handoff from the cli', function (): vo
 
     $importResult = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:media-source-pages', [
+    artisanCommand($this, 'handoff:media-source-pages', [
         '--run-id' => $importResult->run->id,
     ])
         ->expectsOutputToContain('Building media-collection source-page handoff')

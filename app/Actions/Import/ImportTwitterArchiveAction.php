@@ -45,6 +45,7 @@ class ImportTwitterArchiveAction
             },
         );
 
+        /** @var array{run: Run, summary: array{source_file:string, source_set_id:int, accounts:int, profile_snapshots:int, tweets:int, note_tweets:int, media_refs:int, inserted_tweets:int, reobserved_tweets:int}} $execution */
         return new TwitterImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -52,7 +53,7 @@ class ImportTwitterArchiveAction
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array{source_file:string, source_set_id:int, accounts:int, profile_snapshots:int, tweets:int, note_tweets:int, media_refs:int, inserted_tweets:int, reobserved_tweets:int}
      */
     private function importArchive(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

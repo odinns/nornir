@@ -18,6 +18,10 @@ it('parses last seven days from local midnight through now', function (): void {
         window: 'last 7 days',
     );
 
+    if ($range->start === null || $range->end === null) {
+        throw new RuntimeException('Expected last-seven-days parsing to return a bounded range.');
+    }
+
     expect($range->start->toIso8601String())->toBe('2026-04-13T00:00:00+02:00');
     expect($range->end->toIso8601String())->toBe('2026-04-20T15:45:00+02:00');
 });
@@ -31,6 +35,10 @@ it('parses two days ago as the full local calendar day', function (): void {
         window: null,
     );
 
+    if ($range->start === null || $range->end === null) {
+        throw new RuntimeException('Expected day parsing to return a bounded range.');
+    }
+
     expect($range->start->toIso8601String())->toBe('2026-04-18T00:00:00+02:00');
     expect($range->end->toIso8601String())->toBe('2026-04-18T23:59:59+02:00');
 });
@@ -41,6 +49,10 @@ it('parses absolute date-only input as the full local calendar day', function ()
         on: '2026-04-18',
         window: null,
     );
+
+    if ($range->start === null || $range->end === null) {
+        throw new RuntimeException('Expected date-only parsing to return a bounded range.');
+    }
 
     expect($range->start->toIso8601String())->toBe('2026-04-18T00:00:00+02:00');
     expect($range->end->toIso8601String())->toBe('2026-04-18T23:59:59+02:00');
@@ -53,6 +65,10 @@ it('parses absolute datetime input without widening it to the full day', functio
         window: null,
     );
 
+    if ($range->start === null) {
+        throw new RuntimeException('Expected since parsing to return a start date.');
+    }
+
     expect($range->start->toIso8601String())->toBe('2026-04-18T14:30:00+02:00');
     expect($range->end)->toBeNull();
 });
@@ -63,6 +79,10 @@ it('supports natural language absolute inputs', function (): void {
         on: 'April 18 2026',
         window: null,
     );
+
+    if ($range->start === null || $range->end === null) {
+        throw new RuntimeException('Expected natural language date parsing to return a bounded range.');
+    }
 
     expect($range->start->toIso8601String())->toBe('2026-04-18T00:00:00+02:00');
     expect($range->end->toIso8601String())->toBe('2026-04-18T23:59:59+02:00');

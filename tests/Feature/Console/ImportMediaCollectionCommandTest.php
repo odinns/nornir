@@ -30,7 +30,7 @@ it('imports media-collection rows from the cli with useful default output', func
         ],
     ]);
 
-    $this->artisan('import:media-collection', [
+    artisanCommand($this, 'import:media-collection', [
         'source' => $fixture['env_path'],
     ])
         ->expectsOutputToContain('Recording intake for media-collection source')
@@ -63,7 +63,7 @@ it('restricts media-collection rows from the cli by path prefix', function (): v
         ],
     ]);
 
-    $this->artisan('import:media-collection', [
+    artisanCommand($this, 'import:media-collection', [
         'source' => $fixture['env_path'],
         '--path-prefix' => '/Volumes/LIMA-2/Pictures',
     ])

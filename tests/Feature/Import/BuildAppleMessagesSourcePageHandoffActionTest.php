@@ -52,13 +52,15 @@ it('builds a compile-facing handoff from canonical apple messages rows', functio
     $importResult = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
     $handoff = app(BuildAppleMessagesSourcePageHandoffAction::class)($importResult->run->id);
-    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
+    /** @var array{source_locator:string, accepted_root_paths:list<string>, attachments_root:string, tables:list<string>, source_set_ids:list<int>, handoff_scope:array{source_set_ids:list<int>}, row_counts:array{source_sets:int, conversations:int, participants:int, messages:int, attachments:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    $sourceSetIds = $scope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('apple-messages');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($sourceSetIds)->toHaveCount(1);
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'source_locator' => $fixture['database_path'],
         'accepted_root_paths' => [$fixture['root_path']],
         'attachments_root' => $fixture['attachments_root'],
@@ -132,7 +134,9 @@ it('builds the apple messages handoff from canonical rows without rescanning the
 
     $handoff = app(BuildAppleMessagesSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, conversations:int, participants:int, messages:int, attachments:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'conversations' => 1,
         'participants' => 1,

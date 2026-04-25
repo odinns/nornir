@@ -171,6 +171,12 @@ it('records artifacts as discoverable children of a run', function (): void {
         metadata: ['source' => 'chatgpt'],
     ));
 
+    expect($artifact->run)->not->toBeNull();
+
+    if ($artifact->run === null) {
+        throw new RuntimeException('Expected the artifact to be attached to its run.');
+    }
+
     expect($artifact->run->is($run))->toBeTrue();
     expect($run->artifacts()->orderBy('id')->pluck('locator')->all())->toBe([
         'data/runs/import/chatgpt-import-2026-04-10.json',
@@ -203,6 +209,13 @@ it('records provenance links from an output claim back to supporting evidence', 
         evidenceType: 'evidence-bundle',
         evidenceRef: 'bundle:chatgpt-import-2026-04-10',
     ));
+
+    expect($firstLink->run)->not->toBeNull();
+    expect($secondLink->run)->not->toBeNull();
+
+    if ($firstLink->run === null || $secondLink->run === null) {
+        throw new RuntimeException('Expected provenance links to be attached to their run.');
+    }
 
     expect($firstLink->run->is($run))->toBeTrue();
     expect($secondLink->run->is($run))->toBeTrue();

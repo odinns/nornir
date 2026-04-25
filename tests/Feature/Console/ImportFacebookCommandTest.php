@@ -35,7 +35,7 @@ it('imports facebook archives from the cli with useful default output', function
         ]],
     ]);
 
-    $this->artisan('import:facebook', [
+    artisanCommand($this, 'import:facebook', [
         'source' => $fixture['archive_path'],
     ])
         ->expectsOutputToContain('Recording intake for Facebook source')
@@ -63,7 +63,7 @@ it('stays quiet when quiet mode is requested', function (): void {
         ]],
     ]);
 
-    $this->artisan('import:facebook', [
+    artisanCommand($this, 'import:facebook', [
         'source' => $fixture['archive_path'],
         '--quiet' => true,
     ])->assertSuccessful();

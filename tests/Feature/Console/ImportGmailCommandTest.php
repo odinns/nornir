@@ -40,7 +40,7 @@ it('imports gmail messages from the cli with useful output', function (): void {
         }
     });
 
-    $this->artisan('import:gmail', [
+    artisanCommand($this, 'import:gmail', [
         'source' => $credentialsPath,
         '--query' => 'from:me',
     ])
@@ -57,7 +57,7 @@ it('imports gmail messages from the cli with useful output', function (): void {
 it('fails when the query flag is missing', function (): void {
     $credentialsPath = createGmailCredentialsFixture('gmail-console-missing-query');
 
-    $this->artisan('import:gmail', [
+    artisanCommand($this, 'import:gmail', [
         'source' => $credentialsPath,
     ])
         ->assertFailed();
