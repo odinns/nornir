@@ -12,8 +12,6 @@ use Throwable;
 
 class BackfillGmailBodyPlainCommand extends Command
 {
-    private const string BLANK_BODY_PLAIN_SQL = "REGEXP_REPLACE(body_plain, '[[:space:]]+', '') = ''";
-
     private const string NON_BLANK_BODY_HTML_SQL = "REGEXP_REPLACE(body_html, '[[:space:]]+', '') <> ''";
 
     protected $signature = 'gmail:backfill-body-plain
@@ -46,7 +44,7 @@ class BackfillGmailBodyPlainCommand extends Command
 
         $updated = 0;
         $wouldUpdate = 0;
-        $wouldSkipEmpty = 0;
+        $wouldWriteEmpty = 0;
         $failedConversions = 0;
         $processed = 0;
         $lastId = 0;
@@ -82,13 +80,7 @@ class BackfillGmailBodyPlainCommand extends Command
                         continue;
                     }
 
-                    if ($bodyPlain === null) {
-                        $wouldSkipEmpty++;
-
-                        continue;
-                    }
-
-                    $wouldUpdate++;
+                    $bodyPlain === null ? $wouldWriteEmpty++ : $wouldUpdate++;
                 }
 
                 $failedConversions += $batchFailedConversions;
@@ -98,11 +90,20 @@ class BackfillGmailBodyPlainCommand extends Command
                 if ($batchFailedConversions > 0) {
                     $this->error($this->failedBatchMessage($rows));
                     $this->line('Would update: '.$wouldUpdate);
-                    $this->line('Would skip empty: '.$wouldSkipEmpty);
+                    $this->line('Would write empty: '.$wouldWriteEmpty);
                     $this->line('Failed conversions: '.$failedConversions);
 
                     return self::FAILURE;
                 }
+
+                $this->line(sprintf(
+                    'Processed: %d/%d; would update: %d; would write empty: %d; failed conversions: %d.',
+                    $processed,
+                    $candidateCount,
+                    $wouldUpdate,
+                    $wouldWriteEmpty,
+                    $failedConversions,
+                ));
 
                 continue;
             }
@@ -118,19 +119,11 @@ class BackfillGmailBodyPlainCommand extends Command
                     $batchUpdated = 0;
 
                     foreach ($rendered as $id => $bodyPlain) {
-                        if ($bodyPlain === null) {
-                            continue;
-                        }
-
                         $batchUpdated += DB::table('gmail_messages')
                             ->where('id', $id)
-                            ->where(static function ($query): void {
-                                $query
-                                    ->whereNull('body_plain')
-                                    ->orWhereRaw(self::BLANK_BODY_PLAIN_SQL);
-                            })
+                            ->whereNull('body_plain')
                             ->update([
-                                'body_plain' => $bodyPlain,
+                                'body_plain' => $bodyPlain ?? '',
                                 'updated_at' => now(),
                             ]);
                     }
@@ -145,11 +138,18 @@ class BackfillGmailBodyPlainCommand extends Command
 
             $processed += $rows->count();
             $lastId = (int) $rows->last()->id;
+
+            $this->line(sprintf(
+                'Processed: %d/%d; updated: %d.',
+                $processed,
+                $candidateCount,
+                $updated,
+            ));
         }
 
         if ($isDryRun) {
             $this->line('Would update: '.$wouldUpdate);
-            $this->line('Would skip empty: '.$wouldSkipEmpty);
+            $this->line('Would write empty: '.$wouldWriteEmpty);
             $this->line('Failed conversions: '.$failedConversions);
             $this->line('Dry run: rendered candidates but wrote no rows.');
 
@@ -197,11 +197,7 @@ class BackfillGmailBodyPlainCommand extends Command
     private function candidateQuery(): Builder
     {
         return DB::table('gmail_messages')
-            ->where(static function ($query): void {
-                $query
-                    ->whereNull('body_plain')
-                    ->orWhereRaw(self::BLANK_BODY_PLAIN_SQL);
-            })
+            ->whereNull('body_plain')
             ->whereNotNull('body_html')
             ->whereRaw(self::NON_BLANK_BODY_HTML_SQL);
     }

@@ -14,8 +14,9 @@ it('dry runs without writing body plain values', function (): void {
 
     artisanCommand($this, 'gmail:backfill-body-plain', ['--dry-run' => true])
         ->expectsOutputToContain('Candidates: 2')
+        ->expectsOutputToContain('Processed: 2/2; would update: 1; would write empty: 1; failed conversions: 0.')
         ->expectsOutputToContain('Would update: 1')
-        ->expectsOutputToContain('Would skip empty: 1')
+        ->expectsOutputToContain('Would write empty: 1')
         ->expectsOutputToContain('Failed conversions: 0')
         ->expectsOutputToContain('Dry run: rendered candidates but wrote no rows.')
         ->assertSuccessful();
@@ -24,21 +25,25 @@ it('dry runs without writing body plain values', function (): void {
     expect(DB::table('gmail_messages')->where('message_id', 'msg-empty')->value('body_plain'))->toBeNull();
 });
 
-it('fills only missing plain bodies and does not overwrite existing text', function (): void {
+it('fills only null plain bodies and does not overwrite existing text', function (): void {
     insertGmailBackfillMessage('msg-missing', null, '<p>Rendered <strong>text</strong></p>');
-    insertGmailBackfillMessage('msg-blank', " \n ", '<p>Blank becomes useful</p>');
+    insertGmailBackfillMessage('msg-empty', null, '<div><br></div>');
+    insertGmailBackfillMessage('msg-blank', " \n ", '<p>Already processed as blank</p>');
     insertGmailBackfillMessage('msg-existing', 'Original plain text', '<p>Do not use me</p>');
     insertGmailBackfillMessage('msg-no-html', null, null);
 
     artisanCommand($this, 'gmail:backfill-body-plain', ['--chunk' => 2])
         ->expectsOutputToContain('Candidates: 2')
+        ->expectsOutputToContain('Processed: 2/2; updated: 2.')
         ->expectsOutputToContain('Updated: 2')
         ->assertSuccessful();
 
     expect(DB::table('gmail_messages')->where('message_id', 'msg-missing')->value('body_plain'))
         ->toContain('Rendered text')
+        ->and(DB::table('gmail_messages')->where('message_id', 'msg-empty')->value('body_plain'))
+        ->toBe('')
         ->and(DB::table('gmail_messages')->where('message_id', 'msg-blank')->value('body_plain'))
-        ->toContain('Blank becomes useful')
+        ->toBe(" \n ")
         ->and(DB::table('gmail_messages')->where('message_id', 'msg-existing')->value('body_plain'))
         ->toBe('Original plain text')
         ->and(DB::table('gmail_messages')->where('message_id', 'msg-no-html')->value('body_plain'))
@@ -99,7 +104,7 @@ it('dry run reports conversion failures and writes nothing', function (): void {
     artisanCommand($this, 'gmail:backfill-body-plain', ['--dry-run' => true, '--chunk' => 2])
         ->expectsOutputToContain('Candidates: 2')
         ->expectsOutputToContain('Would update: 1')
-        ->expectsOutputToContain('Would skip empty: 0')
+        ->expectsOutputToContain('Would write empty: 0')
         ->expectsOutputToContain('Failed conversions: 1')
         ->expectsOutputToContain('Failed batch:')
         ->assertFailed();
