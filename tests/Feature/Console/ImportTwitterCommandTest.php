@@ -17,7 +17,7 @@ beforeEach(function (): void {
 it('imports twitter archives from the cli with useful default output', function (): void {
     $fixture = createTwitterFixtureArchive('twitter-console');
 
-    $this->artisan('import:twitter', [
+    artisanCommand($this, 'import:twitter', [
         'source' => $fixture['archive_path'],
     ])
         ->expectsOutputToContain('Recording intake for Twitter source')
@@ -32,7 +32,7 @@ it('imports twitter archives from the cli with useful default output', function 
 it('stays quiet when quiet mode is requested', function (): void {
     $fixture = createTwitterFixtureArchive('twitter-console-quiet');
 
-    $this->artisan('import:twitter', [
+    artisanCommand($this, 'import:twitter', [
         'source' => $fixture['archive_path'],
         '--quiet' => true,
     ])->assertSuccessful();

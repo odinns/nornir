@@ -75,6 +75,11 @@ class BuildGmailSourcePageHandoffAction
             throw new InvalidArgumentException('Gmail handoff run resolved to multiple canonical accounts.');
         }
 
+        $accountEmail = $accountEmails[0] ?? null;
+        if (! is_string($accountEmail) || $accountEmail === '') {
+            throw new InvalidArgumentException('Gmail handoff run resolved to no canonical account.');
+        }
+
         $messageRowIds = DB::table(self::TABLE_MESSAGE_OBSERVATIONS)
             ->whereIn('gmail_source_set_id', $sourceSetIds)
             ->pluck('gmail_message_id')
@@ -97,7 +102,7 @@ class BuildGmailSourcePageHandoffAction
             ->all();
 
         $canonicalScope = [
-            'account_email' => $accountEmails[0],
+            'account_email' => $accountEmail,
             'query' => $query,
             'tables' => self::CANONICAL_TABLES,
             'source_set_ids' => $sourceSetIds,

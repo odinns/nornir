@@ -48,7 +48,7 @@ it('builds an instagram source-page handoff from the cli', function (): void {
 
     $importResult = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:instagram-source-pages', [
+    artisanCommand($this, 'handoff:instagram-source-pages', [
         '--run-id' => $importResult->run->id,
     ])
         ->expectsOutputToContain('Building Instagram source-page handoff')

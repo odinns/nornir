@@ -10,6 +10,12 @@ use App\Services\Gmail\GmailTriageDateRangeParser;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
+/**
+ * @phpstan-type GmailTriageItem array{message_id: string, thread_id: string, from: string, subject: string, received_at: string, urgency: string, reason: string, next_action: string, confidence: float}
+ * @phpstan-type ScoredGmailTriageItem array{message_id: string, thread_id: string, from: string, subject: string, received_at: string, urgency: string, reason: string, next_action: string, confidence: float, _score: int}
+ * @phpstan-type GmailTriageRules array{priority_senders: list<string>, priority_domains: list<string>, priority_labels: list<string>, ignore_senders: list<string>, ignore_domains: list<string>, ignore_subject_keywords: list<string>}
+ * @phpstan-type GmailTriageResult array{account_email: string, query: string, window: array{start: string, end: string|null}, inspected_count: int, matched_count: int, items: list<GmailTriageItem>}
+ */
 class TriageImportantMailAction
 {
     public function __construct(
@@ -18,7 +24,7 @@ class TriageImportantMailAction
     ) {}
 
     /**
-     * @return array<string, mixed>
+     * @return GmailTriageResult
      */
     public function __invoke(
         string $credentialsPath,
@@ -41,6 +47,7 @@ class TriageImportantMailAction
 
         $pageToken = null;
         $inspectedCount = 0;
+        /** @var list<ScoredGmailTriageItem> $items */
         $items = [];
 
         do {
@@ -64,15 +71,18 @@ class TriageImportantMailAction
         } while ($pageToken !== null);
 
         usort($items, function (array $left, array $right): int {
+            /** @var ScoredGmailTriageItem $left */
+            /** @var ScoredGmailTriageItem $right */
             $scoreComparison = $right['_score'] <=> $left['_score'];
 
             if ($scoreComparison !== 0) {
                 return $scoreComparison;
             }
 
-            return strcmp((string) $right['received_at'], (string) $left['received_at']);
+            return strcmp($right['received_at'], $left['received_at']);
         });
 
+        /** @var list<GmailTriageItem> $rankedItems */
         $rankedItems = array_map(function (array $item): array {
             unset($item['_score']);
 
@@ -94,8 +104,8 @@ class TriageImportantMailAction
 
     /**
      * @param  array<string, mixed>  $message
-     * @param  array<string, list<string>>  $rules
-     * @return array<string, mixed>|null
+     * @param  GmailTriageRules  $rules
+     * @return ScoredGmailTriageItem|null
      */
     private function triageMessage(
         array $message,
@@ -346,7 +356,7 @@ class TriageImportantMailAction
     /**
      * @param  array<string, string>  $headers
      * @param  list<string>  $labels
-     * @param  array<string, list<string>>  $rules
+     * @param  GmailTriageRules  $rules
      */
     private function looksAutomated(
         string $senderEmail,
@@ -447,7 +457,7 @@ class TriageImportantMailAction
     }
 
     /**
-     * @return array<string, list<string>>
+     * @return GmailTriageRules
      */
     private function loadRules(?string $rulesPath): array
     {

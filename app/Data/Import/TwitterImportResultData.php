@@ -9,7 +9,7 @@ use App\Models\Run;
 final readonly class TwitterImportResultData
 {
     /**
-     * @param  array<string, int|string>  $summary
+     * @param  array{source_file:string, source_set_id:int, accounts:int, profile_snapshots:int, tweets:int, note_tweets:int, media_refs:int, inserted_tweets:int, reobserved_tweets:int}  $summary
      */
     public function __construct(
         public Run $run,

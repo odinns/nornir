@@ -48,13 +48,15 @@ it('builds a compile-facing handoff from canonical facebook rows', function (): 
 
     $importResult = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
     $handoff = app(BuildFacebookSourcePageHandoffAction::class)($importResult->run->id);
-    $archiveIds = $handoff->canonicalScope['source_set_ids'];
+    /** @var array{source_locator:string, accepted_root_paths:list<string>, source_set_ids:list<int>, handoff_scope:array{source_set_ids:list<int>}, row_counts:array{source_sets:int, conversations:int, messages:int, people:int, posts:int, comments:int, reactions:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    $archiveIds = $scope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('facebook');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($archiveIds)->toHaveCount(1);
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'source_locator' => $fixture['archive_path'],
         'accepted_root_paths' => [$fixture['archive_path']],
         'source_set_ids' => $archiveIds,
@@ -118,7 +120,9 @@ it('builds the facebook handoff from canonical rows without rescanning the raw s
 
     $handoff = app(BuildFacebookSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, conversations:int, messages:int, people:int, posts:int, comments:int, reactions:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'conversations' => 1,
         'messages' => 1,

@@ -24,6 +24,10 @@ class RecordIntakeAction
             throw new InvalidArgumentException("Unsupported source type [{$data->sourceType}].");
         }
 
+        if (! isset($sourceConfig['importer_key']) || ! is_string($sourceConfig['importer_key'])) {
+            throw new InvalidArgumentException("Source type [{$data->sourceType}] is missing an importer key.");
+        }
+
         $allowedAccessModes = $sourceConfig['access_modes'] ?? [];
 
         if (! in_array($data->accessMode, $allowedAccessModes, true)) {
@@ -49,7 +53,7 @@ class RecordIntakeAction
             sourceLocator: $data->sourceLocator,
             scopeSnapshot: $intakeRecord->scope_snapshot ?? [],
             importerOptions: $intakeRecord->importer_options ?? [],
-            importerKey: (string) $sourceConfig['importer_key'],
+            importerKey: $sourceConfig['importer_key'],
         );
 
         $reviewManifestPath = $this->writeReviewManifest($intakeRecord, $dispatchPayload);

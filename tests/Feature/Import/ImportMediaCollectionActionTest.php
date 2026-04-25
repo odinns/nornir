@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Import\ImportMediaCollectionAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\MediaFile;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +57,7 @@ it('imports a single image from monique into media_files', function (): void {
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect(DB::table('media_files')->count())->toBe(1);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->volume_label)->toBe('LIMA-1');
     expect($row->basename)->toBe('IMG_0001.jpg');
     expect($row->normalized_file_type)->toBe('image');
@@ -91,7 +92,7 @@ it('parses event_date from a full date prefix in directory name', function (): v
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->event_label)->toBe('2022-06-15 Birthday');
     expect($row->event_date)->toBe('2022-06-15');
 });
@@ -119,7 +120,7 @@ it('parses event_date to first of month when only year-month present', function 
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->event_date)->toBe('2019-07-01');
 });
 
@@ -146,7 +147,7 @@ it('parses event_date to jan 1 when only year present', function (): void {
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->event_date)->toBe('2015-01-01');
 });
 
@@ -173,7 +174,7 @@ it('uses year dir as event label when no event subdir exists', function (): void
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->event_label)->toBe('2018');
     expect($row->event_date)->toBe('2018-01-01');
 });
@@ -201,7 +202,7 @@ it('sets event_date null when directory name has no date prefix', function (): v
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    $row = DB::table('media_files')->first();
+    $row = MediaFile::firstOrFail();
     expect($row->event_date)->toBeNull();
 });
 
@@ -272,7 +273,7 @@ it('excludes resource fork files with ._ prefix', function (): void {
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
     expect(DB::table('media_files')->count())->toBe(1);
-    expect(DB::table('media_files')->first()->basename)->toBe('photo.jpg');
+    expect(MediaFile::firstOrFail()->basename)->toBe('photo.jpg');
 });
 
 it('excludes non-pictures directories', function (): void {
@@ -307,7 +308,7 @@ it('excludes non-pictures directories', function (): void {
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
     expect(DB::table('media_files')->count())->toBe(1);
-    expect(DB::table('media_files')->first()->basename)->toBe('photo.jpg');
+    expect(MediaFile::firstOrFail()->basename)->toBe('photo.jpg');
 });
 
 it('restricts import to a single volume when --volume is given', function (): void {
@@ -343,8 +344,9 @@ it('restricts import to a single volume when --volume is given', function (): vo
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
     expect(DB::table('media_files')->count())->toBe(1);
-    expect(DB::table('media_files')->first()->basename)->toBe('b.jpg');
-    expect(DB::table('media_files')->first()->volume_label)->toBe('LIMA-2');
+    $file = MediaFile::firstOrFail();
+    expect($file->basename)->toBe('b.jpg');
+    expect($file->volume_label)->toBe('LIMA-2');
 });
 
 it('restricts import to a path prefix when one is given', function (): void {
@@ -462,7 +464,7 @@ it('writes a provenance link per imported file', function (): void {
 
     expect(ProvenanceLink::query()->where('claim_key', 'imported-media-file')->count())->toBe(2);
 
-    $link = ProvenanceLink::query()->where('claim_key', 'imported-media-file')->first();
+    $link = ProvenanceLink::query()->where('claim_key', 'imported-media-file')->firstOrFail();
     expect($link->evidence_type)->toBe('db-row');
     expect($link->evidence_ref)->toStartWith('monique#files:');
 });

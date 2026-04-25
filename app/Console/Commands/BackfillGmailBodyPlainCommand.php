@@ -40,7 +40,7 @@ class BackfillGmailBodyPlainCommand extends Command
 
         $candidateCount = $limit === null
             ? $this->candidateQuery()->count()
-            : $this->candidateQuery()->limit($limit)->pluck('id')->count();
+            : min($this->candidateQuery()->count(), $limit);
 
         $this->line('Candidates: '.$candidateCount);
 

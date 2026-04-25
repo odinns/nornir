@@ -35,10 +35,10 @@ class FakeGmailApiClient implements GmailApiClientInterface
     {
         return [
             'messages' => array_map(
-                static fn (array $m): array => array_filter(
-                    ['id' => $m['id'] ?? null, 'threadId' => $m['threadId'] ?? null],
-                    static fn (mixed $v): bool => $v !== null,
-                ),
+                static fn (array $m): array => [
+                    'id' => (string) ($m['id'] ?? ''),
+                    'threadId' => (string) ($m['threadId'] ?? ''),
+                ],
                 $this->messages,
             ),
             'nextPageToken' => null,
@@ -92,7 +92,7 @@ function createGmailCredentialsFixture(string $label = 'gmail-test'): string
         'client_id' => '123456789',
         'auth_uri' => 'https://accounts.google.com/o/oauth2/auth',
         'token_uri' => 'https://oauth2.googleapis.com/token',
-    ], JSON_PRETTY_PRINT));
+    ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     return $path;
 }
@@ -114,6 +114,7 @@ function makeGmailIntake(string $query = 'from:me'): RecordIntakeResultData
 
 /**
  * @param  list<array<string, mixed>>  $messages
+ * @param  array<string, int>  $authFailuresByMessageId
  */
 function bindFakeGmailClient(array $messages, array $authFailuresByMessageId = []): void
 {
@@ -122,6 +123,7 @@ function bindFakeGmailClient(array $messages, array $authFailuresByMessageId = [
 
 /**
  * @param  list<array<string, mixed>>  $messages
+ * @param  array<string, int>  $authFailuresByMessageId
  */
 function bindFakeGmailClientForAccount(
     array $messages,

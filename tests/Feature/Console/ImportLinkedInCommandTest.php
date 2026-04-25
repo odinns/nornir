@@ -17,7 +17,7 @@ beforeEach(function (): void {
 it('imports linkedin archives from the cli with useful default output', function (): void {
     $fixture = createLinkedInFixtureArchive('linkedin-console');
 
-    $this->artisan('import:linkedin', [
+    artisanCommand($this, 'import:linkedin', [
         'source' => $fixture['archive_path'],
     ])
         ->expectsOutputToContain('Recording intake for LinkedIn source')

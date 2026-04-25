@@ -98,12 +98,14 @@ it('traverses linkedin importer eloquent graph over imported archive data', func
         ->orderBy('sent_at')
         ->firstOrFail();
 
-    expect($firstMessage->conversation->firstSeenArchive->is($archive))->toBeTrue()
-        ->and($firstMessage->sender)->not->toBeNull()
-        ->and($firstMessage->sender->display_name)->toBe('Odinn Adalsteinsson')
-        ->and($firstMessage->sender->messagesSent->pluck('content')->all())->toContain('Hej Sylvester')
-        ->and($firstMessage->attachment)->not->toBeNull()
-        ->and($firstMessage->attachment->attachment_urls_json)->toBe([
+    $firstSeenArchive = $firstMessage->conversation->firstSeenArchive ?? throw new RuntimeException('Expected LinkedIn conversation archive.');
+    $sender = $firstMessage->sender ?? throw new RuntimeException('Expected LinkedIn message sender.');
+    $attachment = $firstMessage->attachment ?? throw new RuntimeException('Expected LinkedIn message attachment.');
+
+    expect($firstSeenArchive->is($archive))->toBeTrue()
+        ->and($sender->display_name)->toBe('Odinn Adalsteinsson')
+        ->and($sender->messagesSent->pluck('content')->all())->toContain('Hej Sylvester')
+        ->and($attachment->attachment_urls_json)->toBe([
             'https://www.linkedin.com/dms/prv/attachment/example',
         ]);
 });

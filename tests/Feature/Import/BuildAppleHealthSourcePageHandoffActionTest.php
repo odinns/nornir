@@ -48,13 +48,15 @@ it('builds a compile-facing handoff from canonical apple health rows', function 
     $importResult = app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
     $handoff = app(BuildAppleHealthSourcePageHandoffAction::class)($importResult->run->id);
-    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
+    /** @var array{source_locator:string, accepted_root_paths:list<string>, tables:list<string>, source_set_ids:list<int>, handoff_scope:array{source_set_ids:list<int>}, row_counts:array{source_sets:int, records:int, workouts:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    $sourceSetIds = $scope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('apple-health');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($sourceSetIds)->toHaveCount(1);
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'source_locator' => $fixture['root_path'],
         'accepted_root_paths' => [$fixture['root_path']],
         'tables' => [
@@ -121,7 +123,9 @@ it('builds the apple health handoff from canonical rows without rescanning the r
 
     $handoff = app(BuildAppleHealthSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, records:int, workouts:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'records' => 1,
         'workouts' => 0,

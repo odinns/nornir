@@ -38,7 +38,7 @@ it('builds an apple messages source-page handoff from the latest successful impo
 
     $importResult = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:apple-messages-source-pages')
+    artisanCommand($this, 'handoff:apple-messages-source-pages')
         ->expectsOutputToContain('Building Apple Messages source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$fixture['database_path'])

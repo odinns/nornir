@@ -35,7 +35,7 @@ it('builds a facebook source-page handoff from the latest successful import run'
 
     $importResult = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:facebook-source-pages')
+    artisanCommand($this, 'handoff:facebook-source-pages')
         ->expectsOutputToContain('Building Facebook source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$fixture['archive_path'])

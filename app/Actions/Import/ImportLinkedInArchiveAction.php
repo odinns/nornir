@@ -53,6 +53,7 @@ class ImportLinkedInArchiveAction
             },
         );
 
+        /** @var array{run: Run, summary: array{source_file:string, source_set_id:int, profile_snapshots:int, positions:int, education_records:int, projects:int, skills:int, languages:int, people:int, connections:int, invitations:int, recommendations:int, endorsements:int, shares:int, comments:int, reactions:int, rich_media:int, conversations:int, messages:int, attachments:int, inserted_messages:int, reobserved_messages:int}} $execution */
         return new LinkedInImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -60,7 +61,7 @@ class ImportLinkedInArchiveAction
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array{source_file:string, source_set_id:int, profile_snapshots:int, positions:int, education_records:int, projects:int, skills:int, languages:int, people:int, connections:int, invitations:int, recommendations:int, endorsements:int, shares:int, comments:int, reactions:int, rich_media:int, conversations:int, messages:int, attachments:int, inserted_messages:int, reobserved_messages:int}
      */
     private function importArchive(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

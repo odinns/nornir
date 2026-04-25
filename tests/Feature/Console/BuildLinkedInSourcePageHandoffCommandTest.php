@@ -29,7 +29,7 @@ it('builds a linkedin source-page handoff from the cli', function (): void {
 
     $importResult = app(ImportLinkedInArchiveAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:linkedin-source-pages', [
+    artisanCommand($this, 'handoff:linkedin-source-pages', [
         '--run-id' => $importResult->run->id,
     ])
         ->expectsOutputToContain('Building LinkedIn source-page handoff')

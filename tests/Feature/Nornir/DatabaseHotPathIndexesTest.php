@@ -23,9 +23,10 @@ it('adds indexes for gmail and provenance hot paths', function (): void {
  */
 function indexColumns(string $table, string $indexName): array
 {
-    return collect(DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]))
+    return array_values(collect(DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]))
         ->sortBy('Seq_in_index')
         ->pluck('Column_name')
         ->values()
-        ->all();
+        ->map(static fn (mixed $column): string => (string) $column)
+        ->all());
 }

@@ -45,7 +45,7 @@ it('builds an apple health source-page handoff from the latest successful import
 
     $importResult = app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:apple-health-source-pages')
+    artisanCommand($this, 'handoff:apple-health-source-pages')
         ->expectsOutputToContain('Building Apple Health source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$fixture['root_path'])

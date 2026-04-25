@@ -151,6 +151,11 @@ class ImportWaybackCommand extends Command
         return self::SUCCESS;
     }
 
+    protected function sourceArgumentName(): string
+    {
+        return 'scope';
+    }
+
     private function scopeArgument(): string
     {
         $scope = $this->argument('scope');

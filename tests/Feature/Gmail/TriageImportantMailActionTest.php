@@ -22,16 +22,26 @@ afterEach(function (): void {
     File::deleteDirectory(base_path('data/test-fixtures/gmail'));
 });
 
-function bindGmailTriageClient(array $messages, mixed &$capturedQuery = null): void
+class GmailTriageQueryCapture
 {
-    $client = new class($messages, $capturedQuery) implements GmailApiClientInterface
+    public ?string $query = null;
+}
+
+/**
+ * @param  list<array<string, mixed>>  $messages
+ */
+function bindGmailTriageClient(array $messages, ?GmailTriageQueryCapture $capture = null): void
+{
+    $capture ??= new GmailTriageQueryCapture;
+
+    $client = new readonly class($messages, $capture) implements GmailApiClientInterface
     {
         /**
          * @param  list<array<string, mixed>>  $messages
          */
         public function __construct(
-            private readonly array $messages,
-            private mixed &$capturedQuery,
+            private array $messages,
+            private GmailTriageQueryCapture $capture,
         ) {}
 
         public function getAccountEmail(): string
@@ -43,13 +53,13 @@ function bindGmailTriageClient(array $messages, mixed &$capturedQuery = null): v
 
         public function listMessages(string $query, ?string $pageToken = null): array
         {
-            $this->capturedQuery = $query;
+            $this->capture->query = $query;
 
             return [
                 'messages' => array_map(
                     static fn (array $message): array => [
-                        'id' => $message['id'],
-                        'threadId' => $message['threadId'],
+                        'id' => (string) ($message['id'] ?? ''),
+                        'threadId' => (string) ($message['threadId'] ?? ''),
                     ],
                     $this->messages,
                 ),
@@ -60,7 +70,7 @@ function bindGmailTriageClient(array $messages, mixed &$capturedQuery = null): v
         public function getMessage(string $messageId): array
         {
             foreach ($this->messages as $message) {
-                if ($message['id'] === $messageId) {
+                if (($message['id'] ?? null) === $messageId) {
                     return $message;
                 }
             }
@@ -81,7 +91,7 @@ function bindGmailTriageClient(array $messages, mixed &$capturedQuery = null): v
 }
 
 it('ranks urgent mail ahead of newsletter noise and builds a bounded Gmail query', function (): void {
-    $capturedQuery = null;
+    $queryCapture = new GmailTriageQueryCapture;
 
     $messages = [
         buildGmailMessage([
@@ -122,7 +132,7 @@ it('ranks urgent mail ahead of newsletter noise and builds a bounded Gmail query
         ]),
     ];
 
-    bindGmailTriageClient($messages, $capturedQuery);
+    bindGmailTriageClient($messages, $queryCapture);
 
     $rulesPath = base_path('data/test-fixtures/gmail/priority-rules.json');
     File::ensureDirectoryExists(dirname($rulesPath));
@@ -140,12 +150,13 @@ it('ranks urgent mail ahead of newsletter noise and builds a bounded Gmail query
         rulesPath: $rulesPath,
     );
 
-    expect($capturedQuery)->toContain('after:2026/04/13');
-    expect($capturedQuery)->toContain('before:2026/04/21');
+    expect($queryCapture->query)->toContain('after:2026/04/13');
+    expect($queryCapture->query)->toContain('before:2026/04/21');
     expect($result['matched_count'])->toBe(1);
-    expect($result['items'][0]['message_id'])->toBe('msg-urgent');
-    expect($result['items'][0]['urgency'])->toBe('today');
-    expect($result['items'][0]['reason'])->toContain('priority sender');
+    $item = firstGmailTriageItem($result['items']);
+    expect($item['message_id'])->toBe('msg-urgent');
+    expect($item['urgency'])->toBe('today');
+    expect($item['reason'])->toContain('priority sender');
     expect(DB::table('gmail_messages')->count())->toBe(0);
 });
 
@@ -216,8 +227,9 @@ it('treats ase mail as important by default', function (): void {
     );
 
     expect($result['matched_count'])->toBe(1);
-    expect($result['items'][0]['message_id'])->toBe('msg-ase');
-    expect($result['items'][0]['reason'])->toContain('priority domain');
+    $item = firstGmailTriageItem($result['items']);
+    expect($item['message_id'])->toBe('msg-ase');
+    expect($item['reason'])->toContain('priority domain');
 });
 
 it('treats haveforeningenkildebo mail as important by default', function (): void {
@@ -252,8 +264,9 @@ it('treats haveforeningenkildebo mail as important by default', function (): voi
     );
 
     expect($result['matched_count'])->toBe(1);
-    expect($result['items'][0]['message_id'])->toBe('msg-kildebo');
-    expect($result['items'][0]['reason'])->toContain('priority sender');
+    $item = firstGmailTriageItem($result['items']);
+    expect($item['message_id'])->toBe('msg-kildebo');
+    expect($item['reason'])->toContain('priority sender');
 });
 
 it('does not apply a default inspection limit', function (): void {
@@ -288,3 +301,16 @@ it('does not apply a default inspection limit', function (): void {
 
     expect($result['inspected_count'])->toBe(40);
 });
+
+/**
+ * @param  list<array{message_id: string, thread_id: string, from: string, subject: string, received_at: string, urgency: string, reason: string, next_action: string, confidence: float}>  $items
+ * @return array{message_id: string, thread_id: string, from: string, subject: string, received_at: string, urgency: string, reason: string, next_action: string, confidence: float}
+ */
+function firstGmailTriageItem(array $items): array
+{
+    if ($items === []) {
+        throw new RuntimeException('Expected at least one Gmail triage item.');
+    }
+
+    return $items[0];
+}

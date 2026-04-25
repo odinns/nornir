@@ -130,7 +130,10 @@ it('imports facebook archive biography slices into canonical facebook tables', f
         ->where('source_uri', 'like', 'https://cdn.example.test/%')
         ->first();
 
-    expect($remoteAttachment)->not->toBeNull();
+    if ($remoteAttachment === null) {
+        throw new RuntimeException('Expected remote Facebook attachment row.');
+    }
+
     expect($remoteAttachment->relative_path)->toBeNull();
 });
 

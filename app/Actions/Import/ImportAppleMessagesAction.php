@@ -20,6 +20,10 @@ use InvalidArgumentException;
 use PDO;
 use PDOStatement;
 
+/**
+ * @phpstan-type AppleMessagesChatRow array{row_id:int, source_guid:?string, chat_identifier:?string, display_name:?string, room_name:?string, service:?string, style:?int, is_archived:bool}
+ * @phpstan-type AppleMessagesMessageRow array{row_id:int, guid:?string, text:?string, is_from_me:bool, date:?string, date_read:?string, date_delivered:?string, service:?string, is_delivered:bool, is_read:bool, is_sent:bool, item_type:int, group_title:?string, group_action_type:?int, reaction_to_guid:?string, reaction_type:?int, sender_identifier:?string, sender_service:?string, sender_uncanonicalized_identifier:?string}
+ */
 class ImportAppleMessagesAction
 {
     private const array REQUIRED_SQLITE_TABLES = [
@@ -385,7 +389,7 @@ class ImportAppleMessagesAction
         )->fetchAll();
 
         $tableNames = array_map(
-            static fn (array $row): string => (string) $row['name'],
+            static fn (array $row): string => (string) ($row['name'] ?? ''),
             $existingTables,
         );
 
@@ -471,7 +475,7 @@ class ImportAppleMessagesAction
         )->fetchAll();
 
         $tables = array_map(
-            static fn (array $row): string => (string) $row['name'],
+            static fn (array $row): string => (string) ($row['name'] ?? ''),
             $rows,
         );
 
@@ -485,16 +489,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @return list<array{
-     *     row_id:int,
-     *     source_guid:?string,
-     *     chat_identifier:?string,
-     *     display_name:?string,
-     *     room_name:?string,
-     *     service:?string,
-     *     style:?int,
-     *     is_archived:bool
-     * }>
+     * @return list<AppleMessagesChatRow>
      */
     private function loadChats(PDO $sqlite): array
     {
@@ -514,7 +509,7 @@ class ImportAppleMessagesAction
 
         return array_values(array_map(function (array $row): array {
             return [
-                'row_id' => (int) $row['row_id'],
+                'row_id' => (int) ($row['row_id'] ?? 0),
                 'source_guid' => $this->nullableString($row['guid'] ?? null),
                 'chat_identifier' => $this->nullableString($row['chat_identifier'] ?? null),
                 'display_name' => $this->nullableString($row['display_name'] ?? null),
@@ -554,7 +549,7 @@ class ImportAppleMessagesAction
             if ($row['identifier'] === '') {
                 continue;
             }
-            $participantsByChat[(int) $row['chat_id']][] = [
+            $participantsByChat[(int) ($row['chat_id'] ?? 0)][] = [
                 'identifier' => $row['identifier'],
                 'service' => $this->nullableString($row['service'] ?? null),
                 'uncanonicalized_identifier' => $this->nullableString($row['uncanonicalized_id'] ?? null),
@@ -603,27 +598,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @return list<array{
-     *     row_id:int,
-     *     guid:?string,
-     *     text:?string,
-     *     is_from_me:bool,
-     *     date:?string,
-     *     date_read:?string,
-     *     date_delivered:?string,
-     *     service:?string,
-     *     is_delivered:bool,
-     *     is_read:bool,
-     *     is_sent:bool,
-     *     item_type:int,
-     *     group_title:?string,
-     *     group_action_type:?int,
-     *     reaction_to_guid:?string,
-     *     reaction_type:?int,
-     *     sender_identifier:?string,
-     *     sender_service:?string,
-     *     sender_uncanonicalized_identifier:?string
-     * }>
+     * @return list<AppleMessagesMessageRow>
      */
     private function loadMessagesForChat(PDO $sqlite, int $chatRowId): array
     {
@@ -664,7 +639,7 @@ class ImportAppleMessagesAction
 
         return array_values(array_map(function (array $row): array {
             return [
-                'row_id' => (int) $row['row_id'],
+                'row_id' => (int) ($row['row_id'] ?? 0),
                 'guid' => $this->nullableString($row['guid'] ?? null),
                 'text' => $this->extractMessageText($row['text'] ?? null, $row['attributedBody'] ?? null),
                 'is_from_me' => (bool) ($row['is_from_me'] ?? false),
@@ -688,7 +663,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @param  array<string, mixed>  $chat
+     * @param  AppleMessagesChatRow  $chat
      */
     private function upsertConversation(array $chat): int
     {
@@ -745,7 +720,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @param  array<string, mixed>  $message
+     * @param  AppleMessagesMessageRow  $message
      * @return array{id:int, wasRecentlyCreated:bool}
      */
     private function upsertMessage(int $conversationId, ?int $senderParticipantId, array $message): array
@@ -852,7 +827,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @param  array{is_from_me:bool, sender_identifier:?string, sender_service:?string, sender_uncanonicalized_identifier:?string}  $message
+     * @param  AppleMessagesMessageRow  $message
      * @param  array<string, string>  $contactMap
      */
     private function resolveSenderParticipantId(array $message, array $contactMap): ?int
@@ -869,7 +844,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @param  array<string, mixed>  $chat
+     * @param  AppleMessagesChatRow  $chat
      */
     private function conversationKey(array $chat): string
     {
@@ -885,7 +860,7 @@ class ImportAppleMessagesAction
     }
 
     /**
-     * @param  array<string, mixed>  $message
+     * @param  AppleMessagesMessageRow  $message
      */
     private function messageCanonicalKey(array $message): string
     {

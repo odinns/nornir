@@ -32,13 +32,15 @@ it('builds a compile-facing handoff from canonical chatgpt rows', function (): v
     $importResult = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
     $handoff = app(BuildChatGptSourcePageHandoffAction::class)($importResult->run->id);
-    $sourceSetIds = $handoff->canonicalScope['source_set_ids'];
+    /** @var array{source_locator:string, accepted_root_paths:list<string>, tables:list<string>, source_set_ids:list<int>, handoff_scope:array{source_set_ids:list<int>, selection_mode:string, biography_filter_required:bool}, row_counts:array{source_sets:int, conversations:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    $sourceSetIds = $scope['source_set_ids'];
 
     expect($handoff->sourceType)->toBe('chatgpt');
     expect($handoff->handoffType)->toBe('source-pages');
     expect($handoff->owningRunId)->toBe($importResult->run->id);
     expect($sourceSetIds)->toHaveCount(1);
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'source_locator' => $exportRoot,
         'accepted_root_paths' => [$exportRoot],
         'tables' => [
@@ -104,7 +106,9 @@ it('builds the handoff from normalized rows without rescanning the raw export pa
     $handoff = app(BuildChatGptSourcePageHandoffAction::class)($importResult->run->id);
 
     expect($handoff->owningRunId)->toBe($importResult->run->id);
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, conversations:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'conversations' => 1,
         'messages' => 2,
@@ -153,10 +157,15 @@ it('normalizes legacy relative source locators in the handoff payload', function
 
     $handoff = app(BuildChatGptSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['source_locator'])->toBe($exportRoot);
-    expect($handoff->canonicalScope['accepted_root_paths'])->toBe([$exportRoot]);
+    /** @var array{source_locator:string, accepted_root_paths:list<string>} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['source_locator'])->toBe($exportRoot);
+    expect($scope['accepted_root_paths'])->toBe([$exportRoot]);
 });
 
+/**
+ * @param  list<array<string, mixed>>  $conversations
+ */
 function createHandoffChatGptExportDirectory(array $conversations): string
 {
     $path = storage_path('framework/testing/chatgpt-handoff-'.bin2hex(random_bytes(4)));
@@ -170,6 +179,9 @@ function createHandoffChatGptExportDirectory(array $conversations): string
     return $path;
 }
 
+/**
+ * @return array<string, mixed>
+ */
 function buildHandoffChatGptConversation(string $conversationId): array
 {
     return [

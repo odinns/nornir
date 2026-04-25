@@ -31,6 +31,9 @@ it('preserves created_at and refreshes updated_at when upserting an existing row
     );
 
     $row = DB::table('gmail_accounts')->where('id', $sameId)->first();
+    if ($row === null) {
+        throw new RuntimeException('Expected the upserted Gmail account row to exist.');
+    }
 
     expect($sameId)->toBe($id);
     expect($row->created_at)->toBe($createdAt);

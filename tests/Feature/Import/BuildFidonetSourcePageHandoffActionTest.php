@@ -27,10 +27,12 @@ it('builds a compile-facing handoff from imported fidonet rows', function (): vo
 
     $importResult = app(ImportFidonetSourceAction::class)($intake->dispatchPayload);
     $handoff = app(BuildFidonetSourcePageHandoffAction::class)($importResult->run->id);
+    /** @var array{source_locator:string, handoff_scope:array{selection_mode:string}, row_counts:array{source_sets:int, areas:int, threads:int, messages:int, participants:int}} $scope */
+    $scope = $handoff->canonicalScope;
 
     expect($handoff->sourceType)->toBe('fidonet');
     expect($handoff->handoffType)->toBe('source-pages');
-    expect($handoff->canonicalScope)->toMatchArray([
+    expect($scope)->toMatchArray([
         'source_locator' => $fixture['env_path'],
         'row_counts' => [
             'source_sets' => 1,
@@ -40,7 +42,7 @@ it('builds a compile-facing handoff from imported fidonet rows', function (): vo
             'participants' => 4,
         ],
     ]);
-    expect($handoff->canonicalScope['handoff_scope']['selection_mode'])->toBe('odinn-thread-scope');
+    expect($scope['handoff_scope']['selection_mode'])->toBe('odinn-thread-scope');
 });
 
 it('rejects runs that are not successful fidonet imports', function (): void {
@@ -74,7 +76,9 @@ it('builds the fidonet handoff without rescanning the external source env file c
 
     $handoff = app(BuildFidonetSourcePageHandoffAction::class)($importResult->run->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, areas:int, threads:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'areas' => 2,
         'threads' => 2,
@@ -110,7 +114,9 @@ it('builds fidonet handoffs from run-specific observations when later scopes ove
 
     $handoff = app(BuildFidonetSourcePageHandoffAction::class)($firstRun->id);
 
-    expect($handoff->canonicalScope['row_counts'])->toMatchArray([
+    /** @var array{row_counts:array{source_sets:int, areas:int, threads:int, messages:int}} $scope */
+    $scope = $handoff->canonicalScope;
+    expect($scope['row_counts'])->toMatchArray([
         'source_sets' => 1,
         'areas' => 1,
         'threads' => 1,

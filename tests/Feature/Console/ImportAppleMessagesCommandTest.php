@@ -46,7 +46,7 @@ it('imports apple messages backups from the cli with useful default output', fun
         'phones' => ['+45 11 11 11 11'],
     ]]);
 
-    $this->artisan('import:apple-messages', [
+    artisanCommand($this, 'import:apple-messages', [
         'source' => $fixture['database_path'],
         '--attachments-root' => $fixture['attachments_root'],
         '--contacts-db' => [$contactsDatabase],
@@ -79,7 +79,7 @@ it('stays quiet when quiet mode is requested', function (): void {
         ],
     ]);
 
-    $this->artisan('import:apple-messages', [
+    artisanCommand($this, 'import:apple-messages', [
         'source' => $fixture['database_path'],
         '--attachments-root' => $fixture['attachments_root'],
         '--quiet' => true,

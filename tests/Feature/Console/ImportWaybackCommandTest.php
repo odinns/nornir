@@ -49,7 +49,7 @@ it('dry runs wayback capture counts without writing importer state', function ()
         ]),
     ]);
 
-    $this->artisan('import:wayback', [
+    artisanCommand($this, 'import:wayback', [
         'scope' => 'odinns.dk',
         '--dry-run' => true,
         '--delay-ms' => 0,
@@ -103,7 +103,7 @@ it('lists paged wayback snapshots by datetime without writing importer state', f
         ]),
     ]);
 
-    $this->artisan('import:wayback', [
+    artisanCommand($this, 'import:wayback', [
         'scope' => 'https://odinns.dk/',
         '--match' => 'exact',
         '--dry-run' => true,
@@ -153,7 +153,7 @@ it('imports wayback captures from the cli with useful output', function (): void
         ),
     ]);
 
-    $this->artisan('import:wayback', [
+    artisanCommand($this, 'import:wayback', [
         'scope' => 'odinns.dk',
         '--delay-ms' => 0,
     ])
@@ -171,9 +171,17 @@ it('imports wayback captures from the cli with useful output', function (): void
     expect(DB::table('provenance_links')->where('claim_key', 'imported-wayback-biographical-capture')->count())->toBe(1);
 
     $run = DB::table('runs')->first();
+    if ($run === null) {
+        throw new RuntimeException('Expected a Wayback import run to be recorded.');
+    }
+
     expect(File::exists(base_path('data/imports/wayback/wayback-import-summary-run-'.$run->id.'.json')))->toBeTrue();
 
     $capture = DB::table('wayback_captures')->first();
+    if ($capture === null) {
+        throw new RuntimeException('Expected a Wayback capture to be recorded.');
+    }
+
     expect($capture->title)->toBe('About Odinn');
     expect($capture->verdict)->toBe('accepted');
     expect($capture->extracted_authored_text)->toContain('Goldware');

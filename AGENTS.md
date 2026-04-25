@@ -40,6 +40,17 @@ PRs MUST explain the change, name affected specs or modules, note testing perfor
 
 MySQL is canonical for imported source material. `wiki/` is compiled markdown output. Heimdallr is read-only. Muninn is evidence-first. Huginn may synthesize, but never without traceable support.
 
+## Database Access Rules
+
+Direct `DB::` usage is exceptional, not normal.
+
+- Default to Eloquent models, relationships, query scopes, domain actions, or focused query/helper classes.
+- Do not use `DB::table(...)->first()`, `value()`, `count()`, or raw row objects in ordinary domain code or behavior tests just because it is quick.
+- In tests, assert through typed models or named helpers whenever the test is about domain behavior.
+- Raw `DB::` access is acceptable only for schema/index assertions, migration tests, low-level persistence infrastructure, or genuinely awkward aggregate queries where Eloquent would make the code worse.
+- When `DB::` remains, the reason must be obvious from the surrounding test/helper name or a short comment.
+- If a test starts accumulating `stdClass|null` guards around database rows, that is a smell: switch to a model, `firstOrFail()`, or a typed helper.
+
 ## Database Safety
 
 Treat this repo's local Laravel app as production-dangerous by default.

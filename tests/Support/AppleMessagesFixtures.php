@@ -189,8 +189,11 @@ function createAppleMessagesFixtureDatabase(string $name, array $dataset): array
                 'total_bytes' => $attachment['total_bytes'],
             ]);
 
+            $messageGuid = (string) $attachment['message_guid'];
+            $messageRowId = $messageRowIds[$messageGuid] ?? throw new RuntimeException("Missing message row for attachment [{$messageGuid}].");
+
             $insertMessageAttachmentJoin->execute([
-                'message_id' => $messageRowIds[$attachment['message_guid']],
+                'message_id' => $messageRowId,
                 'attachment_id' => (int) $pdo->lastInsertId(),
             ]);
         }

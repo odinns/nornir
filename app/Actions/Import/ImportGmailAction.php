@@ -62,7 +62,7 @@ class ImportGmailAction
             },
         );
 
-        /** @var array{run: Run, summary: array<string, mixed>} $execution */
+        /** @var array{run: Run, summary: array{source_set_id:int, account_email:string, threads:int, messages:int, inserted_messages:int, reobserved_messages:int, labels:int, attachments:int}} $execution */
         return new GmailImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -70,7 +70,7 @@ class ImportGmailAction
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{source_set_id:int, account_email:string, threads:int, messages:int, inserted_messages:int, reobserved_messages:int, labels:int, attachments:int}
      */
     private function importMessages(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

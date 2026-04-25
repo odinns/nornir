@@ -323,11 +323,17 @@ it('records importer artifacts and provenance links for imported apple health ro
 
     $result = app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
-    $artifactLocators = $result->run->artifacts()->orderBy('id')->pluck('locator')->all();
+    $artifactLocators = $result->run->artifacts()
+        ->orderBy('id')
+        ->pluck('locator')
+        ->map(static fn (mixed $locator): string => (string) $locator)
+        ->all();
 
     expect($artifactLocators)->toHaveCount(2);
-    expect($artifactLocators[0])->toContain('data/imports/apple-health/');
-    expect($artifactLocators[1])->toContain('data/runs/import/');
+    $importArtifact = $artifactLocators[0] ?? throw new RuntimeException('Expected Apple Health import artifact locator.');
+    $runArtifact = $artifactLocators[1] ?? throw new RuntimeException('Expected Apple Health run artifact locator.');
+    expect($importArtifact)->toContain('data/imports/apple-health/');
+    expect($runArtifact)->toContain('data/runs/import/');
 
     $links = ProvenanceLink::query()
         ->where('run_id', $result->run->id)

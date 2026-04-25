@@ -53,6 +53,7 @@ class ImportWaybackAction
             },
         );
 
+        /** @var array{run: Run, summary: array{source_file:string, scope_id:int, cdx_captures:int, captures:int, accepted:int, rejected:int, failed:int, screenshots:int, mirrors:int}} $execution */
         return new WaybackImportResultData(
             run: $execution['run'],
             summary: $execution['summary'],
@@ -60,7 +61,7 @@ class ImportWaybackAction
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{source_file:string, scope_id:int, cdx_captures:int, captures:int, accepted:int, rejected:int, failed:int, screenshots:int, mirrors:int}
      */
     private function importCaptures(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

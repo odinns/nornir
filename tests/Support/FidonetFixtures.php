@@ -229,7 +229,7 @@ function createFidonetFixtureSource(string $name, array $overrides = []): array
         ');
         $statement->execute([
             ':id' => $message['id'] ?? null,
-            ':area_id' => $areaIdsByCode[$message['area_code']],
+            ':area_id' => $areaIdsByCode[$message['area_code']] ?? throw new RuntimeException("Missing FidoNet area [{$message['area_code']}]."),
             ':msgno' => $message['msgno'],
             ':external_id' => $message['external_id'] ?? null,
             ':subject' => $message['subject'] ?? '',

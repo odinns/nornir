@@ -126,7 +126,7 @@ function createTwitterFixtureArchive(string $name, array $dataset = []): array
     ]];
 
     $tweetHeaders = $dataset['tweet_headers'] ?? array_map(
-        static fn (array $tweet): array => ['tweet' => ['id_str' => $tweet['id_str']]],
+        static fn (array $tweet): array => ['tweet' => ['id_str' => (string) ($tweet['id_str'] ?? '')]],
         [...$tweets, ...$communityTweets]
     );
 
@@ -199,6 +199,9 @@ function createTwitterFixtureArchive(string $name, array $dataset = []): array
     ];
 }
 
+/**
+ * @param  array<array-key, mixed>  $payload
+ */
 function writeTwitterWrappedFile(string $path, string $datasetKey, array $payload, ?string $rawContent = null): void
 {
     File::ensureDirectoryExists(dirname($path));

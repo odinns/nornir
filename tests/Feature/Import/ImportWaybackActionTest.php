@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Actions\Import\ImportWaybackAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Data\Intake\RecordIntakeResultData;
+use App\Models\WaybackCapture;
 use App\Services\Wayback\WaybackClient;
 use App\Services\Wayback\WaybackMirrorDownloader;
 use App\Services\Wayback\WaybackScreenshotter;
@@ -33,7 +35,7 @@ it('reruns without duplicating captures and refreshes current extraction', funct
     expect(DB::table('wayback_captures')->count())->toBe(1);
     expect($result->summary['captures'])->toBe(1);
 
-    $capture = DB::table('wayback_captures')->first();
+    $capture = WaybackCapture::firstOrFail();
     expect($capture->title)->toBe('Updated title');
     expect($capture->extracted_authored_text)->toContain('Updated biography text');
 });
@@ -104,7 +106,7 @@ it('normalizes legacy replay html to utf-8 before storing it', function (): void
 
     app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
 
-    $capture = DB::table('wayback_captures')->first();
+    $capture = WaybackCapture::firstOrFail();
 
     expect($capture->title)->toBe('Odinn Sørensen');
     expect($capture->raw_replay_html)->toContain('Sørensen');
@@ -224,7 +226,7 @@ it('does not abort an import when an optional screenshot fails', function (): vo
     expect(DB::table('wayback_captures')->value('screenshot_path'))->toBeNull();
 });
 
-function makeWaybackIntake(bool $withScreenshots = false, bool $mirrorAssets = false, string $matchMode = 'host'): object
+function makeWaybackIntake(bool $withScreenshots = false, bool $mirrorAssets = false, string $matchMode = 'host'): RecordIntakeResultData
 {
     return app(RecordIntakeAction::class)(new RecordIntakeData(
         sourceType: 'wayback',

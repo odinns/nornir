@@ -28,7 +28,7 @@ it('builds a chatgpt source-page handoff from the latest successful import run',
 
     $importResult = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:chatgpt-source-pages')
+    artisanCommand($this, 'handoff:chatgpt-source-pages')
         ->expectsOutputToContain('Building ChatGPT source-page handoff')
         ->expectsOutputToContain("Using run id: {$importResult->run->id}")
         ->expectsOutputToContain('Source locator: '.$exportRoot)
@@ -57,11 +57,14 @@ it('can build a chatgpt source-page handoff for an explicit run id', function ()
 
     $importResult = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
-    $this->artisan('handoff:chatgpt-source-pages', [
+    artisanCommand($this, 'handoff:chatgpt-source-pages', [
         '--run-id' => $importResult->run->id,
     ])->assertSuccessful();
 });
 
+/**
+ * @param  list<array<string, mixed>>  $conversations
+ */
 function createConsoleHandoffExportDirectory(array $conversations): string
 {
     $path = storage_path('framework/testing/chatgpt-handoff-cli-'.bin2hex(random_bytes(4)));
@@ -75,6 +78,9 @@ function createConsoleHandoffExportDirectory(array $conversations): string
     return $path;
 }
 
+/**
+ * @return array<string, mixed>
+ */
 function buildConsoleHandoffConversation(string $conversationId): array
 {
     return [

@@ -43,7 +43,7 @@ class ImportMediaCollectionAction
             },
         );
 
-        /** @var array{source_dsn:string,volume:string|null,files_inspected:int,files_imported:int,files_reobserved:int,volumes:list<string>} $summary */
+        /** @var array{source_dsn:string,volume:string|null,path_prefix:string|null,files_inspected:int,files_imported:int,files_reobserved:int,volumes:list<string>} $summary */
         $summary = $execution['summary'];
 
         return new MediaCollectionImportResultData(
@@ -53,7 +53,7 @@ class ImportMediaCollectionAction
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{source_dsn:string,volume:string|null,path_prefix:string|null,files_inspected:int,files_imported:int,files_reobserved:int,volumes:list<string>}
      */
     private function import(ImporterDispatchData $dispatchPayload, Run $run, ?callable $progress): array
     {

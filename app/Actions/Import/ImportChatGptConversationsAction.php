@@ -229,12 +229,13 @@ class ImportChatGptConversationsAction
     {
         return is_array($conversation)
             && isset($conversation['id'])
+            && is_string($conversation['id'])
             && isset($conversation['mapping'])
             && is_array($conversation['mapping']);
     }
 
     /**
-     * @param  array<string, mixed>  $conversation
+     * @param  array{id:string, mapping:array<mixed>, title?:mixed, current_node?:mixed, create_time?:mixed, update_time?:mixed}  $conversation
      */
     private function upsertConversation(int $archiveId, array $conversation): int
     {
@@ -262,7 +263,7 @@ class ImportChatGptConversationsAction
     }
 
     /**
-     * @param  array<string, mixed>  $node
+     * @param  array{id:mixed, children:mixed, parent?:mixed}  $node
      */
     private function upsertNode(int $conversationId, array $node): int
     {
@@ -273,7 +274,7 @@ class ImportChatGptConversationsAction
             ],
             [
                 'parent_node_id' => isset($node['parent']) && is_string($node['parent']) ? $node['parent'] : null,
-                'child_node_ids' => json_encode($node['children'], JSON_THROW_ON_ERROR),
+                'child_node_ids' => json_encode(is_array($node['children']) ? $node['children'] : [], JSON_THROW_ON_ERROR),
                 'raw_node' => json_encode($node, JSON_THROW_ON_ERROR),
                 'updated_at' => now(),
                 'created_at' => now(),
@@ -287,7 +288,7 @@ class ImportChatGptConversationsAction
     }
 
     /**
-     * @param  array<string, mixed>  $message
+     * @param  array{id:mixed, content:array<string, mixed>, author?:mixed, metadata?:mixed, status?:mixed, recipient?:mixed, create_time?:mixed, update_time?:mixed}  $message
      * @return array{id:int, wasRecentlyCreated:bool}
      */
     private function upsertMessage(int $conversationId, int $nodeId, array $message): array
