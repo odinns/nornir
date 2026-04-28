@@ -12,8 +12,6 @@ Gmail API results or an explicitly approved export equivalent.
 
 - OAuth credentials JSON path
 - required Gmail query scope via `--query=`
-- `--validate-only`
-- `--dry-run`
 
 ## Output structure
 

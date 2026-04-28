@@ -81,20 +81,23 @@ Useful Gmail search operators:
 
 Use narrow queries first. "Import my whole mailbox" is how you turn a research tool into a swamp.
 
-## Validate Or Dry-Run
-
-```bash
-php artisan import:gmail data/sources/gmail/credentials.json --query="from:someone@example.com" --validate-only
-php artisan import:gmail data/sources/gmail/credentials.json --query="from:someone@example.com" --dry-run
-```
-
 ## Backfill Plain Text
 
-The importer preserves raw-ish message body material and normalized body text where available. If HTML plaintext extraction needs to be rerun:
+The importer preserves raw-ish message body material and normalized body text where available.
+
+This command is not scoped to one import run. It checks every imported Gmail row with an HTML body and missing plaintext. Run the dry run first:
+
+```bash
+php artisan gmail:backfill-body-plain --dry-run
+```
+
+The dry run renders candidates without writing rows. If the candidate count looks right, run the backfill:
 
 ```bash
 php artisan gmail:backfill-body-plain
 ```
+
+The real run writes normalized `body_plain` into already imported Gmail rows and does not call Gmail.
 
 ## Triage Important Mail
 
@@ -137,6 +140,8 @@ php artisan evidence:gmail-important --run-id=123 --json
 ```
 
 The bundle includes message bodies, labels, scoring reason, next action, and provenance refs back to `gmail_messages:{message_id}`. Nornir also records a Muninn child run and a `gmail-important-evidence-bundle` review artifact.
+
+For the human review step after this command, use [operator-workflow.md](operator-workflow.md). It covers `jq` inspection, ignored private notes, read-only SQL checks, and preserving provenance refs.
 
 ## Google Takeout
 

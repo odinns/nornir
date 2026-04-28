@@ -15,12 +15,13 @@ Nornir already has a working backend slice:
 - intake records, import runs, run artifacts, and provenance links
 - source-specific importer commands
 - bounded handoff builders for post-import evidence work
+- Gmail important-mail evidence bundle builder
 - Scout/Meilisearch search projection across imported material
 - Gmail API authentication, import, plaintext backfill, and important-mail triage
 - Pest feature/unit/architecture tests
 - PHPStan, Pint, and Rector quality gates
 
-There is no real Mimir web UI yet. The useful surface today is CLI import, canonical database inspection, search indexing, and source handoffs. That is enough to start serious biographical digging without pretending the palace has wallpaper.
+There is no real Mimir web UI yet. The useful surface today is CLI import, canonical database inspection, search indexing, source handoffs, and review bundles. That is enough to start serious biographical digging without pretending the palace has wallpaper.
 
 ## What It Can Import
 
@@ -48,11 +49,12 @@ Nornir is already useful for private evidence work:
 - Rerun imports without treating later thinner exports as deletion events.
 - Preserve provenance: source paths, run records, source ids, timestamps, and attachment references.
 - Build bounded handoffs from canonical rows so later biography tooling can work from a known slice.
+- Build Gmail important-mail evidence bundles for focused review.
 - Rebuild search documents and inspect cross-source matches with Meilisearch.
 - Use Gmail query scopes to isolate eras, correspondents, projects, or messy little correspondence knots.
 - Compare signals across sources: a LinkedIn role, Gmail thread, Facebook message, photo directory, ChatGPT conversation, and Wayback page can all become evidence in the same local system.
 
-The Muninn biography pipeline and Huginn personality pipeline are specified but still early. The current practical workflow is: import sources, rebuild search, inspect canonical rows and handoffs, then write or generate evidence notes with provenance intact.
+The Muninn biography pipeline and Huginn personality pipeline are specified but still early. The current practical workflow is Gmail-first: import a bounded slice, backfill plaintext if needed, build an important-mail evidence bundle, review the JSON, and write private notes with provenance refs intact. See [docs/operator-workflow.md](docs/operator-workflow.md).
 
 ## Setup
 
@@ -132,6 +134,7 @@ Gmail is API-first:
 php artisan gmail:auth data/sources/gmail/credentials.json
 php artisan import:gmail data/sources/gmail/credentials.json --query="from:someone@example.com OR to:someone@example.com"
 php artisan gmail:backfill-body-plain
+php artisan evidence:gmail-important --run-id=123
 NORNIR_GMAIL_CREDENTIALS=data/sources/gmail/credentials.json php artisan gmail:triage-important --window="last 14 days"
 ```
 
@@ -162,6 +165,7 @@ Short version:
 - [docs/specifications/README.md](docs/specifications/README.md): implementation specs and read order.
 - [docs/source-archives.md](docs/source-archives.md): how to obtain source archives.
 - [docs/gmail-access.md](docs/gmail-access.md): Gmail OAuth setup and import flow.
+- [docs/operator-workflow.md](docs/operator-workflow.md): Gmail-first evidence bundle review workflow.
 - [docs/handoff-explainer.md](docs/handoff-explainer.md): what source handoffs are and why they exist.
 
 ## Safety
@@ -170,10 +174,10 @@ This repo is designed around intensely private data. Before making it public:
 
 - run `git status --ignored --short` and check that archives stay ignored
 - never commit `.env`, OAuth credentials, `token.json`, Takeout archives, extracted provider exports, database dumps, `data/`, or `wiki/`
-- keep private working notes under ignored `data/`, not under tracked `docs/`
+- keep private working notes under ignored `data/reviews/operator-notes/`, not under tracked `docs/`
 - treat local MySQL data as sensitive, even when the app environment says `local`
 
-Nornir is a tool for your own data and archives you have the right to process. Do not use it to scrape, bypass access controls, or import other people’s private archives without consent. That way lies both legal trouble and bad taste.
+Nornir is a tool for your own data and archives you have the right to process. Do not use it to scrape, bypass access controls, or import other people's private archives without consent. That way lies both legal trouble and bad taste.
 
 ## License
 
