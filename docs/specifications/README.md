@@ -14,8 +14,9 @@ Read in this order:
 6. `coding-standards-and-quality-gates.md`
 7. `testing-and-tdd-strategy.md`
 8. `ai-and-mcp-architecture.md`
-9. subsystem specs
-10. source navigation and importer specs
+9. `judgment-layer-contracts.md`
+10. subsystem specs
+11. source navigation and importer specs
 
 Implemented importer families today:
 
@@ -40,5 +41,6 @@ Ground rules:
 - external raw material stays outside git.
 - importer means source-specific normalization into Nornir.
 - source handoffs are bounded compile/evidence contracts over canonical rows.
+- judgment records capture decisions, observations, contradictions, corrections, and promoted outputs as derived state with provenance.
 - Mimir is intentionally last; current operation is CLI/backend-first.
 - Monique/media-collection and FidoNet are real local integrations, but public users need the companion databases before those commands are useful.
