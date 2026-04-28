@@ -11,6 +11,7 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\MediaCollectionImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\MediaFile;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use Illuminate\Database\Connection;
@@ -120,7 +121,7 @@ class ImportMediaCollectionAction
             $pageSourceIds = $rows->pluck('source_file_id')->map(static fn (mixed $v): int => (int) $v)->all();
 
             /** @var array<int, int> $existingIds keyed by source_file_id → media_files.id */
-            $existingIds = DB::table(self::TABLE)
+            $existingIds = MediaFile::query()
                 ->whereIn('source_file_id', $pageSourceIds)
                 ->pluck('id', 'source_file_id')
                 ->map(static fn (mixed $v): int => (int) $v)

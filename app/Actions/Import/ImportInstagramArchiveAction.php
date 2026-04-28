@@ -10,9 +10,9 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\InstagramImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\InstagramPost;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 
@@ -204,7 +204,7 @@ class ImportInstagramArchiveAction
             $postTimestamp = (int) ($firstMedia['creation_timestamp'] ?? 0) ?: null;
             $rawPayload = json_encode($postEntry, JSON_THROW_ON_ERROR);
 
-            $existingId = DB::table(self::TABLE_POSTS)->where('post_key', $postKey)->value('id');
+            $existingId = InstagramPost::query()->where('post_key', $postKey)->value('id');
 
             $postId = $this->sourceObservationStore->upsertAndReturnId(
                 table: self::TABLE_POSTS,

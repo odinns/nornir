@@ -10,13 +10,15 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\GmailImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\GmailAttachment;
+use App\Models\GmailMessage;
+use App\Models\GmailThread;
 use App\Models\Run;
 use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Gmail\GmailClientFactory;
 use App\Services\Gmail\GmailHtmlBodyTextExtractor;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Throwable;
 
@@ -26,13 +28,9 @@ class ImportGmailAction
 
     private const string TABLE_ACCOUNTS = 'gmail_accounts';
 
-    private const string TABLE_THREADS = 'gmail_threads';
-
     private const string TABLE_MESSAGES = 'gmail_messages';
 
     private const string TABLE_LABELS = 'gmail_message_labels';
-
-    private const string TABLE_ATTACHMENTS = 'gmail_attachments';
 
     private const string TABLE_MESSAGE_OBSERVATIONS = 'gmail_message_observations';
 
@@ -218,7 +216,7 @@ class ImportGmailAction
         }
 
         /** @var array<string, int> $existing */
-        $existing = DB::table(self::TABLE_MESSAGES)
+        $existing = GmailMessage::query()
             ->whereIn('message_id', $messageIds)
             ->pluck('id', 'message_id')
             ->map(static fn (mixed $id): int => (int) $id)
@@ -292,16 +290,7 @@ class ImportGmailAction
      */
     private function upsertThread(int $accountId, string $threadId, array $fullMessage, int &$threadCount): int
     {
-        $existing = DB::table(self::TABLE_THREADS)
-            ->where('gmail_account_id', $accountId)
-            ->where('thread_id', $threadId)
-            ->value('id');
-
-        if ($existing === null) {
-            $threadCount++;
-        }
-
-        DB::table(self::TABLE_THREADS)->updateOrInsert(
+        $thread = GmailThread::query()->updateOrCreate(
             [
                 'gmail_account_id' => $accountId,
                 'thread_id' => $threadId,
@@ -309,15 +298,15 @@ class ImportGmailAction
             [
                 'snippet' => isset($fullMessage['snippet']) ? (string) $fullMessage['snippet'] : null,
                 'history_id' => isset($fullMessage['historyId']) ? (string) $fullMessage['historyId'] : null,
-                'updated_at' => now(),
                 'created_at' => now(),
             ],
         );
 
-        return (int) DB::table(self::TABLE_THREADS)
-            ->where('gmail_account_id', $accountId)
-            ->where('thread_id', $threadId)
-            ->value('id');
+        if ($thread->wasRecentlyCreated) {
+            $threadCount++;
+        }
+
+        return (int) $thread->id;
     }
 
     /**
@@ -326,14 +315,12 @@ class ImportGmailAction
      */
     private function upsertMessage(int $threadRowId, string $messageId, array $fullMessage): array
     {
-        $existing = DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id');
-
         $headers = $this->extractHeaders($fullMessage['payload'] ?? []);
         $internalDate = $this->normalizeInternalDate($fullMessage['internalDate'] ?? null);
         $bodyPlain = $this->extractBody($fullMessage['payload'] ?? [], 'text/plain');
         $bodyHtml = $this->extractBody($fullMessage['payload'] ?? [], 'text/html');
 
-        DB::table(self::TABLE_MESSAGES)->updateOrInsert(
+        $message = GmailMessage::query()->updateOrCreate(
             ['message_id' => $messageId],
             [
                 'gmail_thread_id' => $threadRowId,
@@ -344,18 +331,17 @@ class ImportGmailAction
                 'snippet' => isset($fullMessage['snippet']) ? (string) $fullMessage['snippet'] : null,
                 'body_plain' => $this->bodyPlainForStorage($bodyPlain, $bodyHtml),
                 'body_html' => $bodyHtml,
-                'raw_headers' => json_encode($fullMessage['payload']['headers'] ?? [], JSON_THROW_ON_ERROR),
+                'raw_headers' => $fullMessage['payload']['headers'] ?? [],
                 'internal_date' => $internalDate,
                 'message_received_at' => $this->resolveMessageReceivedAt($internalDate, $headers),
-                'raw_payload' => json_encode($fullMessage['payload'] ?? [], JSON_THROW_ON_ERROR),
-                'updated_at' => now(),
+                'raw_payload' => $fullMessage['payload'] ?? [],
                 'created_at' => now(),
             ],
         );
 
         return [
-            'id' => (int) DB::table(self::TABLE_MESSAGES)->where('message_id', $messageId)->value('id'),
-            'wasRecentlyCreated' => $existing === null,
+            'id' => (int) $message->id,
+            'wasRecentlyCreated' => $message->wasRecentlyCreated,
         ];
     }
 
@@ -475,7 +461,7 @@ class ImportGmailAction
                 $mimeType = isset($part['mimeType']) && is_string($part['mimeType']) ? $part['mimeType'] : null;
                 $size = isset($body['size']) && is_numeric($body['size']) ? (int) $body['size'] : null;
 
-                DB::table(self::TABLE_ATTACHMENTS)->updateOrInsert(
+                GmailAttachment::query()->updateOrCreate(
                     [
                         'gmail_message_id' => $messageRowId,
                         'attachment_id' => $attachmentId,
@@ -484,7 +470,6 @@ class ImportGmailAction
                         'filename' => $filename,
                         'mime_type' => $mimeType,
                         'size_bytes' => $size,
-                        'updated_at' => now(),
                         'created_at' => now(),
                     ],
                 );
