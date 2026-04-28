@@ -11,7 +11,6 @@ use App\Models\InstagramPost;
 use App\Models\InstagramProfileSnapshot;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -39,7 +38,7 @@ it('fails when archive root does not exist', function (): void {
     expect(fn () => app(ImportInstagramArchiveAction::class)($intake->dispatchPayload))
         ->toThrow(InvalidArgumentException::class, 'does not exist');
 
-    expect(DB::table('runs')->where('status', Run::STATUS_FAILED)->count())->toBe(1);
+    expect(Run::query()->where('status', Run::STATUS_FAILED)->count())->toBe(1);
 });
 
 it('fails when required archive files are missing', function (): void {
@@ -57,7 +56,7 @@ it('fails when required archive files are missing', function (): void {
     expect(fn () => app(ImportInstagramArchiveAction::class)($intake->dispatchPayload))
         ->toThrow(InvalidArgumentException::class, 'missing');
 
-    expect(DB::table('runs')->where('status', Run::STATUS_FAILED)->count())->toBe(1);
+    expect(Run::query()->where('status', Run::STATUS_FAILED)->count())->toBe(1);
 });
 
 it('imports posts with captions and timestamps', function (): void {
@@ -91,7 +90,7 @@ it('imports posts with captions and timestamps', function (): void {
     $result = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('instagram_posts')->count())->toBe(2);
+    expect(InstagramPost::query()->count())->toBe(2);
     expect($result->summary['posts'])->toBe(2);
     expect($result->summary['inserted_posts'])->toBe(2);
     expect($result->summary['reobserved_posts'])->toBe(0);
@@ -127,7 +126,7 @@ it('imports media refs for posts', function (): void {
     $result = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('instagram_posts')->count())->toBe(1);
+    expect(InstagramPost::query()->count())->toBe(1);
     expect(InstagramPost::firstOrFail()->media_count)->toBe(2);
 
     expect(InstagramMediaRef::query()->where('media_type', 'post')->count())->toBe(2);
@@ -188,7 +187,7 @@ it('imports stories when present', function (): void {
     expect($result->summary['stories'])->toBe(2);
     expect($result->summary['stories_skipped'])->toBeFalse();
 
-    expect(DB::table('instagram_media_refs')->where('media_type', 'story')->count())->toBe(2);
+    expect(InstagramMediaRef::query()->where('media_type', 'story')->count())->toBe(2);
 });
 
 it('skips stories cleanly when stories json is absent', function (): void {
@@ -209,7 +208,7 @@ it('skips stories cleanly when stories json is absent', function (): void {
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect($result->summary['stories'])->toBe(0);
     expect($result->summary['stories_skipped'])->toBeTrue();
-    expect(DB::table('instagram_media_refs')->where('media_type', 'story')->count())->toBe(0);
+    expect(InstagramMediaRef::query()->where('media_type', 'story')->count())->toBe(0);
 });
 
 it('imports instagram archive idempotently', function (): void {
@@ -240,8 +239,8 @@ it('imports instagram archive idempotently', function (): void {
     $second = $importer($intake->dispatchPayload);
 
     expect($second->run->is($first->run))->toBeTrue();
-    expect(DB::table('instagram_accounts')->count())->toBe(1);
-    expect(DB::table('instagram_posts')->count())->toBe(1);
+    expect(InstagramAccount::query()->count())->toBe(1);
+    expect(InstagramPost::query()->count())->toBe(1);
     expect($second->summary['inserted_posts'])->toBe(0);
     expect($second->summary['reobserved_posts'])->toBe(1);
 });
@@ -299,7 +298,7 @@ it('counts reobserved vs inserted correctly on incremental rerun', function (): 
     $importer($smallIntake->dispatchPayload);
     $result = $importer($largeIntake->dispatchPayload);
 
-    expect(DB::table('instagram_posts')->count())->toBe(2);
+    expect(InstagramPost::query()->count())->toBe(2);
     expect($result->summary['inserted_posts'])->toBe(1);
     expect($result->summary['reobserved_posts'])->toBe(1);
 });
@@ -328,11 +327,11 @@ it('handles carousel posts with multiple media items', function (): void {
     $result = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('instagram_posts')->count())->toBe(1);
+    expect(InstagramPost::query()->count())->toBe(1);
     expect(InstagramPost::firstOrFail()->media_count)->toBe(3);
-    expect(DB::table('instagram_media_refs')->where('media_type', 'post')->count())->toBe(3);
+    expect(InstagramMediaRef::query()->where('media_type', 'post')->count())->toBe(3);
     // All media refs point to the same post
-    expect(DB::table('instagram_media_refs')->whereNotNull('instagram_post_id')->count())->toBe(3);
+    expect(InstagramMediaRef::query()->whereNotNull('instagram_post_id')->count())->toBe(3);
 });
 
 it('imports account from personal information', function (): void {
@@ -354,7 +353,7 @@ it('imports account from personal information', function (): void {
     $result = app(ImportInstagramArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('instagram_accounts')->count())->toBe(1);
+    expect(InstagramAccount::query()->count())->toBe(1);
 
     $account = InstagramAccount::firstOrFail();
     expect($account->username)->toBe('odinnadalsteinsson');
@@ -363,7 +362,7 @@ it('imports account from personal information', function (): void {
     expect($account->phone_number)->toBe('+4512345678');
     expect($account->access_mode)->toBe('local-path');
 
-    expect(DB::table('instagram_profile_snapshots')->count())->toBe(1);
+    expect(InstagramProfileSnapshot::query()->count())->toBe(1);
     $snapshot = InstagramProfileSnapshot::firstOrFail();
     expect($snapshot->instagram_account_id)->toBe($account->id);
     expect($snapshot->username)->toBe('odinnadalsteinsson');

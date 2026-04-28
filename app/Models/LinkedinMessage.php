@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
+ * @property string|null $from_display
+ * @property string|null $to_display
  * @property string|null $content
  * @property CarbonImmutable|null $sent_at
  * @property array<string, mixed>|null $raw_message

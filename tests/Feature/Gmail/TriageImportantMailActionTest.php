@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\Actions\Gmail\TriageImportantMailAction;
+use App\Models\GmailMessage;
 use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Gmail\GmailClientFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -157,7 +157,7 @@ it('ranks urgent mail ahead of newsletter noise and builds a bounded Gmail query
     expect($item['message_id'])->toBe('msg-urgent');
     expect($item['urgency'])->toBe('today');
     expect($item['reason'])->toContain('priority sender');
-    expect(DB::table('gmail_messages')->count())->toBe(0);
+    expect(GmailMessage::query()->count())->toBe(0);
 });
 
 it('ignores bulk alerts that only look urgent in the subject line', function (): void {

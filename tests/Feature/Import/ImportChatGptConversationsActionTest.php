@@ -5,13 +5,17 @@ declare(strict_types=1);
 use App\Actions\Import\ImportChatGptConversationsAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\ChatGptArchive;
+use App\Models\ChatGptAsset;
 use App\Models\ChatGptConversation;
 use App\Models\ChatGptMessage;
+use App\Models\ChatGptMessageObservation;
 use App\Models\ChatGptMessagePart;
+use App\Models\ChatGptNode;
+use App\Models\ChatGptSourceSet;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -40,12 +44,12 @@ it('imports a chatgpt export into canonical tables while preserving graph struct
     $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('chatgpt_archives')->count())->toBe(1);
-    expect(DB::table('chatgpt_conversations')->count())->toBe(1);
-    expect(DB::table('chatgpt_nodes')->count())->toBe(4);
-    expect(DB::table('chatgpt_messages')->count())->toBe(4);
-    expect(DB::table('chatgpt_message_parts')->count())->toBe(4);
-    expect(DB::table('chatgpt_assets')->count())->toBe(1);
+    expect(ChatGptArchive::query()->count())->toBe(1);
+    expect(ChatGptConversation::query()->count())->toBe(1);
+    expect(ChatGptNode::query()->count())->toBe(4);
+    expect(ChatGptMessage::query()->count())->toBe(4);
+    expect(ChatGptMessagePart::query()->count())->toBe(4);
+    expect(ChatGptAsset::query()->count())->toBe(1);
 
     $assistantMessage = ChatGptMessage::query()
         ->where('message_id', 'assistant-conversation-1')
@@ -126,14 +130,14 @@ it('reruns idempotently for the same export root', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('chatgpt_archives')->count())->toBe(1);
-    expect(DB::table('chatgpt_source_sets')->count())->toBe(1);
-    expect(DB::table('chatgpt_conversations')->count())->toBe(1);
-    expect(DB::table('chatgpt_nodes')->count())->toBe(4);
-    expect(DB::table('chatgpt_messages')->count())->toBe(4);
-    expect(DB::table('chatgpt_message_parts')->count())->toBe(4);
-    expect(DB::table('chatgpt_assets')->count())->toBe(1);
-    expect(DB::table('chatgpt_message_observations')->count())->toBe(4);
+    expect(ChatGptArchive::query()->count())->toBe(1);
+    expect(ChatGptSourceSet::query()->count())->toBe(1);
+    expect(ChatGptConversation::query()->count())->toBe(1);
+    expect(ChatGptNode::query()->count())->toBe(4);
+    expect(ChatGptMessage::query()->count())->toBe(4);
+    expect(ChatGptMessagePart::query()->count())->toBe(4);
+    expect(ChatGptAsset::query()->count())->toBe(1);
+    expect(ChatGptMessageObservation::query()->count())->toBe(4);
     expect($secondResult->summary['inserted_messages'])->toBe(0);
     expect($secondResult->summary['reobserved_messages'])->toBe(4);
 });
@@ -175,11 +179,11 @@ it('keeps older canonical conversations when a newer export omits them', functio
     $importer($fullIntake->dispatchPayload);
     $result = $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('chatgpt_source_sets')->count())->toBe(2);
-    expect(DB::table('chatgpt_conversations')->count())->toBe(3);
-    expect(DB::table('chatgpt_messages')->count())->toBe(12);
-    expect(DB::table('chatgpt_message_observations')->count())->toBe(16);
-    expect(DB::table('chatgpt_conversations')->pluck('conversation_id')->all())->toEqualCanonicalizing([
+    expect(ChatGptSourceSet::query()->count())->toBe(2);
+    expect(ChatGptConversation::query()->count())->toBe(3);
+    expect(ChatGptMessage::query()->count())->toBe(12);
+    expect(ChatGptMessageObservation::query()->count())->toBe(16);
+    expect(ChatGptConversation::query()->pluck('conversation_id')->all())->toEqualCanonicalizing([
         'conversation-history-1',
         'conversation-history-2',
         'conversation-history-3',
@@ -224,11 +228,11 @@ it('backfills missing canonical conversations when an older fuller export arrive
     $importer($truncatedIntake->dispatchPayload);
     $result = $importer($fullIntake->dispatchPayload);
 
-    expect(DB::table('chatgpt_source_sets')->count())->toBe(2);
-    expect(DB::table('chatgpt_conversations')->count())->toBe(2);
-    expect(DB::table('chatgpt_messages')->count())->toBe(8);
-    expect(DB::table('chatgpt_message_observations')->count())->toBe(12);
-    expect(DB::table('chatgpt_conversations')->pluck('conversation_id')->all())->toEqualCanonicalizing([
+    expect(ChatGptSourceSet::query()->count())->toBe(2);
+    expect(ChatGptConversation::query()->count())->toBe(2);
+    expect(ChatGptMessage::query()->count())->toBe(8);
+    expect(ChatGptMessageObservation::query()->count())->toBe(12);
+    expect(ChatGptConversation::query()->pluck('conversation_id')->all())->toEqualCanonicalizing([
         'conversation-backfill-1',
         'conversation-backfill-2',
     ]);
@@ -330,8 +334,8 @@ it('keeps structural nodes even when the export has null messages', function ():
     $result = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('chatgpt_nodes')->where('node_id', 'null-root')->exists())->toBeTrue();
-    expect(DB::table('chatgpt_messages')->where('message_id', 'null-root')->exists())->toBeFalse();
+    expect(ChatGptNode::query()->where('node_id', 'null-root')->exists())->toBeTrue();
+    expect(ChatGptMessage::query()->where('message_id', 'null-root')->exists())->toBeFalse();
 });
 
 it('imports message parts longer than mysql text without truncation errors', function (): void {
@@ -355,10 +359,10 @@ it('imports message parts longer than mysql text without truncation errors', fun
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
 
-    $storedPart = DB::table('chatgpt_message_parts')
+    $storedPart = ChatGptMessagePart::query()
         ->where('part_type', 'text')
         ->orderByRaw('LENGTH(text_part) DESC')
-        ->value('text_part');
+        ->firstOrFail();
 
-    expect($storedPart)->toBe($conversation['mapping']['assistant-conversation-1']['message']['content']['parts'][0]);
+    expect($storedPart->text_part)->toBe($conversation['mapping']['assistant-conversation-1']['message']['content']['parts'][0]);
 });

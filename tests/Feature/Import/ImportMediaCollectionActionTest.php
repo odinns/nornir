@@ -9,7 +9,6 @@ use App\Models\MediaFile;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -55,7 +54,7 @@ it('imports a single image from monique into media_files', function (): void {
     $result = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('media_files')->count())->toBe(1);
+    expect(MediaFile::query()->count())->toBe(1);
 
     $row = MediaFile::firstOrFail();
     expect($row->volume_label)->toBe('LIMA-1');
@@ -237,7 +236,7 @@ it('is idempotent — rerun produces no new inserts', function (): void {
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
     $secondResult = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(2);
+    expect(MediaFile::query()->count())->toBe(2);
     expect($secondResult->summary['files_imported'])->toBe(0);
     expect($secondResult->summary['files_reobserved'])->toBe(2);
 });
@@ -272,7 +271,7 @@ it('excludes resource fork files with ._ prefix', function (): void {
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(1);
+    expect(MediaFile::query()->count())->toBe(1);
     expect(MediaFile::firstOrFail()->basename)->toBe('photo.jpg');
 });
 
@@ -307,7 +306,7 @@ it('excludes non-pictures directories', function (): void {
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(1);
+    expect(MediaFile::query()->count())->toBe(1);
     expect(MediaFile::firstOrFail()->basename)->toBe('photo.jpg');
 });
 
@@ -343,7 +342,7 @@ it('restricts import to a single volume when --volume is given', function (): vo
 
     app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(1);
+    expect(MediaFile::query()->count())->toBe(1);
     $file = MediaFile::firstOrFail();
     expect($file->basename)->toBe('b.jpg');
     expect($file->volume_label)->toBe('LIMA-2');
@@ -376,8 +375,8 @@ it('restricts import to a path prefix when one is given', function (): void {
 
     $result = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(1);
-    expect(DB::table('media_files')->value('basename'))->toBe('keep.jpg');
+    expect(MediaFile::query()->count())->toBe(1);
+    expect(MediaFile::query()->firstOrFail()->basename)->toBe('keep.jpg');
     expect($result->summary['path_prefix'])->toBe('/Volumes/LIMA-2/Pictures');
 });
 
@@ -408,7 +407,7 @@ it('reports counts without writing when --dry-run is set', function (): void {
 
     $result = app(ImportMediaCollectionAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('media_files')->count())->toBe(0);
+    expect(MediaFile::query()->count())->toBe(0);
     expect($result->summary['files_inspected'])->toBe(1);
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
 });
@@ -429,7 +428,7 @@ it('fails gracefully when monique connection is unreachable', function (): void 
     expect(fn () => app(ImportMediaCollectionAction::class)($intake->dispatchPayload))
         ->toThrow(InvalidArgumentException::class);
 
-    expect(DB::table('runs')->where('status', Run::STATUS_FAILED)->count())->toBe(1);
+    expect(Run::query()->where('status', Run::STATUS_FAILED)->count())->toBe(1);
 });
 
 // ---------------------------------------------------------------------------

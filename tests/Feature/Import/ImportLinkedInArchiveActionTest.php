@@ -5,9 +5,27 @@ declare(strict_types=1);
 use App\Actions\Import\ImportLinkedInArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\LinkedinArchive;
+use App\Models\LinkedinComment;
+use App\Models\LinkedinConnection;
+use App\Models\LinkedinConversation;
+use App\Models\LinkedinEducationRecord;
+use App\Models\LinkedinEndorsement;
+use App\Models\LinkedinInvitation;
+use App\Models\LinkedinLanguage;
+use App\Models\LinkedinMessage;
+use App\Models\LinkedinMessageAttachment;
+use App\Models\LinkedinPerson;
+use App\Models\LinkedinPosition;
+use App\Models\LinkedinProfileSnapshot;
+use App\Models\LinkedinProject;
+use App\Models\LinkedinReaction;
+use App\Models\LinkedinRecommendation;
+use App\Models\LinkedinRichMedia;
+use App\Models\LinkedinShare;
+use App\Models\LinkedinSkill;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -71,39 +89,40 @@ it('imports linkedin archive biography slices into canonical linkedin tables', f
     $result = app(ImportLinkedInArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('linkedin_archives')->count())->toBe(1);
-    expect(DB::table('linkedin_profile_snapshots')->count())->toBe(1);
-    expect(DB::table('linkedin_positions')->count())->toBe(1);
-    expect(DB::table('linkedin_education_records')->count())->toBe(1);
-    expect(DB::table('linkedin_projects')->count())->toBe(1);
-    expect(DB::table('linkedin_skills')->count())->toBe(2);
-    expect(DB::table('linkedin_languages')->count())->toBe(1);
-    expect(DB::table('linkedin_people')->count())->toBe(9);
-    expect(DB::table('linkedin_connections')->count())->toBe(1);
-    expect(DB::table('linkedin_invitations')->count())->toBe(1);
-    expect(DB::table('linkedin_recommendations')->count())->toBe(2);
-    expect(DB::table('linkedin_endorsements')->count())->toBe(2);
-    expect(DB::table('linkedin_shares')->count())->toBe(1);
-    expect(DB::table('linkedin_comments')->count())->toBe(1);
-    expect(DB::table('linkedin_reactions')->count())->toBe(1);
-    expect(DB::table('linkedin_rich_media')->count())->toBe(1);
-    expect(DB::table('linkedin_conversations')->count())->toBe(2);
-    expect(DB::table('linkedin_messages')->count())->toBe(3);
-    expect(DB::table('linkedin_message_attachments')->count())->toBe(1);
+    expect(LinkedinArchive::query()->count())->toBe(1);
+    expect(LinkedinProfileSnapshot::query()->count())->toBe(1);
+    expect(LinkedinPosition::query()->count())->toBe(1);
+    expect(LinkedinEducationRecord::query()->count())->toBe(1);
+    expect(LinkedinProject::query()->count())->toBe(1);
+    expect(LinkedinSkill::query()->count())->toBe(2);
+    expect(LinkedinLanguage::query()->count())->toBe(1);
+    expect(LinkedinPerson::query()->count())->toBe(9);
+    expect(LinkedinConnection::query()->count())->toBe(1);
+    expect(LinkedinInvitation::query()->count())->toBe(1);
+    expect(LinkedinRecommendation::query()->count())->toBe(2);
+    expect(LinkedinEndorsement::query()->count())->toBe(2);
+    expect(LinkedinShare::query()->count())->toBe(1);
+    expect(LinkedinComment::query()->count())->toBe(1);
+    expect(LinkedinReaction::query()->count())->toBe(1);
+    expect(LinkedinRichMedia::query()->count())->toBe(1);
+    expect(LinkedinConversation::query()->count())->toBe(2);
+    expect(LinkedinMessage::query()->count())->toBe(3);
+    expect(LinkedinMessageAttachment::query()->count())->toBe(1);
 
-    expect(DB::table('linkedin_messages')->orderBy('sent_at')->pluck('content')->all())->toBe([
+    expect(LinkedinMessage::query()->orderBy('sent_at')->pluck('content')->all())->toBe([
         'Hej Sylvester',
         'Hej Odinn',
         'Hello group',
     ]);
 
-    expect(DB::table('linkedin_endorsements')->orderBy('direction')->pluck('skill_name', 'direction')->all())->toBe([
+    expect(LinkedinEndorsement::query()->orderBy('direction')->pluck('skill_name', 'direction')->all())->toBe([
         'given' => 'Web Development',
         'received' => 'HTML',
     ]);
 
-    expect(json_decode((string) DB::table('linkedin_message_attachments')->value('attachment_urls_json'), true, 512, JSON_THROW_ON_ERROR))
-        ->toBe(['https://www.linkedin.com/dms/prv/attachment/example']);
+    expect(LinkedinMessageAttachment::query()->firstOrFail()->attachment_urls_json)->toBe([
+        'https://www.linkedin.com/dms/prv/attachment/example',
+    ]);
 });
 
 it('reruns idempotently for the same linkedin archive', function (): void {
@@ -125,9 +144,9 @@ it('reruns idempotently for the same linkedin archive', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('linkedin_archives')->count())->toBe(1);
-    expect(DB::table('linkedin_messages')->count())->toBe(2);
-    expect(DB::table('linkedin_endorsements')->count())->toBe(2);
+    expect(LinkedinArchive::query()->count())->toBe(1);
+    expect(LinkedinMessage::query()->count())->toBe(2);
+    expect(LinkedinEndorsement::query()->count())->toBe(2);
     expect($secondResult->summary['inserted_messages'])->toBe(0);
     expect($secondResult->summary['reobserved_messages'])->toBe(2);
 });
@@ -187,10 +206,10 @@ it('keeps older canonical linkedin rows when a newer export is missing them', fu
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('linkedin_archives')->count())->toBe(2);
-    expect(DB::table('linkedin_messages')->count())->toBe(2);
-    expect(DB::table('linkedin_endorsements')->count())->toBe(2);
-    expect(DB::table('linkedin_messages')->orderBy('sent_at')->pluck('content')->all())->toBe([
+    expect(LinkedinArchive::query()->count())->toBe(2);
+    expect(LinkedinMessage::query()->count())->toBe(2);
+    expect(LinkedinEndorsement::query()->count())->toBe(2);
+    expect(LinkedinMessage::query()->orderBy('sent_at')->pluck('content')->all())->toBe([
         'Hej Sylvester',
         'Hej Odinn',
     ]);
@@ -246,8 +265,8 @@ it('stores multiple linkedin message attachments in one json column', function (
 
     app(ImportLinkedInArchiveAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('linkedin_message_attachments')->count())->toBe(1);
-    expect(json_decode((string) DB::table('linkedin_message_attachments')->value('attachment_urls_json'), true, 512, JSON_THROW_ON_ERROR))->toBe([
+    expect(LinkedinMessageAttachment::query()->count())->toBe(1);
+    expect(LinkedinMessageAttachment::query()->firstOrFail()->attachment_urls_json)->toBe([
         'https://www.linkedin.com/dms/prv/vid/v2/D4E06AQEUyna5EXtWKA/messaging-attachmentFile/messaging-attachmentFile/0/1692707192755?m=AQIsqHnHMpdi3AAAAZ139-NCd8g6LbMgzoW8Yb6zyFgmzGqB2VJ0DLM&ne=1&v=beta&t=oXdoVaBGSw4XmSPs2VDLGEgNhlG3HTDODSPzAlBj1NI',
         'https://www.linkedin.com/dms/prv/vid/v2/D4E06AQFRTktwFtzNQA/messaging-attachmentFile/messaging-attachmentFile/0/1692707195936?m=AQJcceoWPNFxUgAAAZ139-NHp47MBkKH1htlA2yAGojH5PI040WpcP8&ne=1&v=beta&t=fTgB6qmIqmwTyimilSm2aDaMuERCciHyzDPOoXVU9As',
     ]);
@@ -291,6 +310,8 @@ it('imports messages with very long recipient lists', function (): void {
 
     app(ImportLinkedInArchiveAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('linkedin_messages')->value('content'))->toBe('Okay');
-    expect(DB::table('linkedin_messages')->value('to_display'))->toContain('Synthetic Recipient 1');
+    $message = LinkedinMessage::query()->firstOrFail();
+
+    expect($message->content)->toBe('Okay');
+    expect($message->to_display)->toContain('Synthetic Recipient 1');
 });

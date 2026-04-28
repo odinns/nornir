@@ -6,9 +6,14 @@ use App\Actions\Import\ImportTwitterArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Models\Run;
+use App\Models\TwitterAccount;
 use App\Models\TwitterArchive;
+use App\Models\TwitterMediaRef;
+use App\Models\TwitterNoteTweet;
+use App\Models\TwitterProfileSnapshot;
+use App\Models\TwitterScreenNameChange;
+use App\Models\TwitterTweet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -34,25 +39,25 @@ it('imports twitter archive biography slices into canonical twitter tables', fun
     $result = app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('twitter_archives')->count())->toBe(1);
-    expect(DB::table('twitter_accounts')->count())->toBe(1);
-    expect(DB::table('twitter_profile_snapshots')->count())->toBe(1);
-    expect(DB::table('twitter_screen_name_changes')->count())->toBe(1);
-    expect(DB::table('twitter_tweets')->count())->toBe(2);
-    expect(DB::table('twitter_note_tweets')->count())->toBe(1);
-    expect(DB::table('twitter_media_refs')->count())->toBe(4);
+    expect(TwitterArchive::query()->count())->toBe(1);
+    expect(TwitterAccount::query()->count())->toBe(1);
+    expect(TwitterProfileSnapshot::query()->count())->toBe(1);
+    expect(TwitterScreenNameChange::query()->count())->toBe(1);
+    expect(TwitterTweet::query()->count())->toBe(2);
+    expect(TwitterNoteTweet::query()->count())->toBe(1);
+    expect(TwitterMediaRef::query()->count())->toBe(4);
 
-    expect(DB::table('twitter_tweets')->orderBy('tweet_id')->pluck('source_surface', 'tweet_id')->all())->toBe([
+    expect(TwitterTweet::query()->orderBy('tweet_id')->pluck('source_surface', 'tweet_id')->all())->toBe([
         '111' => 'tweet',
         '112' => 'community',
     ]);
 
-    expect(DB::table('twitter_tweets')->orderBy('tweet_id')->pluck('full_text', 'tweet_id')->all())->toBe([
+    expect(TwitterTweet::query()->orderBy('tweet_id')->pluck('full_text', 'tweet_id')->all())->toBe([
         '111' => 'Hello from the importer',
         '112' => 'Community post',
     ]);
 
-    expect(DB::table('twitter_media_refs')->orderBy('relative_path')->pluck('relative_path')->all())->toEqualCanonicalizing([
+    expect(TwitterMediaRef::query()->orderBy('relative_path')->pluck('relative_path')->all())->toEqualCanonicalizing([
         'community_tweet_media/community-photo-1.jpg',
         'profile_media/avatar.jpg',
         'profile_media/header.jpg',
@@ -111,9 +116,9 @@ it('reruns idempotently for the same twitter archive', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('twitter_archives')->count())->toBe(1);
-    expect(DB::table('twitter_tweets')->count())->toBe(2);
-    expect(DB::table('twitter_note_tweets')->count())->toBe(1);
+    expect(TwitterArchive::query()->count())->toBe(1);
+    expect(TwitterTweet::query()->count())->toBe(2);
+    expect(TwitterNoteTweet::query()->count())->toBe(1);
     expect($secondResult->summary['inserted_tweets'])->toBe(0);
     expect($secondResult->summary['reobserved_tweets'])->toBe(2);
 });
@@ -159,9 +164,9 @@ it('keeps older canonical twitter rows when a newer archive is missing them', fu
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('twitter_archives')->count())->toBe(2);
-    expect(DB::table('twitter_tweets')->count())->toBe(2);
-    expect(DB::table('twitter_note_tweets')->count())->toBe(1);
+    expect(TwitterArchive::query()->count())->toBe(2);
+    expect(TwitterTweet::query()->count())->toBe(2);
+    expect(TwitterNoteTweet::query()->count())->toBe(1);
 });
 
 it('fails clearly when a supported twitter file has the wrong wrapper shape', function (): void {
@@ -213,9 +218,11 @@ it('accepts remote profile media urls without treating them as archive traversal
     $result = app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('twitter_profile_snapshots')->value('avatar_path'))->toBeNull();
-    expect(DB::table('twitter_profile_snapshots')->value('header_path'))->toBeNull();
-    expect(DB::table('twitter_media_refs')
+    $profileSnapshot = TwitterProfileSnapshot::query()->sole();
+
+    expect($profileSnapshot->avatar_path)->toBeNull();
+    expect($profileSnapshot->header_path)->toBeNull();
+    expect(TwitterMediaRef::query()
         ->where('owner_type', 'profile')
         ->whereNotNull('source_url')
         ->count())->toBe(2);
@@ -246,7 +253,7 @@ it('imports profile location from the nested description payload used by real ar
 
     app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('twitter_profile_snapshots')->value('location'))->toBe('Taastrup, Denmark');
+    expect(TwitterProfileSnapshot::query()->sole()->location)->toBe('Taastrup, Denmark');
 });
 
 it('imports screen name changes from the nested real-archive shape', function (): void {
@@ -275,9 +282,9 @@ it('imports screen name changes from the nested real-archive shape', function ()
 
     app(ImportTwitterArchiveAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('twitter_screen_name_changes')->get(['account_id', 'screen_name', 'changed_at_source'])->all())
-        ->toHaveCount(1)
-        ->and(DB::table('twitter_screen_name_changes')->value('account_id'))->toBe('123456')
-        ->and(DB::table('twitter_screen_name_changes')->value('screen_name'))->toBe('odinns_art')
-        ->and(DB::table('twitter_screen_name_changes')->value('changed_at_source'))->toBe('2023-10-01T04:12:34.000Z');
+    $change = TwitterScreenNameChange::query()->sole();
+
+    expect($change->account_id)->toBe('123456')
+        ->and($change->screen_name)->toBe('odinns_art')
+        ->and($change->changed_at_source)->toBe('2023-10-01T04:12:34.000Z');
 });

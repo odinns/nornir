@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Import\Support\SourceObservationStore;
+use App\Models\GmailAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -19,8 +19,9 @@ it('preserves created_at and refreshes updated_at when upserting an existing row
         values: ['account_email' => 'first@example.com', 'access_mode' => 'api'],
     );
 
-    $createdAt = DB::table('gmail_accounts')->where('id', $id)->value('created_at');
-    $firstUpdatedAt = DB::table('gmail_accounts')->where('id', $id)->value('updated_at');
+    $account = GmailAccount::query()->findOrFail($id);
+    $createdAt = $account->created_at?->toDateTimeString();
+    $firstUpdatedAt = $account->updated_at?->toDateTimeString();
 
     $this->travel(5)->seconds();
 
@@ -30,13 +31,10 @@ it('preserves created_at and refreshes updated_at when upserting an existing row
         values: ['account_email' => 'first@example.com', 'display_name' => 'First User', 'access_mode' => 'api'],
     );
 
-    $row = DB::table('gmail_accounts')->where('id', $sameId)->first();
-    if ($row === null) {
-        throw new RuntimeException('Expected the upserted Gmail account row to exist.');
-    }
+    $row = GmailAccount::query()->findOrFail($sameId);
 
     expect($sameId)->toBe($id);
-    expect($row->created_at)->toBe($createdAt);
-    expect($row->updated_at)->not->toBe($firstUpdatedAt);
+    expect($row->created_at?->toDateTimeString())->toBe($createdAt);
+    expect($row->updated_at?->toDateTimeString())->not->toBe($firstUpdatedAt);
     expect($row->display_name)->toBe('First User');
 });
