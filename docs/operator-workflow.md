@@ -2,7 +2,7 @@
 
 This is the current usable path for Gmail-first evidence work.
 
-It does not create durable biography pages. It does not promote facts into Muninn tables. It builds a local review bundle, then gives a human operator a clean place to write private notes with provenance intact.
+It does not create durable biography pages. It does not promote facts into Muninn tables. It builds a local review bundle, then creates a private operator note with the refs still attached.
 
 ## Goal
 
@@ -102,7 +102,41 @@ jq -r '.items[] | select((.body_plain // "") == "" and (.body_html // "") != "")
 
 If that returns rows, run the plaintext backfill and rebuild the bundle.
 
-## 5. Use read-only SQL only when needed
+## 5. Generate the operator note
+
+Turn the bundle into an ignored Markdown note:
+
+```bash
+php artisan analysis:manual-evidence --bundle=data/reviews/gmail-important-evidence-run-123.json
+```
+
+Default output:
+
+```text
+data/reviews/operator-notes/gmail-important-manual-analysis-run-{evidence_run_id}.md
+```
+
+Useful variants:
+
+```bash
+php artisan analysis:manual-evidence --bundle=data/reviews/gmail-important-evidence-run-123.json --output=data/reviews/operator-notes/specific-question.md
+php artisan analysis:manual-evidence --bundle=data/reviews/gmail-important-evidence-run-123.json --json
+```
+
+The command is deliberately narrow. It accepts only `schema_version: 1` and `bundle_type: gmail-important-mail`. If another source needs this later, build the second source when it exists. No imaginary framework tax.
+
+The generated note includes:
+
+- source run id, evidence run id, bundle path, query, and selection summary
+- chronology candidates ordered by `received_at`
+- thread groupings that keep every `gmail_messages:{message_id}` ref
+- empty contradiction review slots
+- empty missing-context slots
+- next-action slots
+
+Every candidate line carries the exact `gmail_messages:{message_id}` ref. Keep that ref when you edit the note. `Evidence: Gmail` is not evidence. It is fog with a hat on.
+
+## 6. Use read-only SQL only when needed
 
 Most review work should happen from the JSON bundle. Use SQL when you need to locate a run, artifact, or provenance link.
 
@@ -126,52 +160,27 @@ ORDER BY id DESC
 LIMIT 10;
 ```
 
-Check provenance for one evidence run:
+Find recent manual-analysis notes:
+
+```sql
+SELECT id, run_id, locator, metadata, created_at
+FROM run_artifacts
+WHERE artifact_kind = 'manual-analysis-note'
+ORDER BY id DESC
+LIMIT 10;
+```
+
+Check provenance for one manual-analysis run:
 
 ```sql
 SELECT output_target, evidence_ref, metadata
 FROM provenance_links
-WHERE run_id = 456
+WHERE run_id = 789
 ORDER BY id
 LIMIT 50;
 ```
 
 Keep SQL read-only. Do not use `artisan tinker`, `php -r`, migrations, seeders, or ad-hoc Laravel bootstrap scripts for this workflow.
-
-## 6. Write private operator notes
-
-Write notes under:
-
-```text
-data/reviews/operator-notes/<topic-or-run>.md
-```
-
-`data/` is ignored. Keep it that way. Do not add real correspondence, evidence bundles, credentials, or operator notes to git.
-
-Minimal note template:
-
-```md
-# <Claim or question>
-
-claim/question:
-source run:
-bundle path:
-evidence refs:
-
-candidate facts:
--
-
-contradictions:
--
-
-missing context:
--
-
-next action:
--
-```
-
-Use the evidence refs as the anchor for every candidate fact. A useful note says "this may be true because `gmail_messages:...` says X." A weak note says "seems important" and then wanders off into fog.
 
 ## 7. Preserve the refs
 
@@ -199,7 +208,7 @@ Stop when you have:
 
 - a bounded Gmail import run id
 - an evidence bundle under `data/reviews/`
-- an ignored operator note under `data/reviews/operator-notes/`
+- an ignored operator note generated under `data/reviews/operator-notes/`
 - provenance refs copied into the note
 - contradictions and missing context called out instead of smoothed over
 
