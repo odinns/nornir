@@ -114,6 +114,30 @@ NORNIR_GMAIL_TRIAGE_RULES=/ignored/path/to/rules.json
 
 Keep personal triage rules under `data/` or another ignored path. Do not commit real correspondence rules unless they are fully synthetic.
 
+## Build Important Mail Evidence
+
+After a successful Gmail import, Nornir can build a review bundle from the imported canonical rows:
+
+```bash
+php artisan evidence:gmail-important --run-id=123
+```
+
+Use the `Run id` printed by `import:gmail`. This command does not call Gmail. It reads the bounded `gmail_messages` rows from that import run, scores them with the important-mail rules, and writes the full-message review bundle here:
+
+```text
+data/reviews/gmail-important-evidence-run-123.json
+```
+
+Useful options:
+
+```bash
+php artisan evidence:gmail-important --run-id=123 --limit=25
+php artisan evidence:gmail-important --run-id=123 --rules=data/sources/gmail/important-rules.json
+php artisan evidence:gmail-important --run-id=123 --json
+```
+
+The bundle includes message bodies, labels, scoring reason, next action, and provenance refs back to `gmail_messages:{message_id}`. Nornir also records a Muninn child run and a `gmail-important-evidence-bundle` review artifact.
+
 ## Google Takeout
 
 Google Takeout can export Gmail as MBOX:
