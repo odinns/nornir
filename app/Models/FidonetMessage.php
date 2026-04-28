@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $to_address
  * @property CarbonImmutable|null $posted_at
  * @property CarbonImmutable|null $arrived_at
+ * @property array<array-key, mixed>|null $raw_metadata_json
  * @property-read FidonetSource $source
  * @property-read FidonetMessageCleanup|null $cleanup
  */

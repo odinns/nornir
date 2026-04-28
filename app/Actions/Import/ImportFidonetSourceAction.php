@@ -10,9 +10,21 @@ use App\Actions\Import\Support\ImportRunExecutor;
 use App\Data\Import\FidonetImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\FidonetArea;
+use App\Models\FidonetAreaObservation;
+use App\Models\FidonetMessage;
+use App\Models\FidonetMessageCleanup;
+use App\Models\FidonetMessageObservation;
+use App\Models\FidonetMessageParticipant;
+use App\Models\FidonetParticipant;
+use App\Models\FidonetSource;
+use App\Models\FidonetThread;
+use App\Models\FidonetThreadMessage;
+use App\Models\FidonetThreadObservation;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -153,8 +165,8 @@ class ImportFidonetSourceAction
             }
         }
 
-        $summary['participants'] = (int) DB::table('fidonet_participants')->count();
-        $summary['threads'] = (int) DB::table('fidonet_threads')->count();
+        $summary['participants'] = FidonetParticipant::query()->count();
+        $summary['threads'] = FidonetThread::query()->count();
 
         if (is_callable($progress)) {
             $progress('fidonet_import_complete', $summary);
@@ -389,13 +401,41 @@ class ImportFidonetSourceAction
     }
 
     /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<string, mixed>  $unique
+     * @param  array<string, mixed>  $values
+     */
+    private function upsertModelRow(string $modelClass, array $unique, array $values): Model
+    {
+        return $modelClass::query()->updateOrCreate($unique, [
+            ...$values,
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * @return array<array-key, mixed>|null
+     */
+    private function decodeRawMetadataJson(?string $rawMetadataJson): ?array
+    {
+        if ($rawMetadataJson === null || trim($rawMetadataJson) === '') {
+            return null;
+        }
+
+        $metadata = json_decode($rawMetadataJson, true, flags: JSON_THROW_ON_ERROR);
+
+        return is_array($metadata) ? $metadata : null;
+    }
+
+    /**
      * @param  array<string, mixed>  $sourceConfig
      */
     private function upsertSource(ImporterDispatchData $dispatchPayload, array $sourceConfig): int
     {
         $scopeHash = $this->scopeHash($dispatchPayload->scopeSnapshot);
 
-        DB::table('fidonet_sources')->updateOrInsert(
+        $source = $this->upsertModelRow(
+            FidonetSource::class,
             [
                 'source_locator' => $dispatchPayload->sourceLocator,
                 'scope_hash' => $scopeHash,
@@ -407,17 +447,12 @@ class ImportFidonetSourceAction
                 'host' => isset($sourceConfig['host']) ? (string) $sourceConfig['host'] : null,
                 'port' => isset($sourceConfig['port']) ? (string) $sourceConfig['port'] : null,
                 'username' => isset($sourceConfig['username']) ? (string) $sourceConfig['username'] : null,
-                'scope_snapshot' => json_encode($dispatchPayload->scopeSnapshot, JSON_THROW_ON_ERROR),
+                'scope_snapshot' => $dispatchPayload->scopeSnapshot,
                 'scope_hash' => $scopeHash,
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('fidonet_sources')
-            ->where('source_locator', $dispatchPayload->sourceLocator)
-            ->where('scope_hash', $scopeHash)
-            ->value('id');
+        return (int) $source->getKey();
     }
 
     /**
@@ -425,15 +460,14 @@ class ImportFidonetSourceAction
      */
     private function upsertArea(int $sourceId, object $areaRow): void
     {
-        DB::table('fidonet_areas')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetArea::class,
             ['area_code' => (string) $areaRow->code],
             [
                 'fidonet_source_id' => $sourceId,
                 'area_name' => (string) $areaRow->name,
                 'source_type' => is_string($areaRow->source_type) ? $areaRow->source_type : null,
                 'area_type' => is_string($areaRow->area_type) ? $areaRow->area_type : null,
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
     }
@@ -450,7 +484,8 @@ class ImportFidonetSourceAction
      */
     private function upsertThread(array $threadGroup, string $areaCode): int
     {
-        DB::table('fidonet_threads')->updateOrInsert(
+        $thread = $this->upsertModelRow(
+            FidonetThread::class,
             ['derived_thread_key' => $threadGroup['derived_thread_key']],
             [
                 'area_code' => $areaCode,
@@ -458,14 +493,10 @@ class ImportFidonetSourceAction
                 'message_count' => count($threadGroup['messages']),
                 'is_synthetic' => $threadGroup['is_synthetic'],
                 'confidence' => $threadGroup['confidence'],
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('fidonet_threads')
-            ->where('derived_thread_key', $threadGroup['derived_thread_key'])
-            ->value('id');
+        return (int) $thread->getKey();
     }
 
     /**
@@ -475,7 +506,8 @@ class ImportFidonetSourceAction
     {
         $canonicalMessageId = (string) $message->external_id;
 
-        DB::table('fidonet_messages')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetMessage::class,
             ['canonical_message_id' => $canonicalMessageId],
             [
                 'fidonet_source_id' => $sourceId,
@@ -498,24 +530,23 @@ class ImportFidonetSourceAction
                     : null,
                 'posted_at' => $message->posted_at,
                 'arrived_at' => $message->arrived_at,
-                'raw_metadata_json' => is_string($message->raw_metadata_json) ? $message->raw_metadata_json : null,
-                'updated_at' => now(),
-                'created_at' => now(),
+                'raw_metadata_json' => is_string($message->raw_metadata_json)
+                    ? $this->decodeRawMetadataJson($message->raw_metadata_json)
+                    : null,
             ],
         );
     }
 
     private function linkThreadMessage(int $threadId, string $canonicalMessageId, int $threadOrder): void
     {
-        DB::table('fidonet_thread_messages')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetThreadMessage::class,
             [
                 'fidonet_thread_id' => $threadId,
                 'canonical_message_id' => $canonicalMessageId,
             ],
             [
                 'thread_order' => $threadOrder,
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
     }
@@ -536,16 +567,14 @@ class ImportFidonetSourceAction
                 is_string($participantData['address']) ? $participantData['address'] : null,
             );
 
-            DB::table('fidonet_message_participants')->updateOrInsert(
+            $this->upsertModelRow(
+                FidonetMessageParticipant::class,
                 [
                     'canonical_message_id' => $canonicalMessageId,
                     'fidonet_participant_id' => $participantId,
                     'role' => $participantData['role'],
                 ],
-                [
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ],
+                [],
             );
 
             $count++;
@@ -558,7 +587,8 @@ class ImportFidonetSourceAction
     {
         $participantKey = sha1(mb_strtolower(trim($displayName)).'|'.mb_strtolower(trim((string) $address)));
 
-        DB::table('fidonet_participants')->updateOrInsert(
+        $participant = $this->upsertModelRow(
+            FidonetParticipant::class,
             ['participant_key' => $participantKey],
             [
                 'display_name' => $displayName,
@@ -566,14 +596,10 @@ class ImportFidonetSourceAction
                 'normalized_name' => $this->normalizeIdentity($displayName),
                 'normalized_address' => $address !== null ? $this->normalizeIdentity($address) : null,
                 'is_odinn_candidate' => $this->isOdinnCandidate($displayName, $address),
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('fidonet_participants')
-            ->where('participant_key', $participantKey)
-            ->value('id');
+        return (int) $participant->getKey();
     }
 
     /**
@@ -648,7 +674,8 @@ class ImportFidonetSourceAction
      */
     private function upsertCleanup(string $canonicalMessageId, array $cleanup): void
     {
-        DB::table('fidonet_message_cleanup')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetMessageCleanup::class,
             ['canonical_message_id' => $canonicalMessageId],
             [
                 'cleaned_authored_text' => $cleanup['cleaned_authored_text'],
@@ -658,51 +685,43 @@ class ImportFidonetSourceAction
                 'cleanup_version' => $cleanup['cleanup_version'],
                 'is_test_like' => $cleanup['is_test_like'],
                 'cleanup_notes' => $cleanup['cleanup_notes'],
-                'updated_at' => now(),
-                'created_at' => now(),
             ],
         );
     }
 
     private function recordAreaObservation(int $sourceId, string $areaCode): void
     {
-        DB::table('fidonet_area_observations')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetAreaObservation::class,
             [
                 'fidonet_source_id' => $sourceId,
                 'area_code' => $areaCode,
             ],
-            [
-                'updated_at' => now(),
-                'created_at' => now(),
-            ],
+            [],
         );
     }
 
     private function recordThreadObservation(int $sourceId, int $threadId): void
     {
-        DB::table('fidonet_thread_observations')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetThreadObservation::class,
             [
                 'fidonet_source_id' => $sourceId,
                 'fidonet_thread_id' => $threadId,
             ],
-            [
-                'updated_at' => now(),
-                'created_at' => now(),
-            ],
+            [],
         );
     }
 
     private function recordMessageObservation(int $sourceId, string $canonicalMessageId): void
     {
-        DB::table('fidonet_message_observations')->updateOrInsert(
+        $this->upsertModelRow(
+            FidonetMessageObservation::class,
             [
                 'fidonet_source_id' => $sourceId,
                 'canonical_message_id' => $canonicalMessageId,
             ],
-            [
-                'updated_at' => now(),
-                'created_at' => now(),
-            ],
+            [],
         );
     }
 
