@@ -10,6 +10,8 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\AppleHealthImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\AppleHealthRecord;
+use App\Models\AppleHealthWorkout;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use DateTimeImmutable;
@@ -352,16 +354,11 @@ class ImportAppleHealthAction
             'end_date' => $attributes['endDate'] ?? null,
         ], JSON_THROW_ON_ERROR));
 
-        $existingId = DB::table('apple_health_records')
-            ->where('canonical_key', $canonicalKey)
-            ->value('id');
-
-        $recordId = $this->sourceObservationStore->upsertAndReturnId(
-            table: 'apple_health_records',
-            unique: [
+        $record = AppleHealthRecord::query()->updateOrCreate(
+            [
                 'canonical_key' => $canonicalKey,
             ],
-            values: [
+            [
                 'record_type' => $attributes['type'] ?? null,
                 'source_name' => $attributes['sourceName'] ?? null,
                 'source_version' => $attributes['sourceVersion'] ?? null,
@@ -370,14 +367,15 @@ class ImportAppleHealthAction
                 'creation_at' => $this->normalizeTimestamp($attributes['creationDate'] ?? null),
                 'start_at' => $this->normalizeTimestamp($attributes['startDate'] ?? null),
                 'end_at' => $this->normalizeTimestamp($attributes['endDate'] ?? null),
-                'raw_record' => json_encode($attributes, JSON_THROW_ON_ERROR),
+                'raw_record' => $attributes,
+                'updated_at' => now(),
             ],
         );
 
         return [
-            'id' => $recordId,
+            'id' => $record->id,
             'canonical_key' => $canonicalKey,
-            'wasRecentlyCreated' => $existingId === null,
+            'wasRecentlyCreated' => $record->wasRecentlyCreated,
         ];
     }
 
@@ -402,16 +400,11 @@ class ImportAppleHealthAction
             'total_distance_unit' => $attributes['totalDistanceUnit'] ?? null,
         ], JSON_THROW_ON_ERROR));
 
-        $existingId = DB::table('apple_health_workouts')
-            ->where('canonical_key', $canonicalKey)
-            ->value('id');
-
-        $workoutId = $this->sourceObservationStore->upsertAndReturnId(
-            table: 'apple_health_workouts',
-            unique: [
+        $workout = AppleHealthWorkout::query()->updateOrCreate(
+            [
                 'canonical_key' => $canonicalKey,
             ],
-            values: [
+            [
                 'workout_activity_type' => $attributes['workoutActivityType'] ?? null,
                 'source_name' => $attributes['sourceName'] ?? null,
                 'source_version' => $attributes['sourceVersion'] ?? null,
@@ -424,14 +417,15 @@ class ImportAppleHealthAction
                 'creation_at' => $this->normalizeTimestamp($attributes['creationDate'] ?? null),
                 'start_at' => $this->normalizeTimestamp($attributes['startDate'] ?? null),
                 'end_at' => $this->normalizeTimestamp($attributes['endDate'] ?? null),
-                'raw_workout' => json_encode($attributes, JSON_THROW_ON_ERROR),
+                'raw_workout' => $attributes,
+                'updated_at' => now(),
             ],
         );
 
         return [
-            'id' => $workoutId,
+            'id' => $workout->id,
             'canonical_key' => $canonicalKey,
-            'wasRecentlyCreated' => $existingId === null,
+            'wasRecentlyCreated' => $workout->wasRecentlyCreated,
         ];
     }
 
