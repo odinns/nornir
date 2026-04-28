@@ -30,6 +30,7 @@ Generators are application components that:
 - source page compilation
 - Muninn extraction and structuring
 - Huginn synthesis
+- judgment extraction for decisions, observations, contradictions, and promoted outputs
 - output-page generation for preserved analyses
 
 ## Prompt and skill contract
@@ -64,6 +65,7 @@ AI output is rejected when:
 - output shape is invalid
 - provenance links are incomplete
 - the generator makes unsupported claims
+- the generator tries to accept a decision, apply a correction, or persist a high-level observation without the required judgment contract
 
 ## Review checklist
 

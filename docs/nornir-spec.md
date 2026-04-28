@@ -10,6 +10,7 @@ It replaces ad-hoc archive scripts with a coherent local application that suppor
 - cross-source search
 - evidence-bound biography reconstruction
 - evidence-supported personality and pattern work
+- evidence-backed decision and judgment capture
 - eventual web presentation through Mimir
 
 Nornir is not a wiki. `wiki/` is generated output. The system of record is the database plus the original source archives and external references.
@@ -36,6 +37,7 @@ Not yet implemented as a polished product surface:
 - Mimir web UI
 - durable Muninn biography workbench
 - full Huginn personality synthesis
+- judgment records for decisions, observations, contradictions, corrections, and promoted outputs
 - generic public importers for Monique and FidoNet companion databases
 
 ## Core Concepts
@@ -149,6 +151,27 @@ Principles:
 - synthesis across sources is expected
 - Huginn must not overwrite Muninn's factual boundary
 
+### Judgment Records
+
+The evidence-backed memory layer for decisions and recurring judgment.
+
+Responsible for:
+
+- decision candidates
+- accepted decisions
+- observations before synthesis
+- contradictions
+- user corrections
+- promoted Q&A or analysis outputs
+
+Principles:
+
+- records are derived unless they are explicit user corrections
+- accepted decisions need support
+- observations come before personality claims
+- contradictions are review targets, not prose problems
+- generated markdown is output, not authority
+
 ### Mimir
 
 The eventual presentation and interaction surface.
@@ -249,13 +272,19 @@ Muninn resolves evidence into biography-facing structures:
 
 This layer is specified and partly scaffolded, but the durable workbench is still upcoming.
 
-### 6. Huginn Processing
+### 6. Judgment Capture
+
+Judgment records capture decisions, observations, contradictions, corrections, and promoted analysis outputs.
+
+This layer turns useful accumulated judgment into queryable derived state while keeping source support visible.
+
+### 7. Huginn Processing
 
 Huginn synthesizes evidence-supported patterns and personality observations.
 
 This layer comes after the evidence contracts are solid enough to keep interpretation honest.
 
-### 7. Presentation
+### 8. Presentation
 
 Mimir eventually exposes the system through a web UI.
 
@@ -318,13 +347,16 @@ Allowed:
 - handoff actions read canonical rows
 - search builders read canonical rows and write derived search documents
 - Muninn consumes canonical rows and handoffs
-- Huginn consumes evidence-supported outputs
+- judgment records consume source evidence, Muninn evidence bundles, validated generator output, and explicit corrections
+- Huginn consumes judgment observations and evidence-supported outputs
 - Mimir consumes backend contracts
 
 Forbidden:
 
 - importers writing biography/personality conclusions
 - Muninn or Huginn fetching raw external data directly
+- accepted decisions or personality claims without support
+- manual wiki edits as the correction mechanism
 - source-specific branching monoliths
 - Mimir owning core domain rules
 - generated claims without provenance
@@ -343,6 +375,9 @@ Applies to:
 - arcs
 - observations
 - patterns
+- decisions
+- contradictions
+- corrections
 - compiled pages
 - review bundles
 

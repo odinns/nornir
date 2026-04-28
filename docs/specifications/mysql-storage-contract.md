@@ -15,6 +15,7 @@ Define the MySQL layout for canonical imported truth, shared run tracking, and s
 - importer writes
 - generator run metadata
 - Muninn and Huginn supporting derived records
+- judgment records for decisions, observations, contradictions, corrections, and promoted outputs
 
 ## Outputs
 
@@ -31,6 +32,17 @@ Required shared tables:
 - `run_events`
 - `run_artifacts`
 - `provenance_links`
+
+Derived judgment tables are expected once the judgment layer is implemented:
+
+- `decision_candidates`
+- `decisions`
+- `decision_supports`
+- `judgment_observations`
+- `observation_supports`
+- `contradiction_records`
+- `user_corrections`
+- `promoted_outputs`
 
 Source-owned tables use stable prefixes:
 
@@ -51,6 +63,7 @@ Source-owned tables use stable prefixes:
 - child runs may point at a parent run when one operation fans out into source-specific or stage-specific work
 - use stable source identifiers where possible
 - keep derived tables visibly derived
+- keep judgment records derived unless the record is an explicit user correction
 - never overwrite canonical raw-normalized fields with cleaned prose
 - store enough provenance to trace markdown claims back to source rows
 - canonical imported datetime columns represent UTC instants, not server-local wall time
@@ -61,6 +74,7 @@ Source-owned tables use stable prefixes:
 
 - no generic universal content table pretending all sources are the same
 - no markdown-as-canonical-data
+- no correction flow that mutates imported source rows
 - no run logs as the only state mechanism
 
 ## Interfaces

@@ -92,6 +92,7 @@ Use this order:
 - importers do not write narrative truth
 - Muninn does not do personality inference
 - Huginn may synthesize only with evidence
+- judgment records capture decisions, observations, contradictions, corrections, and promoted outputs as derived state with support
 - Heimdallr stays read-only
 - Mimir does not own core logic
 

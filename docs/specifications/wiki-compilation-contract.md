@@ -35,12 +35,14 @@ Define how canonical and derived data becomes generated markdown in `wiki/`.
 - source pages summarize one source or source instance
 - Muninn pages stay evidence-first and chronology-first
 - Huginn pages may synthesize but must cite support
-- output pages are saved analyses worth keeping
+- decision and observation pages compile from judgment records, not raw model prose
+- output pages are saved analyses worth keeping and must be promoted deliberately
 - page identity must be stable enough that reruns overwrite or version intentionally instead of spraying near-duplicate files
 
 ## Forbidden behavior
 
 - no editing canonical source truth by editing markdown
+- no using manual wiki edits as corrections
 - no unsupported claims
 - no mixed Muninn and Huginn rules on the same page without making the boundary explicit
 
