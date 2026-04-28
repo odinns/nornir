@@ -10,9 +10,20 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\FacebookImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\FacebookAttachment;
+use App\Models\FacebookComment;
+use App\Models\FacebookMessage;
+use App\Models\FacebookMessageReaction;
+use App\Models\FacebookPerson;
+use App\Models\FacebookPost;
+use App\Models\FacebookProfileSnapshot;
+use App\Models\FacebookReaction;
+use App\Models\FacebookSocialEdge;
+use App\Models\FacebookThread;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
@@ -97,7 +108,7 @@ class ImportFacebookArchiveAction
             $observedPeople[$profilePersonId] = true;
         }
 
-        $summary['profile_snapshots'] = (int) DB::table('facebook_profile_snapshots')
+        $summary['profile_snapshots'] = FacebookProfileSnapshot::query()
             ->where('facebook_archive_id', $archiveId)
             ->count();
 
@@ -166,17 +177,16 @@ class ImportFacebookArchiveAction
             $observedPeople[$personId] = true;
         }
 
-        DB::table('facebook_profile_snapshots')->updateOrInsert(
+        $this->upsertModelRow(
+            FacebookProfileSnapshot::class,
             ['facebook_archive_id' => $archiveId],
             [
                 'facebook_person_id' => $personId,
                 'full_name' => $fullName,
-                'emails_json' => json_encode(data_get($profile, 'emails.emails'), JSON_THROW_ON_ERROR),
+                'emails_json' => data_get($profile, 'emails.emails'),
                 'current_city' => $this->normalizeString(data_get($profile, 'current_city.name')),
                 'hometown' => $this->normalizeString(data_get($profile, 'hometown.name')),
-                'raw_profile' => json_encode($profile, JSON_THROW_ON_ERROR),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'raw_profile' => $profile,
             ],
         );
 
@@ -223,7 +233,8 @@ class ImportFacebookArchiveAction
                 $personId = $this->upsertPersonByName($name);
                 $observedPeople[$personId] = true;
 
-                DB::table('facebook_social_edges')->updateOrInsert(
+                $this->upsertModelRow(
+                    FacebookSocialEdge::class,
                     [
                         'facebook_archive_id' => $archiveId,
                         'facebook_person_id' => $personId,
@@ -231,8 +242,6 @@ class ImportFacebookArchiveAction
                     ],
                     [
                         'observed_at' => $this->timestampColumnValue($entry['timestamp'] ?? null),
-                        'created_at' => now(),
-                        'updated_at' => now(),
                     ],
                 );
 
@@ -268,7 +277,7 @@ class ImportFacebookArchiveAction
                 $canonicalKey = sha1(json_encode([$timestamp, $title, $content], JSON_THROW_ON_ERROR));
 
                 $postRow = $this->upsertCanonicalRow(
-                    table: 'facebook_posts',
+                    modelClass: FacebookPost::class,
                     unique: ['canonical_key' => $canonicalKey],
                     values: [
                         'facebook_archive_id' => $archiveId,
@@ -276,7 +285,7 @@ class ImportFacebookArchiveAction
                         'published_at' => $this->timestampColumnValue($timestamp),
                         'title' => $title,
                         'content' => $content,
-                        'raw_post' => json_encode($post, JSON_THROW_ON_ERROR),
+                        'raw_post' => $post,
                     ],
                 );
 
@@ -346,7 +355,7 @@ class ImportFacebookArchiveAction
             $canonicalKey = sha1(json_encode([$timestamp, $title, $content], JSON_THROW_ON_ERROR));
 
             $commentRow = $this->upsertCanonicalRow(
-                table: 'facebook_comments',
+                modelClass: FacebookComment::class,
                 unique: ['canonical_key' => $canonicalKey],
                 values: [
                     'facebook_archive_id' => $archiveId,
@@ -354,7 +363,7 @@ class ImportFacebookArchiveAction
                     'published_at' => $this->timestampColumnValue($timestamp),
                     'title' => $title,
                     'content' => $content,
-                    'raw_comment' => json_encode($comment, JSON_THROW_ON_ERROR),
+                    'raw_comment' => $comment,
                 ],
             );
 
@@ -414,7 +423,7 @@ class ImportFacebookArchiveAction
 
                 $canonicalKey = sha1(json_encode([$timestamp, $title, $reactionName, $actor], JSON_THROW_ON_ERROR));
                 $reactionRow = $this->upsertCanonicalRow(
-                    table: 'facebook_reactions',
+                    modelClass: FacebookReaction::class,
                     unique: ['canonical_key' => $canonicalKey],
                     values: [
                         'facebook_archive_id' => $archiveId,
@@ -423,7 +432,7 @@ class ImportFacebookArchiveAction
                         'published_at' => $this->timestampColumnValue($timestamp),
                         'title' => $title,
                         'reaction' => $reactionName,
-                        'raw_reaction' => json_encode($reaction, JSON_THROW_ON_ERROR),
+                        'raw_reaction' => $reaction,
                     ],
                 );
 
@@ -657,7 +666,7 @@ class ImportFacebookArchiveAction
         usort($allMessages, static fn (array $left, array $right): int => ($left['timestamp_ms'] ?? 0) <=> ($right['timestamp_ms'] ?? 0));
 
         $threadRow = $this->upsertCanonicalRow(
-            table: 'facebook_threads',
+            modelClass: FacebookThread::class,
             unique: ['thread_key' => $threadKey],
             values: [
                 'facebook_archive_id' => $archiveId,
@@ -669,10 +678,10 @@ class ImportFacebookArchiveAction
                 'message_count' => count($allMessages),
                 'first_message_at' => $this->timestampMsColumnValue($allMessages[0]['timestamp_ms'] ?? null),
                 'last_message_at' => $this->timestampMsColumnValue($allMessages[count($allMessages) - 1]['timestamp_ms'] ?? null),
-                'raw_thread' => json_encode([
+                'raw_thread' => [
                     'participants' => array_values($participants),
                     'message_chunks' => count($chunkFiles ?: []),
-                ], JSON_THROW_ON_ERROR),
+                ],
             ],
         );
 
@@ -712,7 +721,7 @@ class ImportFacebookArchiveAction
             ], JSON_THROW_ON_ERROR));
 
             $messageRow = $this->upsertCanonicalRow(
-                table: 'facebook_messages',
+                modelClass: FacebookMessage::class,
                 unique: ['canonical_key' => $canonicalKey],
                 values: [
                     'facebook_thread_id' => $threadRow['id'],
@@ -721,7 +730,7 @@ class ImportFacebookArchiveAction
                     'sent_at' => $this->timestampMsColumnValue($timestampMs),
                     'content' => $content,
                     'is_unsent' => (bool) ($message['is_unsent'] ?? false),
-                    'raw_message' => json_encode($message, JSON_THROW_ON_ERROR),
+                    'raw_message' => $message,
                 ],
             );
 
@@ -751,7 +760,8 @@ class ImportFacebookArchiveAction
                     $observedPeople[$personId] = true;
                 }
 
-                DB::table('facebook_message_reactions')->updateOrInsert(
+                $this->upsertModelRow(
+                    FacebookMessageReaction::class,
                     [
                         'reaction_key' => sha1($canonicalKey.'|'.($reaction['reaction'] ?? '').'|'.($actor ?? '')),
                     ],
@@ -759,8 +769,6 @@ class ImportFacebookArchiveAction
                         'facebook_message_id' => $messageRow['id'],
                         'facebook_person_id' => $personId,
                         'reaction' => $this->normalizeString($reaction['reaction'] ?? null) ?? 'unknown',
-                        'created_at' => now(),
-                        'updated_at' => now(),
                     ],
                 );
             }
@@ -810,8 +818,8 @@ class ImportFacebookArchiveAction
             return $this->personIdCache[$personKey];
         }
 
-        $personId = $this->sourceObservationStore->upsertAndReturnId(
-            table: 'facebook_people',
+        $person = $this->upsertCanonicalRow(
+            modelClass: FacebookPerson::class,
             unique: [
                 'person_key' => $personKey,
             ],
@@ -820,6 +828,7 @@ class ImportFacebookArchiveAction
                 'normalized_name' => $normalizedName,
             ],
         );
+        $personId = $person['id'];
 
         $this->personIdCache[$personKey] = $personId;
 
@@ -827,44 +836,31 @@ class ImportFacebookArchiveAction
     }
 
     /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<string, mixed>  $unique
+     * @param  array<string, mixed>  $values
+     */
+    private function upsertModelRow(string $modelClass, array $unique, array $values): Model
+    {
+        return $modelClass::query()->updateOrCreate($unique, [
+            ...$values,
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
      * @param  array<string, mixed>  $unique
      * @param  array<string, mixed>  $values
      * @return array{id:int,wasRecentlyCreated:bool}
      */
-    private function upsertCanonicalRow(string $table, array $unique, array $values): array
+    private function upsertCanonicalRow(string $modelClass, array $unique, array $values): array
     {
-        $query = DB::table($table);
-
-        foreach ($unique as $column => $value) {
-            $query->where($column, $value);
-        }
-
-        $existing = $query->first();
-
-        if ($existing !== null) {
-            DB::table($table)
-                ->where('id', $existing->id)
-                ->update([
-                    ...$values,
-                    'updated_at' => now(),
-                ]);
-
-            return [
-                'id' => (int) $existing->id,
-                'wasRecentlyCreated' => false,
-            ];
-        }
-
-        $id = (int) DB::table($table)->insertGetId([
-            ...$unique,
-            ...$values,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $row = $this->upsertModelRow($modelClass, $unique, $values);
 
         return [
-            'id' => $id,
-            'wasRecentlyCreated' => true,
+            'id' => (int) $row->getKey(),
+            'wasRecentlyCreated' => $row->wasRecentlyCreated,
         ];
     }
 
@@ -894,7 +890,7 @@ class ImportFacebookArchiveAction
      *     relative_path:?string,
      *     source_uri:?string,
      *     created_timestamp:?int,
-     *     raw_attachment:string
+     *     raw_attachment:array<string, mixed>
      * }>
      */
     private function extractMessageAttachments(array $message, string $threadPath): array
@@ -915,7 +911,7 @@ class ImportFacebookArchiveAction
                     'relative_path' => $resolvedLocation['relative_path'],
                     'source_uri' => $resolvedLocation['source_uri'],
                     'created_timestamp' => $this->integerValue($attachment['creation_timestamp'] ?? null),
-                    'raw_attachment' => json_encode($attachment, JSON_THROW_ON_ERROR),
+                    'raw_attachment' => $attachment,
                 ];
             }
         }
@@ -930,7 +926,7 @@ class ImportFacebookArchiveAction
      *     relative_path:?string,
      *     source_uri:?string,
      *     created_timestamp:?int,
-     *     raw_attachment:string
+     *     raw_attachment:array<string, mixed>
      * }>
      */
     private function extractPostAttachments(array $post): array
@@ -955,7 +951,7 @@ class ImportFacebookArchiveAction
                     'relative_path' => $resolvedLocation['relative_path'],
                     'source_uri' => $resolvedLocation['source_uri'],
                     'created_timestamp' => $this->integerValue(data_get($attachment, 'media.creation_timestamp')),
-                    'raw_attachment' => json_encode($attachment, JSON_THROW_ON_ERROR),
+                    'raw_attachment' => $attachment,
                 ];
             }
         }
@@ -963,6 +959,9 @@ class ImportFacebookArchiveAction
         return $attachments;
     }
 
+    /**
+     * @param  array<string, mixed>  $rawAttachment
+     */
     private function upsertAttachment(
         string $sourceContext,
         string $attachmentType,
@@ -973,9 +972,10 @@ class ImportFacebookArchiveAction
         string $uniqueSeed,
         ?int $messageId,
         ?int $postId,
-        string $rawAttachment,
+        array $rawAttachment,
     ): void {
-        DB::table('facebook_attachments')->updateOrInsert(
+        $this->upsertModelRow(
+            FacebookAttachment::class,
             [
                 'attachment_key' => sha1($sourceContext.'|'.$uniqueSeed.'|'.($sourceUri ?? $relativePath ?? '')),
             ],
@@ -989,8 +989,6 @@ class ImportFacebookArchiveAction
                 'created_timestamp' => $createdTimestamp,
                 'file_size_bytes' => $fileSizeBytes,
                 'raw_attachment' => $rawAttachment,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
         );
     }

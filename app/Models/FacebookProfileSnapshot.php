@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $facebook_archive_id
  * @property int|null $facebook_person_id
- * @property array<int, string>|null $emails_json
+ * @property list<array<string, mixed>>|null $emails_json
  * @property array<string, mixed>|null $raw_profile
  * @property-read FacebookArchive $archive
  * @property-read FacebookPerson|null $person
