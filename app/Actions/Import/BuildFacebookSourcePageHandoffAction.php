@@ -6,7 +6,14 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\FacebookCommentObservation;
+use App\Models\FacebookMessage;
+use App\Models\FacebookMessageObservation;
+use App\Models\FacebookPostObservation;
+use App\Models\FacebookProfileSnapshot;
+use App\Models\FacebookReaction;
+use App\Models\FacebookReactionObservation;
+use App\Models\FacebookThread;
 use InvalidArgumentException;
 
 class BuildFacebookSourcePageHandoffAction
@@ -56,34 +63,43 @@ class BuildFacebookSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Facebook rows were found for the requested run.');
         }
 
-        $messageCount = (int) DB::table('facebook_message_observations')
+        $messageIds = FacebookMessageObservation::query()
             ->whereIn('facebook_archive_id', $archiveIds)
-            ->distinct()
-            ->count('facebook_message_id');
-
-        $conversationCount = (int) DB::table('facebook_message_observations')
-            ->join('facebook_messages', 'facebook_messages.id', '=', 'facebook_message_observations.facebook_message_id')
-            ->whereIn('facebook_message_observations.facebook_archive_id', $archiveIds)
-            ->distinct()
-            ->count('facebook_messages.facebook_thread_id');
-
-        $peopleFromThreads = DB::table('facebook_message_observations')
-            ->join('facebook_messages', 'facebook_messages.id', '=', 'facebook_message_observations.facebook_message_id')
-            ->join('facebook_thread_participants', 'facebook_thread_participants.facebook_thread_id', '=', 'facebook_messages.facebook_thread_id')
-            ->whereIn('facebook_message_observations.facebook_archive_id', $archiveIds)
-            ->distinct()
-            ->pluck('facebook_thread_participants.facebook_person_id')
+            ->pluck('facebook_message_id')
             ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
             ->all();
 
-        $peopleFromReactions = DB::table('facebook_reactions')
+        $threadIds = $messageIds === []
+            ? []
+            : FacebookMessage::query()
+                ->whereIn('id', $messageIds)
+                ->pluck('facebook_thread_id')
+                ->map(static fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+        $peopleFromThreads = $threadIds === []
+            ? []
+            : FacebookThread::query()
+                ->with('participants:id')
+                ->whereIn('id', $threadIds)
+                ->get()
+                ->flatMap(static fn (FacebookThread $thread) => $thread->participants->pluck('id'))
+                ->unique()
+                ->values()
+                ->all();
+
+        $peopleFromReactions = FacebookReaction::query()
             ->whereIn('facebook_archive_id', $archiveIds)
             ->whereNotNull('facebook_person_id')
             ->pluck('facebook_person_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
-        $profilePeople = DB::table('facebook_profile_snapshots')
+        $profilePeople = FacebookProfileSnapshot::query()
             ->whereIn('facebook_archive_id', $archiveIds)
             ->whereNotNull('facebook_person_id')
             ->pluck('facebook_person_id')
@@ -91,17 +107,17 @@ class BuildFacebookSourcePageHandoffAction
             ->all();
 
         $peopleIds = array_values(array_unique([...$peopleFromThreads, ...$peopleFromReactions, ...$profilePeople]));
-        $postIds = DB::table('facebook_post_observations')
+        $postIds = FacebookPostObservation::query()
             ->whereIn('facebook_archive_id', $archiveIds)
             ->pluck('facebook_post_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
-        $commentIds = DB::table('facebook_comment_observations')
+        $commentIds = FacebookCommentObservation::query()
             ->whereIn('facebook_archive_id', $archiveIds)
             ->pluck('facebook_comment_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
-        $reactionIds = DB::table('facebook_reaction_observations')
+        $reactionIds = FacebookReactionObservation::query()
             ->whereIn('facebook_archive_id', $archiveIds)
             ->pluck('facebook_reaction_id')
             ->map(static fn (mixed $id): int => (int) $id)
@@ -117,8 +133,8 @@ class BuildFacebookSourcePageHandoffAction
             ],
             'row_counts' => [
                 'source_sets' => count($archiveIds),
-                'conversations' => $conversationCount,
-                'messages' => $messageCount,
+                'conversations' => count($threadIds),
+                'messages' => count($messageIds),
                 'people' => count($peopleIds),
                 'posts' => count(array_unique($postIds)),
                 'comments' => count(array_unique($commentIds)),

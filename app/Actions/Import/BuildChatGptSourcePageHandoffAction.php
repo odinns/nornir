@@ -6,7 +6,8 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\ChatGptConversationObservation;
+use App\Models\ChatGptMessageObservation;
 use InvalidArgumentException;
 
 class BuildChatGptSourcePageHandoffAction
@@ -49,13 +50,13 @@ class BuildChatGptSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical ChatGPT rows were found for the requested run.');
         }
 
-        $conversationIds = DB::table('chatgpt_conversation_observations')
+        $conversationIds = ChatGptConversationObservation::query()
             ->whereIn('chatgpt_source_set_id', $sourceSetIds)
             ->pluck('chatgpt_conversation_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
-        $messageIds = DB::table('chatgpt_message_observations')
+        $messageIds = ChatGptMessageObservation::query()
             ->whereIn('chatgpt_source_set_id', $sourceSetIds)
             ->pluck('chatgpt_message_id')
             ->map(static fn (mixed $id): int => (int) $id)

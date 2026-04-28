@@ -6,7 +6,7 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\MediaFile;
 
 class BuildMediaSourcePageHandoffAction
 {
@@ -31,7 +31,7 @@ class BuildMediaSourcePageHandoffAction
             ? $scopeSnapshot['volume']
             : null;
 
-        $query = DB::table(self::TABLE);
+        $query = MediaFile::query();
 
         if ($volumeFilter !== null) {
             $query->where('volume_label', $volumeFilter);
@@ -39,7 +39,7 @@ class BuildMediaSourcePageHandoffAction
 
         $fileCount = (int) $query->count();
 
-        $volumesQuery = DB::table(self::TABLE)
+        $volumesQuery = MediaFile::query()
             ->when($volumeFilter !== null, static fn ($q) => $q->where('volume_label', $volumeFilter))
             ->distinct()
             ->pluck('volume_label');

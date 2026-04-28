@@ -6,7 +6,8 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\AppleHealthRecordObservation;
+use App\Models\AppleHealthWorkoutObservation;
 use InvalidArgumentException;
 
 class BuildAppleHealthSourcePageHandoffAction
@@ -40,12 +41,12 @@ class BuildAppleHealthSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Apple Health rows were found for the requested run.');
         }
 
-        $recordCount = (int) DB::table('apple_health_record_observations')
+        $recordCount = AppleHealthRecordObservation::query()
             ->whereIn('apple_health_source_set_id', $sourceSetIds)
             ->distinct()
             ->count('apple_health_record_id');
 
-        $workoutCount = (int) DB::table('apple_health_workout_observations')
+        $workoutCount = AppleHealthWorkoutObservation::query()
             ->whereIn('apple_health_source_set_id', $sourceSetIds)
             ->distinct()
             ->count('apple_health_workout_id');

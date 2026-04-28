@@ -6,7 +6,12 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\TwitterAccount;
+use App\Models\TwitterArchive;
+use App\Models\TwitterMediaRef;
+use App\Models\TwitterNoteTweet;
+use App\Models\TwitterProfileSnapshot;
+use App\Models\TwitterTweet;
 use InvalidArgumentException;
 
 class BuildTwitterSourcePageHandoffAction
@@ -43,7 +48,7 @@ class BuildTwitterSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Twitter rows were found for the requested run.');
         }
 
-        $accountIds = DB::table('twitter_archives')
+        $accountIds = TwitterArchive::query()
             ->whereIn('id', $archiveIds)
             ->whereNotNull('account_id')
             ->pluck('account_id')
@@ -53,7 +58,7 @@ class BuildTwitterSourcePageHandoffAction
             ->all();
 
         if ($accountIds !== []) {
-            $archiveIds = DB::table('twitter_archives')
+            $archiveIds = TwitterArchive::query()
                 ->whereIn('account_id', $accountIds)
                 ->orderBy('id')
                 ->pluck('id')
@@ -74,17 +79,17 @@ class BuildTwitterSourcePageHandoffAction
             ],
             'row_counts' => [
                 'source_sets' => count($archiveIds),
-                'accounts' => (int) DB::table('twitter_accounts')->whereIn('twitter_archive_id', $archiveIds)->count(),
-                'profile_snapshots' => (int) DB::table('twitter_profile_snapshots')->whereIn('twitter_archive_id', $archiveIds)->count(),
+                'accounts' => TwitterAccount::query()->whereIn('twitter_archive_id', $archiveIds)->count(),
+                'profile_snapshots' => TwitterProfileSnapshot::query()->whereIn('twitter_archive_id', $archiveIds)->count(),
                 'tweets' => $accountIds === []
                     ? 0
-                    : (int) DB::table('twitter_tweets')->whereIn('account_id', $accountIds)->count(),
+                    : TwitterTweet::query()->whereIn('account_id', $accountIds)->count(),
                 'note_tweets' => $accountIds === []
                     ? 0
-                    : (int) DB::table('twitter_note_tweets')->whereIn('account_id', $accountIds)->count(),
+                    : TwitterNoteTweet::query()->whereIn('account_id', $accountIds)->count(),
                 'media_refs' => $accountIds === []
                     ? 0
-                    : (int) DB::table('twitter_media_refs')->whereIn('account_id', $accountIds)->count(),
+                    : TwitterMediaRef::query()->whereIn('account_id', $accountIds)->count(),
             ],
         ];
 

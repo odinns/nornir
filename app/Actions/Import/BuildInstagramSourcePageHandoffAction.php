@@ -6,7 +6,10 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\InstagramAccount;
+use App\Models\InstagramMediaRef;
+use App\Models\InstagramPost;
+use App\Models\InstagramProfileSnapshot;
 use InvalidArgumentException;
 
 class BuildInstagramSourcePageHandoffAction
@@ -43,7 +46,7 @@ class BuildInstagramSourcePageHandoffAction
 
         $accountIds = $snapshotIds === []
             ? []
-            : DB::table(self::TABLE_PROFILE_SNAPSHOTS)
+            : InstagramProfileSnapshot::query()
                 ->whereIn('id', array_map(intval(...), $snapshotIds))
                 ->distinct()
                 ->pluck('instagram_account_id')
@@ -55,7 +58,7 @@ class BuildInstagramSourcePageHandoffAction
 
             $accountIds = $postIds === []
                 ? []
-                : DB::table(self::TABLE_POSTS)
+                : InstagramPost::query()
                     ->whereIn('id', array_map(intval(...), $postIds))
                     ->distinct()
                     ->pluck('instagram_account_id')
@@ -71,15 +74,15 @@ class BuildInstagramSourcePageHandoffAction
 
         $account = $accountIds === []
             ? null
-            : DB::table(self::TABLE_ACCOUNTS)->where('id', $accountIds[0])->first();
+            : InstagramAccount::query()->find($accountIds[0]);
 
         if ($account === null) {
             throw new InvalidArgumentException('No canonical Instagram rows were found for the requested run.');
         }
 
         $accountId = (int) $account->id;
-        $postCount = (int) DB::table(self::TABLE_POSTS)->where('instagram_account_id', $accountId)->count();
-        $mediaRefCount = (int) DB::table(self::TABLE_MEDIA_REFS)->where('instagram_account_id', $accountId)->count();
+        $postCount = InstagramPost::query()->where('instagram_account_id', $accountId)->count();
+        $mediaRefCount = InstagramMediaRef::query()->where('instagram_account_id', $accountId)->count();
 
         $canonicalScope = [
             'username' => (string) $account->username,

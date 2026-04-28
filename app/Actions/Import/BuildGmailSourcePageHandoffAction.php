@@ -6,7 +6,9 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\GmailMessage;
+use App\Models\GmailMessageObservation;
+use App\Models\GmailSourceSet;
 use InvalidArgumentException;
 
 class BuildGmailSourcePageHandoffAction
@@ -49,7 +51,7 @@ class BuildGmailSourcePageHandoffAction
         $normalizedSourceLocator = $this->sourcePageHandoffSupport->normalizePath($sourceLocator);
         $query = (string) ($scopeSnapshot['query'] ?? '');
 
-        $sourceSetRows = DB::table(self::TABLE_SOURCE_SETS)
+        $sourceSetRows = GmailSourceSet::query()
             ->whereIn('source_locator', array_values(array_unique([$sourceLocator, $normalizedSourceLocator])))
             ->where('query', $query)
             ->orderBy('id')
@@ -80,7 +82,7 @@ class BuildGmailSourcePageHandoffAction
             throw new InvalidArgumentException('Gmail handoff run resolved to no canonical account.');
         }
 
-        $messageRowIds = DB::table(self::TABLE_MESSAGE_OBSERVATIONS)
+        $messageRowIds = GmailMessageObservation::query()
             ->whereIn('gmail_source_set_id', $sourceSetIds)
             ->pluck('gmail_message_id')
             ->map(static fn (mixed $id): int => (int) $id)
@@ -92,7 +94,7 @@ class BuildGmailSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Gmail rows were found for the requested run.');
         }
 
-        $threadIds = DB::table(self::TABLE_MESSAGES)
+        $threadIds = GmailMessage::query()
             ->whereIn('id', $messageRowIds)
             ->distinct()
             ->pluck('gmail_thread_id')

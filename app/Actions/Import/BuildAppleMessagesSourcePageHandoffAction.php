@@ -6,7 +6,10 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\AppleMessagesAttachment;
+use App\Models\AppleMessagesConversation;
+use App\Models\AppleMessagesMessage;
+use App\Models\AppleMessagesMessageObservation;
 use InvalidArgumentException;
 
 class BuildAppleMessagesSourcePageHandoffAction
@@ -48,7 +51,7 @@ class BuildAppleMessagesSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Apple Messages rows were found for the requested run.');
         }
 
-        $messageIds = DB::table('apple_messages_message_observations')
+        $messageIds = AppleMessagesMessageObservation::query()
             ->whereIn('apple_messages_source_set_id', $sourceSetIds)
             ->pluck('apple_messages_message_id')
             ->map(static fn (mixed $id): int => (int) $id)
@@ -56,7 +59,7 @@ class BuildAppleMessagesSourcePageHandoffAction
 
         $conversationIds = $messageIds === []
             ? []
-            : DB::table('apple_messages_messages')
+            : AppleMessagesMessage::query()
                 ->whereIn('id', $messageIds)
                 ->distinct()
                 ->pluck('apple_messages_conversation_id')
@@ -65,14 +68,17 @@ class BuildAppleMessagesSourcePageHandoffAction
 
         $participantCount = $conversationIds === []
             ? 0
-            : (int) DB::table('apple_messages_conversation_participant')
-                ->whereIn('apple_messages_conversation_id', $conversationIds)
-                ->distinct()
-                ->count('apple_messages_participant_id');
+            : AppleMessagesConversation::query()
+                ->with('participants:id')
+                ->whereIn('id', $conversationIds)
+                ->get()
+                ->flatMap(static fn (AppleMessagesConversation $conversation) => $conversation->participants->pluck('id'))
+                ->unique()
+                ->count();
 
         $attachmentCount = $messageIds === []
             ? 0
-            : (int) DB::table('apple_messages_attachments')
+            : AppleMessagesAttachment::query()
                 ->whereIn('apple_messages_message_id', $messageIds)
                 ->count();
 

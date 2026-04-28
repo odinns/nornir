@@ -6,7 +6,11 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\LinkedinConversation;
+use App\Models\LinkedinEndorsement;
+use App\Models\LinkedinMessage;
+use App\Models\LinkedinPosition;
+use App\Models\LinkedinProfileSnapshot;
 use InvalidArgumentException;
 
 class BuildLinkedInSourcePageHandoffAction
@@ -66,11 +70,11 @@ class BuildLinkedInSourcePageHandoffAction
             ],
             'row_counts' => [
                 'source_sets' => count($archiveIds),
-                'profile_snapshots' => (int) DB::table('linkedin_profile_snapshots')->whereIn('linkedin_archive_id', $archiveIds)->count(),
-                'positions' => (int) DB::table('linkedin_positions')->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
-                'endorsements' => (int) DB::table('linkedin_endorsements')->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
-                'conversations' => (int) DB::table('linkedin_conversations')->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
-                'messages' => (int) DB::table('linkedin_messages')->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
+                'profile_snapshots' => LinkedinProfileSnapshot::query()->whereIn('linkedin_archive_id', $archiveIds)->count(),
+                'positions' => LinkedinPosition::query()->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
+                'endorsements' => LinkedinEndorsement::query()->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
+                'conversations' => LinkedinConversation::query()->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
+                'messages' => LinkedinMessage::query()->whereIn('first_seen_linkedin_archive_id', $archiveIds)->count(),
             ],
         ];
 

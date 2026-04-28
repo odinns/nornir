@@ -6,7 +6,11 @@ namespace App\Actions\Import;
 
 use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
-use Illuminate\Support\Facades\DB;
+use App\Models\FidonetAreaObservation;
+use App\Models\FidonetMessageObservation;
+use App\Models\FidonetMessageParticipant;
+use App\Models\FidonetSource;
+use App\Models\FidonetThreadObservation;
 use InvalidArgumentException;
 
 class BuildFidonetSourcePageHandoffAction
@@ -38,7 +42,7 @@ class BuildFidonetSourcePageHandoffAction
         $sourceLocator = $boundary['source_locator'];
         $scopeSnapshot = $boundary['scope_snapshot'];
         $scopeHash = sha1(json_encode($scopeSnapshot, JSON_THROW_ON_ERROR));
-        $sourceIds = DB::table('fidonet_sources')
+        $sourceIds = FidonetSource::query()
             ->where('source_locator', $sourceLocator)
             ->where('scope_hash', $scopeHash)
             ->orderBy('id')
@@ -50,13 +54,13 @@ class BuildFidonetSourcePageHandoffAction
             throw new InvalidArgumentException('No imported FidoNet rows were found for the requested run.');
         }
 
-        $threadIds = DB::table('fidonet_thread_observations')
+        $threadIds = FidonetThreadObservation::query()
             ->whereIn('fidonet_source_id', $sourceIds)
             ->pluck('fidonet_thread_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
-        $messageIds = DB::table('fidonet_message_observations')
+        $messageIds = FidonetMessageObservation::query()
             ->whereIn('fidonet_source_id', $sourceIds)
             ->pluck('canonical_message_id')
             ->filter(static fn (mixed $id): bool => is_string($id) && $id !== '')
@@ -66,7 +70,7 @@ class BuildFidonetSourcePageHandoffAction
 
         $participantCount = $messageIds === []
             ? 0
-            : (int) DB::table('fidonet_message_participants')
+            : FidonetMessageParticipant::query()
                 ->whereIn('canonical_message_id', $messageIds)
                 ->distinct()
                 ->count('fidonet_participant_id');
@@ -81,7 +85,7 @@ class BuildFidonetSourcePageHandoffAction
             ],
             'row_counts' => [
                 'source_sets' => count($sourceIds),
-                'areas' => (int) DB::table('fidonet_area_observations')->whereIn('fidonet_source_id', $sourceIds)->count(),
+                'areas' => FidonetAreaObservation::query()->whereIn('fidonet_source_id', $sourceIds)->count(),
                 'threads' => count(array_unique($threadIds)),
                 'messages' => count($messageIds),
                 'participants' => $participantCount,
