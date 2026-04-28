@@ -10,9 +10,28 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\LinkedInImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\LinkedinComment;
+use App\Models\LinkedinConnection;
+use App\Models\LinkedinConversation;
+use App\Models\LinkedinEducationRecord;
+use App\Models\LinkedinEndorsement;
+use App\Models\LinkedinInvitation;
+use App\Models\LinkedinLanguage;
+use App\Models\LinkedinMessage;
+use App\Models\LinkedinMessageAttachment;
+use App\Models\LinkedinPerson;
+use App\Models\LinkedinPosition;
+use App\Models\LinkedinProfileSnapshot;
+use App\Models\LinkedinProject;
+use App\Models\LinkedinReaction;
+use App\Models\LinkedinRecommendation;
+use App\Models\LinkedinRichMedia;
+use App\Models\LinkedinShare;
+use App\Models\LinkedinSkill;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
@@ -106,14 +125,14 @@ class ImportLinkedInArchiveAction
         ];
 
         $ownerPersonId = $this->importProfileSnapshot($archivePath, $archiveId);
-        $summary['profile_snapshots'] = (int) DB::table('linkedin_profile_snapshots')
+        $summary['profile_snapshots'] = LinkedinProfileSnapshot::query()
             ->where('linkedin_archive_id', $archiveId)
             ->count();
 
         $summary['positions'] = $this->importRows(
             archivePath: $archivePath,
             file: 'Positions.csv',
-            table: 'linkedin_positions',
+            modelClass: LinkedinPosition::class,
             archiveId: $archiveId,
             keyColumns: ['Company Name', 'Title', 'Started On', 'Finished On', 'Description'],
             valueBuilder: fn (array $row): array => [
@@ -125,14 +144,14 @@ class ImportLinkedInArchiveAction
                 'started_on' => $this->parseLinkedInMonthDate($row['Started On'] ?? null),
                 'finished_on_source' => $this->stringValue($row['Finished On'] ?? null),
                 'finished_on' => $this->parseLinkedInMonthDate($row['Finished On'] ?? null),
-                'raw_position' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_position' => $row,
             ],
         );
 
         $summary['education_records'] = $this->importRows(
             archivePath: $archivePath,
             file: 'Education.csv',
-            table: 'linkedin_education_records',
+            modelClass: LinkedinEducationRecord::class,
             archiveId: $archiveId,
             keyColumns: ['School Name', 'Degree Name', 'Start Date', 'End Date', 'Notes', 'Activities'],
             valueBuilder: fn (array $row): array => [
@@ -144,14 +163,14 @@ class ImportLinkedInArchiveAction
                 'finished_on' => $this->parseLinkedInMonthDate($row['End Date'] ?? null),
                 'notes' => $this->stringValue($row['Notes'] ?? null),
                 'activities' => $this->stringValue($row['Activities'] ?? null),
-                'raw_record' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_record' => $row,
             ],
         );
 
         $summary['projects'] = $this->importRows(
             archivePath: $archivePath,
             file: 'Projects.csv',
-            table: 'linkedin_projects',
+            modelClass: LinkedinProject::class,
             archiveId: $archiveId,
             keyColumns: ['Title', 'Started On', 'Finished On', 'Description', 'Url'],
             valueBuilder: fn (array $row): array => [
@@ -162,7 +181,7 @@ class ImportLinkedInArchiveAction
                 'started_on' => $this->parseLinkedInMonthDate($row['Started On'] ?? null),
                 'finished_on_source' => $this->stringValue($row['Finished On'] ?? null),
                 'finished_on' => $this->parseLinkedInMonthDate($row['Finished On'] ?? null),
-                'raw_project' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_project' => $row,
             ],
         );
 
@@ -184,7 +203,7 @@ class ImportLinkedInArchiveAction
         $summary['inserted_messages'] = $messageSummary['inserted_messages'];
         $summary['reobserved_messages'] = $messageSummary['reobserved_messages'];
 
-        $summary['people'] = (int) DB::table('linkedin_people')->count();
+        $summary['people'] = LinkedinPerson::query()->count();
 
         if ($ownerPersonId !== null) {
             $this->provenanceWriter->link(new WriteProvenanceLinkData(
@@ -236,7 +255,8 @@ class ImportLinkedInArchiveAction
         ])));
         $personId = $fullName !== '' ? $this->upsertPerson($fullName, null) : null;
 
-        DB::table('linkedin_profile_snapshots')->updateOrInsert(
+        $this->upsertModelRow(
+            LinkedinProfileSnapshot::class,
             ['linkedin_archive_id' => $archiveId],
             [
                 'linkedin_person_id' => $personId,
@@ -251,15 +271,13 @@ class ImportLinkedInArchiveAction
                 'geo_location' => $this->stringValue($profile['Geo Location'] ?? null),
                 'birth_date_source' => $this->stringValue($profile['Birth Date'] ?? null),
                 'birth_date' => $this->parseBirthDate($profile['Birth Date'] ?? null),
-                'emails_json' => json_encode($this->readCsv($archivePath, 'Email Addresses.csv'), JSON_THROW_ON_ERROR),
-                'phone_numbers_json' => json_encode($this->readCsv($archivePath, 'PhoneNumbers.csv'), JSON_THROW_ON_ERROR),
-                'whatsapp_numbers_json' => json_encode($this->readCsv($archivePath, 'Whatsapp Phone Numbers.csv'), JSON_THROW_ON_ERROR),
+                'emails_json' => $this->readCsv($archivePath, 'Email Addresses.csv'),
+                'phone_numbers_json' => $this->readCsv($archivePath, 'PhoneNumbers.csv'),
+                'whatsapp_numbers_json' => $this->readCsv($archivePath, 'Whatsapp Phone Numbers.csv'),
                 'registration_at_source' => $this->stringValue($this->readCsv($archivePath, 'Registration.csv')[0]['Registered At'] ?? null),
                 'registered_at' => $this->parseSlashDateTime($this->readCsv($archivePath, 'Registration.csv')[0]['Registered At'] ?? null),
                 'registration_ip' => $this->stringValue($this->readCsv($archivePath, 'Registration.csv')[0]['Registration Ip'] ?? null),
-                'raw_profile' => json_encode($profile, JSON_THROW_ON_ERROR),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'raw_profile' => $profile,
             ],
         );
 
@@ -267,13 +285,14 @@ class ImportLinkedInArchiveAction
     }
 
     /**
+     * @param  class-string<Model>  $modelClass
      * @param  list<string>  $keyColumns
      * @param  callable(array<string, string>): array<string, mixed>  $valueBuilder
      */
     private function importRows(
         string $archivePath,
         string $file,
-        string $table,
+        string $modelClass,
         int $archiveId,
         array $keyColumns,
         callable $valueBuilder,
@@ -287,13 +306,12 @@ class ImportLinkedInArchiveAction
                 continue;
             }
 
-            DB::table($table)->updateOrInsert(
+            $this->upsertModelRow(
+                $modelClass,
                 ['canonical_key' => $canonicalKey],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
                     ...$valueBuilder($row),
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ],
             );
             $count++;
@@ -313,12 +331,11 @@ class ImportLinkedInArchiveAction
                 continue;
             }
 
-            DB::table('linkedin_skills')->updateOrInsert(
+            $this->upsertModelRow(
+                LinkedinSkill::class,
                 ['skill_name' => $name],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ],
             );
             $count++;
@@ -338,14 +355,13 @@ class ImportLinkedInArchiveAction
                 continue;
             }
 
-            DB::table('linkedin_languages')->updateOrInsert(
+            $this->upsertModelRow(
+                LinkedinLanguage::class,
                 ['canonical_key' => $canonicalKey],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
                     'name' => $this->stringValue($row['Name'] ?? null) ?? '',
                     'proficiency' => $this->stringValue($row['Proficiency'] ?? null),
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ],
             );
             $count++;
@@ -371,7 +387,8 @@ class ImportLinkedInArchiveAction
                 continue;
             }
 
-            DB::table('linkedin_connections')->updateOrInsert(
+            $this->upsertModelRow(
+                LinkedinConnection::class,
                 ['canonical_key' => $canonicalKey],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
@@ -381,9 +398,7 @@ class ImportLinkedInArchiveAction
                     'position' => $this->stringValue($row['Position'] ?? null),
                     'connected_on_source' => $this->stringValue($row['Connected On'] ?? null),
                     'connected_at' => $this->parseConnectionDate($row['Connected On'] ?? null),
-                    'raw_connection' => json_encode($row, JSON_THROW_ON_ERROR),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'raw_connection' => $row,
                 ],
             );
             $count++;
@@ -411,7 +426,8 @@ class ImportLinkedInArchiveAction
                 continue;
             }
 
-            DB::table('linkedin_invitations')->updateOrInsert(
+            $this->upsertModelRow(
+                LinkedinInvitation::class,
                 ['canonical_key' => $canonicalKey],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
@@ -423,9 +439,7 @@ class ImportLinkedInArchiveAction
                     'message' => $this->stringValue($row['Message'] ?? null),
                     'inviter_profile_url' => $this->stringValue($row['inviterProfileUrl'] ?? null),
                     'invitee_profile_url' => $this->stringValue($row['inviteeProfileUrl'] ?? null),
-                    'raw_invitation' => json_encode($row, JSON_THROW_ON_ERROR),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'raw_invitation' => $row,
                 ],
             );
             $count++;
@@ -450,7 +464,8 @@ class ImportLinkedInArchiveAction
                 $counterpartId = $name !== '' ? $this->upsertPerson($name, null) : null;
                 $canonicalKey = sha1($direction.'|'.($name).'|'.($row['Creation Date'] ?? '').'|'.($row['Text'] ?? ''));
 
-                DB::table('linkedin_recommendations')->updateOrInsert(
+                $this->upsertModelRow(
+                    LinkedinRecommendation::class,
                     ['canonical_key' => $canonicalKey],
                     [
                         'first_seen_linkedin_archive_id' => $archiveId,
@@ -462,9 +477,7 @@ class ImportLinkedInArchiveAction
                         'created_at_source' => $this->stringValue($row['Creation Date'] ?? null),
                         'recommended_at' => $this->parseSlashDateTime($row['Creation Date'] ?? null),
                         'status' => $this->stringValue($row['Status'] ?? null),
-                        'raw_recommendation' => json_encode($row, JSON_THROW_ON_ERROR),
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'raw_recommendation' => $row,
                     ],
                 );
                 $count++;
@@ -501,7 +514,8 @@ class ImportLinkedInArchiveAction
                 $counterpartId = $name !== '' ? $this->upsertPerson($name, $url) : null;
                 $canonicalKey = sha1($direction.'|'.($row['Skill Name'] ?? '').'|'.($url ?? $name).'|'.($row['Endorsement Date'] ?? ''));
 
-                DB::table('linkedin_endorsements')->updateOrInsert(
+                $this->upsertModelRow(
+                    LinkedinEndorsement::class,
                     ['canonical_key' => $canonicalKey],
                     [
                         'first_seen_linkedin_archive_id' => $archiveId,
@@ -512,9 +526,7 @@ class ImportLinkedInArchiveAction
                         'endorsed_at' => $this->parseUtcDateTime($row['Endorsement Date'] ?? null),
                         'status' => $this->stringValue($row['Endorsement Status'] ?? null),
                         'counterpart_public_url' => $url,
-                        'raw_endorsement' => json_encode($row, JSON_THROW_ON_ERROR),
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'raw_endorsement' => $row,
                     ],
                 );
                 $count++;
@@ -529,7 +541,7 @@ class ImportLinkedInArchiveAction
         return $this->importRows(
             archivePath: $archivePath,
             file: 'Shares.csv',
-            table: 'linkedin_shares',
+            modelClass: LinkedinShare::class,
             archiveId: $archiveId,
             keyColumns: ['Date', 'ShareLink', 'ShareCommentary'],
             valueBuilder: fn (array $row): array => [
@@ -540,7 +552,7 @@ class ImportLinkedInArchiveAction
                 'shared_url' => $this->stringValue($row['SharedUrl'] ?? null),
                 'media_url' => $this->stringValue($row['MediaUrl'] ?? null),
                 'visibility' => $this->stringValue($row['Visibility'] ?? null),
-                'raw_share' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_share' => $row,
             ],
         );
     }
@@ -550,7 +562,7 @@ class ImportLinkedInArchiveAction
         return $this->importRows(
             archivePath: $archivePath,
             file: 'Comments.csv',
-            table: 'linkedin_comments',
+            modelClass: LinkedinComment::class,
             archiveId: $archiveId,
             keyColumns: ['Date', 'Link', 'Message'],
             valueBuilder: fn (array $row): array => [
@@ -558,7 +570,7 @@ class ImportLinkedInArchiveAction
                 'commented_at' => $this->parseTimestamp($row['Date'] ?? null),
                 'link' => $this->stringValue($row['Link'] ?? null),
                 'message' => $this->stringValue($row['Message'] ?? null),
-                'raw_comment' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_comment' => $row,
             ],
         );
     }
@@ -568,7 +580,7 @@ class ImportLinkedInArchiveAction
         return $this->importRows(
             archivePath: $archivePath,
             file: 'Reactions.csv',
-            table: 'linkedin_reactions',
+            modelClass: LinkedinReaction::class,
             archiveId: $archiveId,
             keyColumns: ['Date', 'Type', 'Link'],
             valueBuilder: fn (array $row): array => [
@@ -576,7 +588,7 @@ class ImportLinkedInArchiveAction
                 'reacted_at' => $this->parseTimestamp($row['Date'] ?? null),
                 'reaction_type' => $this->stringValue($row['Type'] ?? null),
                 'link' => $this->stringValue($row['Link'] ?? null),
-                'raw_reaction' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_reaction' => $row,
             ],
         );
     }
@@ -586,7 +598,7 @@ class ImportLinkedInArchiveAction
         return $this->importRows(
             archivePath: $archivePath,
             file: 'Rich_Media.csv',
-            table: 'linkedin_rich_media',
+            modelClass: LinkedinRichMedia::class,
             archiveId: $archiveId,
             keyColumns: ['Date/Time', 'Media Description', 'Media Link'],
             valueBuilder: fn (array $row): array => [
@@ -594,7 +606,7 @@ class ImportLinkedInArchiveAction
                 'observed_at' => $this->parseRichMediaTimestamp($row['Date/Time'] ?? null),
                 'media_description' => $this->stringValue($row['Media Description'] ?? null),
                 'media_link' => $this->stringValue($row['Media Link'] ?? null),
-                'raw_media' => json_encode($row, JSON_THROW_ON_ERROR),
+                'raw_media' => $row,
             ],
         );
     }
@@ -627,7 +639,7 @@ class ImportLinkedInArchiveAction
 
             $conversationKey = sha1($sourceConversationId);
             $conversation = $this->upsertCanonicalRow(
-                'linkedin_conversations',
+                LinkedinConversation::class,
                 ['conversation_key' => $conversationKey],
                 [
                     'first_seen_linkedin_archive_id' => $archiveId,
@@ -653,7 +665,7 @@ class ImportLinkedInArchiveAction
             ]));
 
             $message = $this->upsertCanonicalRow(
-                'linkedin_messages',
+                LinkedinMessage::class,
                 ['canonical_key' => $messageKey],
                 [
                     'linkedin_conversation_id' => $conversation['id'],
@@ -666,7 +678,7 @@ class ImportLinkedInArchiveAction
                     'to_display' => $this->stringValue($row['TO'] ?? null),
                     'recipient_profile_urls' => $this->stringValue($row['RECIPIENT PROFILE URLS'] ?? null),
                     'folder' => $this->stringValue($row['FOLDER'] ?? null),
-                    'raw_message' => json_encode($row, JSON_THROW_ON_ERROR),
+                    'raw_message' => $row,
                 ],
             );
 
@@ -681,13 +693,12 @@ class ImportLinkedInArchiveAction
             $attachmentUrls = $this->splitAttachmentUrls($row['ATTACHMENTS'] ?? null);
 
             if ($attachmentUrls !== []) {
-                DB::table('linkedin_message_attachments')->updateOrInsert(
+                $this->upsertModelRow(
+                    LinkedinMessageAttachment::class,
                     ['attachment_key' => sha1($messageKey)],
                     [
                         'linkedin_message_id' => $message['id'],
-                        'attachment_urls_json' => json_encode($attachmentUrls, JSON_THROW_ON_ERROR),
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'attachment_urls_json' => $attachmentUrls,
                     ],
                 );
                 $summary['attachments'] += count($attachmentUrls);
@@ -707,8 +718,8 @@ class ImportLinkedInArchiveAction
         foreach ($conversationStats as $conversationId => $timestamps) {
             $timestamps = array_values(array_filter($timestamps));
 
-            DB::table('linkedin_conversations')
-                ->where('id', $conversationId)
+            LinkedinConversation::query()
+                ->whereKey($conversationId)
                 ->update([
                     'message_count' => count($timestamps),
                     'first_message_at' => $timestamps === [] ? null : min($timestamps),
@@ -731,17 +742,18 @@ class ImportLinkedInArchiveAction
             return $this->personIdCache[$personKey];
         }
 
-        $personId = $this->sourceObservationStore->upsertAndReturnId(
-            table: 'linkedin_people',
-            unique: [
+        $person = $this->upsertCanonicalRow(
+            LinkedinPerson::class,
+            [
                 'person_key' => $personKey,
             ],
-            values: [
+            [
                 'display_name' => $displayName ?? 'Unknown LinkedIn person',
                 'normalized_name' => $normalizedName,
                 'profile_url' => $profileUrl,
             ],
         );
+        $personId = $person['id'];
 
         $this->personIdCache[$personKey] = $personId;
 
@@ -758,44 +770,31 @@ class ImportLinkedInArchiveAction
     }
 
     /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<string, mixed>  $unique
+     * @param  array<string, mixed>  $values
+     */
+    private function upsertModelRow(string $modelClass, array $unique, array $values): Model
+    {
+        return $modelClass::query()->updateOrCreate($unique, [
+            ...$values,
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
      * @param  array<string, mixed>  $unique
      * @param  array<string, mixed>  $values
      * @return array{id:int,wasRecentlyCreated:bool}
      */
-    private function upsertCanonicalRow(string $table, array $unique, array $values): array
+    private function upsertCanonicalRow(string $modelClass, array $unique, array $values): array
     {
-        $query = DB::table($table);
-
-        foreach ($unique as $column => $value) {
-            $query->where($column, $value);
-        }
-
-        $existing = $query->first();
-
-        if ($existing !== null) {
-            DB::table($table)
-                ->where('id', $existing->id)
-                ->update([
-                    ...$values,
-                    'updated_at' => now(),
-                ]);
-
-            return [
-                'id' => (int) $existing->id,
-                'wasRecentlyCreated' => false,
-            ];
-        }
-
-        $id = (int) DB::table($table)->insertGetId([
-            ...$unique,
-            ...$values,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $row = $this->upsertModelRow($modelClass, $unique, $values);
 
         return [
-            'id' => $id,
-            'wasRecentlyCreated' => true,
+            'id' => (int) $row->getKey(),
+            'wasRecentlyCreated' => $row->wasRecentlyCreated,
         ];
     }
 

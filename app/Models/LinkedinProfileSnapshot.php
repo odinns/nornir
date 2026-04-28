@@ -11,9 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property CarbonImmutable|null $birth_date
  * @property CarbonImmutable|null $registered_at
- * @property array<int, string>|null $emails_json
- * @property array<int, string>|null $phone_numbers_json
- * @property array<int, string>|null $whatsapp_numbers_json
+ * @property list<array<string, string>>|null $emails_json
+ * @property list<array<string, string>>|null $phone_numbers_json
+ * @property list<array<string, string>>|null $whatsapp_numbers_json
  * @property array<string, mixed>|null $raw_profile
  * @property-read LinkedinArchive $archive
  * @property-read LinkedinPerson|null $person
