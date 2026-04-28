@@ -6,9 +6,10 @@ use App\Actions\Import\BuildChatGptSourcePageHandoffAction;
 use App\Actions\Import\ImportChatGptConversationsAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\ChatGptArchive;
+use App\Models\ChatGptSourceSet;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -134,26 +135,22 @@ it('normalizes legacy relative source locators in the handoff payload', function
     $importResult = app(ImportChatGptConversationsAction::class)($intake->dispatchPayload);
     $relativeExportRoot = relativeToBasePathForHandoff($exportRoot);
 
-    DB::table('runs')
-        ->where('id', $importResult->run->id)
-        ->update([
-            'input_scope' => json_encode([
-                'source_locator' => $relativeExportRoot,
-                'scope_snapshot' => [
-                    'accepted_root_paths' => [$relativeExportRoot],
-                    'relative_glob' => 'conversations-*.json',
-                ],
-            ], JSON_THROW_ON_ERROR),
-        ]);
+    $importResult->run->update([
+        'input_scope' => [
+            'source_locator' => $relativeExportRoot,
+            'scope_snapshot' => [
+                'accepted_root_paths' => [$relativeExportRoot],
+                'relative_glob' => 'conversations-*.json',
+            ],
+        ],
+    ]);
 
-    DB::table('chatgpt_archives')
-        ->update([
-            'source_locator' => $relativeExportRoot,
-        ]);
-    DB::table('chatgpt_source_sets')
-        ->update([
-            'source_locator' => $relativeExportRoot,
-        ]);
+    ChatGptArchive::query()->update([
+        'source_locator' => $relativeExportRoot,
+    ]);
+    ChatGptSourceSet::query()->update([
+        'source_locator' => $relativeExportRoot,
+    ]);
 
     $handoff = app(BuildChatGptSourcePageHandoffAction::class)($importResult->run->id);
 
