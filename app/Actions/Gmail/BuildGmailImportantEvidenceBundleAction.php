@@ -25,7 +25,7 @@ use Throwable;
  * @phpstan-import-type ScoredGmailImportantMailItem from GmailImportantMailScorer
  *
  * @phpstan-type GmailImportantEvidenceItem array{message_id: string, thread_id: string, from: string, to: string, cc: string, subject: string, received_at: string, urgency: string, reason: string, next_action: string, confidence: float, labels: list<string>, snippet: string, body_plain: string, body_html: string, provenance_ref: string}
- * @phpstan-type GmailImportantEvidenceBundle array{bundle_type: string, source_type: string, source_run_id: int, evidence_run_id: int, generated_at: string, account_email: string, source_set_ids: list<int>, query: string, selection: array{mode: string, limit: int, matched_count: int}, items: list<GmailImportantEvidenceItem>}
+ * @phpstan-type GmailImportantEvidenceBundle array{schema_version: 1, bundle_type: string, source_type: string, source_run_id: int, evidence_run_id: int, generated_at: string, account_email: string, source_set_ids: list<int>, query: string, selection: array{mode: string, limit: int, matched_count: int}, items: list<GmailImportantEvidenceItem>}
  */
 class BuildGmailImportantEvidenceBundleAction
 {
@@ -225,6 +225,7 @@ class BuildGmailImportantEvidenceBundleAction
         array $selectedItems,
     ): array {
         return [
+            'schema_version' => 1,
             'bundle_type' => 'gmail-important-mail',
             'source_type' => 'gmail',
             'source_run_id' => $sourceRun->id,

@@ -15,8 +15,9 @@ Read in this order:
 7. `testing-and-tdd-strategy.md`
 8. `ai-and-mcp-architecture.md`
 9. `judgment-layer-contracts.md`
-10. subsystem specs
-11. source navigation and importer specs
+10. `evidence-bundle-contract.md`
+11. subsystem specs
+12. source navigation and importer specs
 
 Implemented importer families today:
 

@@ -90,7 +90,9 @@ it('builds a full body important mail evidence bundle from canonical gmail rows'
 
     expect($result->matchedCount)->toBe(3);
     expect(app(FakeGmailApiClient::class)->getMessageCalls)->toBe($apiCallsAfterImport);
+    expect(array_keys($bundle))->toBe(expectedEvidenceBundleEnvelopeKeys());
     expect($bundle)->toMatchArray([
+        'schema_version' => 1,
         'bundle_type' => 'gmail-important-mail',
         'source_type' => 'gmail',
         'source_run_id' => $importResult->run->id,
@@ -104,9 +106,9 @@ it('builds a full body important mail evidence bundle from canonical gmail rows'
         ],
     ]);
     expect($bundle['items'])->sequence(
-        fn ($item) => $item->message_id->toBe('msg-high-old'),
-        fn ($item) => $item->message_id->toBe('msg-tie-new'),
-        fn ($item) => $item->message_id->toBe('msg-tie-old'),
+        fn ($item) => $item->message_id->toBe('msg-high-old')->provenance_ref->toBe('gmail_messages:msg-high-old'),
+        fn ($item) => $item->message_id->toBe('msg-tie-new')->provenance_ref->toBe('gmail_messages:msg-tie-new'),
+        fn ($item) => $item->message_id->toBe('msg-tie-old')->provenance_ref->toBe('gmail_messages:msg-tie-old'),
     );
     expect(firstEvidenceBundleItem($bundle['items']))->toMatchArray([
         'thread_id' => 'thread-high-old',
@@ -158,6 +160,8 @@ it('writes an empty bundle when canonical gmail rows exist but none score as imp
     $bundle = decodeEvidenceBundle($result->path);
 
     expect($result->matchedCount)->toBe(0);
+    expect(array_keys($bundle))->toBe(expectedEvidenceBundleEnvelopeKeys());
+    expect($bundle['schema_version'])->toBe(1);
     expect($bundle['selection'])->toMatchArray([
         'mode' => 'important-mail-score',
         'limit' => 50,
@@ -317,7 +321,7 @@ function buildImportantEvidenceMessage(
 }
 
 /**
- * @return array{bundle_type:string, source_type:string, source_run_id:int, evidence_run_id:int, generated_at:string, account_email:string, source_set_ids:list<int>, query:string, selection:array{mode:string, limit:int, matched_count:int}, items:list<array{message_id:string, thread_id:string, from:string, to:string, cc:string, subject:string, received_at:string, urgency:string, reason:string, next_action:string, confidence:float, labels:list<string>, snippet:string, body_plain:string, body_html:string, provenance_ref:string}>}
+ * @return array{schema_version:1, bundle_type:string, source_type:string, source_run_id:int, evidence_run_id:int, generated_at:string, account_email:string, source_set_ids:list<int>, query:string, selection:array{mode:string, limit:int, matched_count:int}, items:list<array{message_id:string, thread_id:string, from:string, to:string, cc:string, subject:string, received_at:string, urgency:string, reason:string, next_action:string, confidence:float, labels:list<string>, snippet:string, body_plain:string, body_html:string, provenance_ref:string}>}
  */
 function decodeEvidenceBundle(string $path): array
 {
@@ -327,8 +331,28 @@ function decodeEvidenceBundle(string $path): array
         throw new RuntimeException('Evidence bundle JSON did not decode to an object.');
     }
 
-    /** @var array{bundle_type:string, source_type:string, source_run_id:int, evidence_run_id:int, generated_at:string, account_email:string, source_set_ids:list<int>, query:string, selection:array{mode:string, limit:int, matched_count:int}, items:list<array{message_id:string, thread_id:string, from:string, to:string, cc:string, subject:string, received_at:string, urgency:string, reason:string, next_action:string, confidence:float, labels:list<string>, snippet:string, body_plain:string, body_html:string, provenance_ref:string}>} $decoded */
+    /** @var array{schema_version:1, bundle_type:string, source_type:string, source_run_id:int, evidence_run_id:int, generated_at:string, account_email:string, source_set_ids:list<int>, query:string, selection:array{mode:string, limit:int, matched_count:int}, items:list<array{message_id:string, thread_id:string, from:string, to:string, cc:string, subject:string, received_at:string, urgency:string, reason:string, next_action:string, confidence:float, labels:list<string>, snippet:string, body_plain:string, body_html:string, provenance_ref:string}>} $decoded */
     return $decoded;
+}
+
+/**
+ * @return list<string>
+ */
+function expectedEvidenceBundleEnvelopeKeys(): array
+{
+    return [
+        'schema_version',
+        'bundle_type',
+        'source_type',
+        'source_run_id',
+        'evidence_run_id',
+        'generated_at',
+        'account_email',
+        'source_set_ids',
+        'query',
+        'selection',
+        'items',
+    ];
 }
 
 /**
