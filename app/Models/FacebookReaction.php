@@ -12,17 +12,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
+ * @property int $facebook_archive_id
+ * @property int|null $facebook_person_id
  * @property string $canonical_key
  * @property int|null $published_timestamp
  * @property CarbonImmutable|null $published_at
- * @property string|null $title
- * @property string|null $content
+ * @property string $reaction
+ * @property array<string, mixed>|null $raw_reaction
  * @property-read FacebookArchive $archive
- * @property-read Collection<int, FacebookCommentObservation> $observations
+ * @property-read FacebookPerson|null $person
+ * @property-read Collection<int, FacebookReactionObservation> $observations
  */
-class FacebookComment extends Model
+class FacebookReaction extends Model
 {
-    protected $table = 'facebook_comments';
+    protected $table = 'facebook_reactions';
 
     protected $guarded = [];
 
@@ -31,7 +34,7 @@ class FacebookComment extends Model
         return [
             'published_timestamp' => 'integer',
             'published_at' => 'immutable_datetime',
-            'raw_comment' => 'array',
+            'raw_reaction' => 'array',
         ];
     }
 
@@ -44,10 +47,18 @@ class FacebookComment extends Model
     }
 
     /**
-     * @return HasMany<FacebookCommentObservation, $this>
+     * @return BelongsTo<FacebookPerson, $this>
+     */
+    public function person(): BelongsTo
+    {
+        return $this->belongsTo(FacebookPerson::class, 'facebook_person_id');
+    }
+
+    /**
+     * @return HasMany<FacebookReactionObservation, $this>
      */
     public function observations(): HasMany
     {
-        return $this->hasMany(FacebookCommentObservation::class, 'facebook_comment_id');
+        return $this->hasMany(FacebookReactionObservation::class, 'facebook_reaction_id');
     }
 }

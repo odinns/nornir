@@ -6,9 +6,12 @@ use App\Actions\Import\ImportGmailAction;
 use App\Models\GmailAccount;
 use App\Models\GmailAttachment;
 use App\Models\GmailMessage;
+use App\Models\GmailMessageLabel;
+use App\Models\GmailMessageObservation;
+use App\Models\GmailSourceSet;
+use App\Models\GmailThread;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -61,22 +64,19 @@ it('imports gmail messages into canonical tables and records a succeeded run', f
     $result = app(ImportGmailAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_accounts')->count())->toBe(1);
-    expect(DB::table('gmail_source_sets')->count())->toBe(1);
-    expect(DB::table('gmail_threads')->count())->toBe(1);
-    expect(DB::table('gmail_messages')->count())->toBe(2);
-    expect(DB::table('gmail_message_observations')->count())->toBe(2);
-    expect(DB::table('gmail_message_labels')->count())->toBe(3); // INBOX×2 + UNREAD×1
-    expect(DB::table('gmail_attachments')->count())->toBe(0);
+    expect(GmailAccount::query()->count())->toBe(1);
+    expect(GmailSourceSet::query()->count())->toBe(1);
+    expect(GmailThread::query()->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(2);
+    expect(GmailMessageObservation::query()->count())->toBe(2);
+    expect(GmailMessageLabel::query()->count())->toBe(3); // INBOX×2 + UNREAD×1
+    expect(GmailAttachment::query()->count())->toBe(0);
 
     $account = GmailAccount::firstOrFail();
     expect($account->account_email)->toBe('test@example.com');
     expect($account->access_mode)->toBe('api');
 
-    $sourceSet = DB::table('gmail_source_sets')->first();
-    if ($sourceSet === null) {
-        throw new RuntimeException('Expected Gmail source set row.');
-    }
+    $sourceSet = GmailSourceSet::query()->firstOrFail();
     expect($sourceSet->account_email)->toBe('test@example.com');
     expect($sourceSet->query)->toBe('from:me');
     expect($sourceSet->access_mode)->toBe('api');
@@ -96,15 +96,15 @@ it('is idempotent on rerun with the same messages', function (): void {
 
     $intake = makeGmailIntake();
     app(ImportGmailAction::class)($intake->dispatchPayload);
-    expect(DB::table('gmail_messages')->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(1);
 
     $intake2 = makeGmailIntake();
     $result2 = app(ImportGmailAction::class)($intake2->dispatchPayload);
 
     expect($result2->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_source_sets')->count())->toBe(1);
-    expect(DB::table('gmail_messages')->count())->toBe(1);
-    expect(DB::table('gmail_message_observations')->count())->toBe(1);
+    expect(GmailSourceSet::query()->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(1);
+    expect(GmailMessageObservation::query()->count())->toBe(1);
     expect($result2->summary['inserted_messages'])->toBe(0);
     expect($result2->summary['reobserved_messages'])->toBe(1);
 });
@@ -208,7 +208,7 @@ it('refreshes auth and retries once when gmail returns invalid credentials mid-r
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect($fake->refreshAuthenticationCalls)->toBe(1);
     expect($fake->getMessageCalls)->toBe(2);
-    expect(DB::table('gmail_messages')->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(1);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(0);
 });
@@ -217,7 +217,7 @@ it('adds new messages on a subsequent run without losing prior ones', function (
     bindFakeGmailClient([buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])]);
     $intake = makeGmailIntake();
     app(ImportGmailAction::class)($intake->dispatchPayload);
-    expect(DB::table('gmail_messages')->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(1);
 
     bindFakeGmailClient([
         buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001']),
@@ -228,9 +228,9 @@ it('adds new messages on a subsequent run without losing prior ones', function (
     $result = app(ImportGmailAction::class)($intake2->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_source_sets')->count())->toBe(1);
-    expect(DB::table('gmail_messages')->count())->toBe(2);
-    expect(DB::table('gmail_message_observations')->count())->toBe(2);
+    expect(GmailSourceSet::query()->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(2);
+    expect(GmailMessageObservation::query()->count())->toBe(2);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(1);
 });
@@ -249,9 +249,9 @@ it('creates a new gmail source set for a different query on the same account', f
     $result = app(ImportGmailAction::class)(makeGmailIntake('label:beta')->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_source_sets')->count())->toBe(2);
-    expect(DB::table('gmail_message_observations')->count())->toBe(2);
-    expect(DB::table('gmail_source_sets')->orderBy('query')->pluck('query')->all())->toBe([
+    expect(GmailSourceSet::query()->count())->toBe(2);
+    expect(GmailMessageObservation::query()->count())->toBe(2);
+    expect(GmailSourceSet::query()->orderBy('query')->pluck('query')->all())->toBe([
         'label:alpha',
         'label:beta',
     ]);
@@ -264,7 +264,7 @@ it('succeeds with an empty query result and records zero messages', function ():
     $result = app(ImportGmailAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_messages')->count())->toBe(0);
+    expect(GmailMessage::query()->count())->toBe(0);
     expect($result->summary['messages'])->toBe(0);
 });
 
@@ -304,7 +304,7 @@ it('records attachment metadata without downloading binaries', function (): void
     $result = app(ImportGmailAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('gmail_attachments')->count())->toBe(1);
+    expect(GmailAttachment::query()->count())->toBe(1);
 
     $attachment = GmailAttachment::firstOrFail();
     expect($attachment->filename)->toBe('report.pdf');
@@ -355,5 +355,5 @@ it('records a failed run when a message is malformed', function (): void {
     expect(fn () => app(ImportGmailAction::class)($intake->dispatchPayload))
         ->toThrow(InvalidArgumentException::class);
 
-    expect(DB::table('runs')->where('status', Run::STATUS_FAILED)->count())->toBe(1);
+    expect(Run::query()->where('status', Run::STATUS_FAILED)->count())->toBe(1);
 });

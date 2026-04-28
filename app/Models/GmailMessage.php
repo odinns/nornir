@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read GmailThread $thread
  * @property-read Collection<int, GmailMessageLabel> $labels
  * @property-read Collection<int, GmailAttachment> $attachments
+ * @property-read Collection<int, GmailMessageObservation> $observations
  */
 class GmailMessage extends Model
 {
@@ -67,5 +68,13 @@ class GmailMessage extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(GmailAttachment::class, 'gmail_message_id');
+    }
+
+    /**
+     * @return HasMany<GmailMessageObservation, $this>
+     */
+    public function observations(): HasMany
+    {
+        return $this->hasMany(GmailMessageObservation::class, 'gmail_message_id');
     }
 }

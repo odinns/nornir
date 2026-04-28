@@ -5,10 +5,13 @@ declare(strict_types=1);
 use App\Actions\Import\ImportAppleHealthAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\AppleHealthRecord;
+use App\Models\AppleHealthRecordObservation;
+use App\Models\AppleHealthSourceSet;
+use App\Models\AppleHealthWorkout;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -49,25 +52,18 @@ it('imports apple health records into canonical tables', function (): void {
     $result = app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('apple_health_source_sets')->count())->toBe(1);
-    expect(DB::table('apple_health_records')->count())->toBe(1);
-    expect(DB::table('apple_health_workouts')->count())->toBe(0);
+    expect(AppleHealthSourceSet::query()->count())->toBe(1);
+    expect(AppleHealthRecord::query()->count())->toBe(1);
+    expect(AppleHealthWorkout::query()->count())->toBe(0);
 
-    $record = DB::table('apple_health_records')->first();
-
-    expect($record)->not->toBeNull();
-
-    if ($record === null) {
-        return;
-    }
-
+    $record = AppleHealthRecord::query()->firstOrFail();
     expect($record->record_type)->toBe('HKCategoryTypeIdentifierSleepAnalysis');
     expect($record->source_name)->toBe('Sleep Cycle');
     expect($record->value)->toBe('HKCategoryValueSleepAnalysisAsleepUnspecified');
     expect($record->unit)->toBeNull();
-    expect($record->start_at)->toBe('2024-03-31 21:00:00');
-    expect($record->end_at)->toBe('2024-04-01 05:00:00');
-    expect(DB::table('apple_health_records')->where('record_type', 'HKCharacteristicTypeIdentifierDateOfBirth')->doesntExist())
+    expect($record->start_at?->toDateTimeString())->toBe('2024-03-31 21:00:00');
+    expect($record->end_at?->toDateTimeString())->toBe('2024-04-01 05:00:00');
+    expect(AppleHealthRecord::query()->where('record_type', 'HKCharacteristicTypeIdentifierDateOfBirth')->doesntExist())
         ->toBeTrue();
 });
 
@@ -101,10 +97,12 @@ it('imports workouts into canonical tables', function (): void {
 
     app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('apple_health_workouts')->count())->toBe(1);
-    expect(DB::table('apple_health_records')->count())->toBe(0);
-    expect(DB::table('apple_health_workouts')->value('workout_activity_type'))->toBe('HKWorkoutActivityTypeYoga');
-    expect(DB::table('apple_health_workouts')->value('total_energy_burned'))->toBe('220');
+    $workout = AppleHealthWorkout::query()->firstOrFail();
+
+    expect(AppleHealthWorkout::query()->count())->toBe(1);
+    expect(AppleHealthRecord::query()->count())->toBe(0);
+    expect($workout->workout_activity_type)->toBe('HKWorkoutActivityTypeYoga');
+    expect($workout->total_energy_burned)->toBe('220');
 });
 
 it('reruns idempotently for the same apple health export', function (): void {
@@ -137,9 +135,9 @@ it('reruns idempotently for the same apple health export', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('apple_health_source_sets')->count())->toBe(1);
-    expect(DB::table('apple_health_records')->count())->toBe(1);
-    expect(DB::table('apple_health_record_observations')->count())->toBe(1);
+    expect(AppleHealthSourceSet::query()->count())->toBe(1);
+    expect(AppleHealthRecord::query()->count())->toBe(1);
+    expect(AppleHealthRecordObservation::query()->count())->toBe(1);
     expect($secondResult->summary['inserted_records'])->toBe(0);
     expect($secondResult->summary['reobserved_records'])->toBe(1);
 });
@@ -207,8 +205,8 @@ it('keeps older canonical rows when a later export is incomplete', function (): 
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('apple_health_source_sets')->count())->toBe(2);
-    expect(DB::table('apple_health_records')->count())->toBe(2);
+    expect(AppleHealthSourceSet::query()->count())->toBe(2);
+    expect(AppleHealthRecord::query()->count())->toBe(2);
 });
 
 it('accepts a direct path to eksport.xml as an archive source', function (): void {
@@ -237,7 +235,7 @@ it('accepts a direct path to eksport.xml as an archive source', function (): voi
 
     app(ImportAppleHealthAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('apple_health_records')->count())->toBe(1);
+    expect(AppleHealthRecord::query()->count())->toBe(1);
 });
 
 it('fails clearly when eksport.xml is missing from a local-path source', function (): void {

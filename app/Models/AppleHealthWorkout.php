@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -23,6 +25,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property CarbonImmutable|null $start_at
  * @property CarbonImmutable|null $end_at
  * @property array<string, mixed>|null $raw_workout
+ * @property-read Collection<int, AppleHealthWorkoutObservation> $observations
  */
 class AppleHealthWorkout extends Model
 {
@@ -38,5 +41,13 @@ class AppleHealthWorkout extends Model
             'end_at' => 'immutable_datetime',
             'raw_workout' => 'array',
         ];
+    }
+
+    /**
+     * @return HasMany<AppleHealthWorkoutObservation, $this>
+     */
+    public function observations(): HasMany
+    {
+        return $this->hasMany(AppleHealthWorkoutObservation::class, 'apple_health_workout_id');
     }
 }

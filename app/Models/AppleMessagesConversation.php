@@ -15,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $display_name
  * @property string|null $room_name
  * @property string|null $chat_identifier
+ * @property int|null $style
+ * @property bool $is_archived
+ * @property array<string, mixed>|null $raw_chat
  * @property-read Collection<int, AppleMessagesMessage> $messages
  * @property-read Collection<int, AppleMessagesParticipant> $participants
  */
@@ -23,6 +26,15 @@ class AppleMessagesConversation extends Model
     protected $table = 'apple_messages_conversations';
 
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'style' => 'integer',
+            'is_archived' => 'boolean',
+            'raw_chat' => 'array',
+        ];
+    }
 
     /**
      * @return HasMany<AppleMessagesMessage, $this>

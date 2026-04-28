@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $to_address
  * @property CarbonImmutable|null $posted_at
  * @property CarbonImmutable|null $arrived_at
+ * @property-read FidonetSource $source
  * @property-read FidonetMessageCleanup|null $cleanup
  */
 class FidonetMessage extends Model
@@ -34,6 +36,14 @@ class FidonetMessage extends Model
             'arrived_at' => 'immutable_datetime',
             'raw_metadata_json' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<FidonetSource, $this>
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(FidonetSource::class, 'fidonet_source_id');
     }
 
     /**

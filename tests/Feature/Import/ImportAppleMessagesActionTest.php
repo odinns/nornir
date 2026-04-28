@@ -5,10 +5,15 @@ declare(strict_types=1);
 use App\Actions\Import\ImportAppleMessagesAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\AppleMessagesAttachment;
+use App\Models\AppleMessagesConversation;
+use App\Models\AppleMessagesMessage;
+use App\Models\AppleMessagesMessageObservation;
+use App\Models\AppleMessagesParticipant;
+use App\Models\AppleMessagesSourceSet;
 use App\Models\ProvenanceLink;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -75,13 +80,13 @@ it('imports an apple chat db into canonical apple messages tables', function ():
     $result = app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('apple_messages_source_sets')->count())->toBe(1);
-    expect(DB::table('apple_messages_conversations')->count())->toBe(1);
-    expect(DB::table('apple_messages_participants')->count())->toBe(1);
-    expect(DB::table('apple_messages_messages')->count())->toBe(2);
-    expect(DB::table('apple_messages_attachments')->count())->toBe(1);
+    expect(AppleMessagesSourceSet::query()->count())->toBe(1);
+    expect(AppleMessagesConversation::query()->count())->toBe(1);
+    expect(AppleMessagesParticipant::query()->count())->toBe(1);
+    expect(AppleMessagesMessage::query()->count())->toBe(2);
+    expect(AppleMessagesAttachment::query()->count())->toBe(1);
 
-    $messages = DB::table('apple_messages_messages')
+    $messages = AppleMessagesMessage::query()
         ->orderBy('sent_at')
         ->pluck('text_body')
         ->all();
@@ -91,25 +96,11 @@ it('imports an apple chat db into canonical apple messages tables', function ():
         'Reply with attachment',
     ]);
 
-    $participant = DB::table('apple_messages_participants')->first();
-
-    expect($participant)->not->toBeNull();
-
-    if ($participant === null) {
-        return;
-    }
-
+    $participant = AppleMessagesParticipant::query()->firstOrFail();
     expect($participant->identifier)->toBe('+4511111111');
     expect($participant->display_name)->toBe('Camilla Lee');
 
-    $attachment = DB::table('apple_messages_attachments')->first();
-
-    expect($attachment)->not->toBeNull();
-
-    if ($attachment === null) {
-        return;
-    }
-
+    $attachment = AppleMessagesAttachment::query()->firstOrFail();
     expect($attachment->relative_path)->toBe('Attachments/00/00/sample.jpg');
 });
 
@@ -144,7 +135,7 @@ it('imports text from attributedBody when the message text column is empty', fun
 
     app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('apple_messages_messages')->value('text_body'))
+    expect(AppleMessagesMessage::query()->value('text_body'))
         ->toBe('Din forsendelse er blevet tilbageholdt.');
 });
 
@@ -188,8 +179,8 @@ it('ignores orphaned message rows that are not linked to a chat', function (): v
 
     app(ImportAppleMessagesAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('apple_messages_messages')->pluck('source_guid')->all())->toBe(['msg-joined-001']);
-    expect(DB::table('apple_messages_message_observations')->count())->toBe(1);
+    expect(AppleMessagesMessage::query()->pluck('source_guid')->all())->toBe(['msg-joined-001']);
+    expect(AppleMessagesMessageObservation::query()->count())->toBe(1);
 });
 
 it('reruns idempotently for the same apple messages backup', function (): void {
@@ -225,9 +216,9 @@ it('reruns idempotently for the same apple messages backup', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('apple_messages_source_sets')->count())->toBe(1);
-    expect(DB::table('apple_messages_messages')->count())->toBe(1);
-    expect(DB::table('apple_messages_message_observations')->count())->toBe(1);
+    expect(AppleMessagesSourceSet::query()->count())->toBe(1);
+    expect(AppleMessagesMessage::query()->count())->toBe(1);
+    expect(AppleMessagesMessageObservation::query()->count())->toBe(1);
     expect($secondResult->summary['inserted_messages'])->toBe(0);
     expect($secondResult->summary['reobserved_messages'])->toBe(1);
 });
@@ -300,9 +291,9 @@ it('keeps older canonical messages when a newer backup is missing them', functio
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('apple_messages_source_sets')->count())->toBe(2);
-    expect(DB::table('apple_messages_messages')->count())->toBe(2);
-    expect(DB::table('apple_messages_messages')->pluck('source_guid')->all())->toEqualCanonicalizing([
+    expect(AppleMessagesSourceSet::query()->count())->toBe(2);
+    expect(AppleMessagesMessage::query()->count())->toBe(2);
+    expect(AppleMessagesMessage::query()->pluck('source_guid')->all())->toEqualCanonicalizing([
         'msg-history-001',
         'msg-history-002',
     ]);
@@ -376,8 +367,8 @@ it('backfills missing history when an older backup is imported after a newer one
     $importer($truncatedIntake->dispatchPayload);
     $result = $importer($fullIntake->dispatchPayload);
 
-    expect(DB::table('apple_messages_source_sets')->count())->toBe(2);
-    expect(DB::table('apple_messages_messages')->count())->toBe(2);
+    expect(AppleMessagesSourceSet::query()->count())->toBe(2);
+    expect(AppleMessagesMessage::query()->count())->toBe(2);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(1);
 });

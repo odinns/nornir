@@ -5,9 +5,16 @@ declare(strict_types=1);
 use App\Actions\Import\ImportFidonetSourceAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\FidonetArea;
+use App\Models\FidonetMessage;
+use App\Models\FidonetMessageCleanup;
+use App\Models\FidonetMessageObservation;
+use App\Models\FidonetParticipant;
+use App\Models\FidonetSource;
+use App\Models\FidonetThread;
+use App\Models\FidonetThreadMessage;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -34,16 +41,16 @@ it('imports Odinn-thread-scoped fidonet rows from an external GoldED source', fu
     $result = app(ImportFidonetSourceAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('fidonet_sources')->count())->toBe(1);
-    expect(DB::table('fidonet_areas')->orderBy('area_code')->pluck('area_code')->all())->toBe(['EMAILTST', 'WINETDEV']);
-    expect(DB::table('fidonet_messages')->orderBy('canonical_message_id')->pluck('canonical_message_id')->all())->toBe([
+    expect(FidonetSource::query()->count())->toBe(1);
+    expect(FidonetArea::query()->orderBy('area_code')->pluck('area_code')->all())->toBe(['EMAILTST', 'WINETDEV']);
+    expect(FidonetMessage::query()->orderBy('canonical_message_id')->pluck('canonical_message_id')->all())->toBe([
         'msg-reply-1',
         'msg-root-1',
         'msg-test-1',
     ]);
-    expect(DB::table('fidonet_threads')->count())->toBe(2);
-    expect(DB::table('fidonet_participants')->count())->toBeGreaterThanOrEqual(4);
-    expect(DB::table('fidonet_message_cleanup')->where('canonical_message_id', 'msg-test-1')->value('is_test_like'))->toBe(1);
+    expect(FidonetThread::query()->count())->toBe(2);
+    expect(FidonetParticipant::query()->count())->toBeGreaterThanOrEqual(4);
+    expect(FidonetMessageCleanup::query()->where('canonical_message_id', 'msg-test-1')->value('is_test_like'))->toBeTrue();
 });
 
 it('reruns idempotently for the same fidonet source boundary', function (): void {
@@ -64,11 +71,11 @@ it('reruns idempotently for the same fidonet source boundary', function (): void
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('fidonet_sources')->count())->toBe(1);
-    expect(DB::table('fidonet_messages')->count())->toBe(3);
-    expect(DB::table('fidonet_threads')->count())->toBe(2);
-    expect(DB::table('fidonet_thread_messages')->count())->toBe(3);
-    expect(DB::table('fidonet_message_observations')->count())->toBe(3);
+    expect(FidonetSource::query()->count())->toBe(1);
+    expect(FidonetMessage::query()->count())->toBe(3);
+    expect(FidonetThread::query()->count())->toBe(2);
+    expect(FidonetThreadMessage::query()->count())->toBe(3);
+    expect(FidonetMessageObservation::query()->count())->toBe(3);
 });
 
 it('falls back to reply-chain thread derivation when thread_key is missing', function (): void {
@@ -107,8 +114,8 @@ it('falls back to reply-chain thread derivation when thread_key is missing', fun
 
     app(ImportFidonetSourceAction::class)($intake->dispatchPayload);
 
-    expect(DB::table('fidonet_threads')->where('source_method', 'reply_chain')->count())->toBe(1);
-    expect(DB::table('fidonet_thread_messages')->count())->toBe(2);
+    expect(FidonetThread::query()->where('source_method', 'reply_chain')->count())->toBe(1);
+    expect(FidonetThreadMessage::query()->count())->toBe(2);
 });
 
 it('fails when an in-scope fidonet message is missing a stable external id', function (): void {
@@ -164,9 +171,9 @@ it('creates distinct source sets for different fidonet scopes', function (): voi
     $importer($emailIntake->dispatchPayload);
     $importer($allIntake->dispatchPayload);
 
-    expect(DB::table('fidonet_sources')->count())->toBe(2);
-    expect(DB::table('fidonet_message_observations')
-        ->select('fidonet_source_id')
-        ->distinct()
-        ->count('fidonet_source_id'))->toBe(2);
+    expect(FidonetSource::query()->count())->toBe(2);
+    expect(FidonetMessageObservation::query()
+        ->pluck('fidonet_source_id')
+        ->unique()
+        ->count())->toBe(2);
 });

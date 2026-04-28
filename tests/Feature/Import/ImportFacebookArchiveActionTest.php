@@ -5,9 +5,20 @@ declare(strict_types=1);
 use App\Actions\Import\ImportFacebookArchiveAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
+use App\Models\FacebookArchive;
+use App\Models\FacebookAttachment;
+use App\Models\FacebookComment;
+use App\Models\FacebookMessage;
+use App\Models\FacebookMessageObservation;
+use App\Models\FacebookMessageReaction;
+use App\Models\FacebookPerson;
+use App\Models\FacebookPost;
+use App\Models\FacebookProfileSnapshot;
+use App\Models\FacebookReaction;
+use App\Models\FacebookSocialEdge;
+use App\Models\FacebookThread;
 use App\Models\Run;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -102,37 +113,33 @@ it('imports facebook archive biography slices into canonical facebook tables', f
     $result = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('facebook_archives')->count())->toBe(1);
-    expect(DB::table('facebook_people')->count())->toBe(4);
-    expect(DB::table('facebook_profile_snapshots')->count())->toBe(1);
-    expect(DB::table('facebook_social_edges')->count())->toBe(3);
-    expect(DB::table('facebook_threads')->count())->toBe(1);
-    expect(DB::table('facebook_messages')->count())->toBe(2);
-    expect(DB::table('facebook_message_reactions')->count())->toBe(1);
-    expect(DB::table('facebook_attachments')->count())->toBe(4);
-    expect(DB::table('facebook_posts')->count())->toBe(1);
-    expect(DB::table('facebook_comments')->count())->toBe(1);
-    expect(DB::table('facebook_reactions')->count())->toBe(1);
+    expect(FacebookArchive::query()->count())->toBe(1);
+    expect(FacebookPerson::query()->count())->toBe(4);
+    expect(FacebookProfileSnapshot::query()->count())->toBe(1);
+    expect(FacebookSocialEdge::query()->count())->toBe(3);
+    expect(FacebookThread::query()->count())->toBe(1);
+    expect(FacebookMessage::query()->count())->toBe(2);
+    expect(FacebookMessageReaction::query()->count())->toBe(1);
+    expect(FacebookAttachment::query()->count())->toBe(4);
+    expect(FacebookPost::query()->count())->toBe(1);
+    expect(FacebookComment::query()->count())->toBe(1);
+    expect(FacebookReaction::query()->count())->toBe(1);
 
-    expect(DB::table('facebook_messages')->orderBy('timestamp_ms')->pluck('content')->all())->toBe([
+    expect(FacebookMessage::query()->orderBy('timestamp_ms')->pluck('content')->all())->toBe([
         'Hej fra André',
         'Replying from the importer',
     ]);
 
-    expect(DB::table('facebook_attachments')->orderBy('id')->pluck('relative_path')->all())->toEqualCanonicalizing([
+    expect(FacebookAttachment::query()->orderBy('id')->pluck('relative_path')->all())->toEqualCanonicalizing([
         'your_facebook_activity/messages/inbox/alicefriend_1234567890/photos/pic.jpg',
         'your_facebook_activity/messages/inbox/alicefriend_1234567890/files/notes.txt',
         'your_facebook_activity/posts/photos/post-photo.jpg',
         null,
     ]);
 
-    $remoteAttachment = DB::table('facebook_attachments')
+    $remoteAttachment = FacebookAttachment::query()
         ->where('source_uri', 'like', 'https://cdn.example.test/%')
-        ->first();
-
-    if ($remoteAttachment === null) {
-        throw new RuntimeException('Expected remote Facebook attachment row.');
-    }
+        ->firstOrFail();
 
     expect($remoteAttachment->relative_path)->toBeNull();
 });
@@ -167,9 +174,9 @@ it('reruns idempotently for the same facebook archive', function (): void {
     $secondResult = $importer($intake->dispatchPayload);
 
     expect($secondResult->run->is($firstResult->run))->toBeTrue();
-    expect(DB::table('facebook_archives')->count())->toBe(1);
-    expect(DB::table('facebook_messages')->count())->toBe(1);
-    expect(DB::table('facebook_message_observations')->count())->toBe(1);
+    expect(FacebookArchive::query()->count())->toBe(1);
+    expect(FacebookMessage::query()->count())->toBe(1);
+    expect(FacebookMessageObservation::query()->count())->toBe(1);
     expect($secondResult->summary['inserted_messages'])->toBe(0);
     expect($secondResult->summary['reobserved_messages'])->toBe(1);
 });
@@ -232,9 +239,9 @@ it('keeps older canonical messages when a newer facebook export is missing them'
     $importer($fullIntake->dispatchPayload);
     $importer($truncatedIntake->dispatchPayload);
 
-    expect(DB::table('facebook_archives')->count())->toBe(2);
-    expect(DB::table('facebook_messages')->count())->toBe(2);
-    expect(DB::table('facebook_messages')->orderBy('timestamp_ms')->pluck('content')->all())->toBe([
+    expect(FacebookArchive::query()->count())->toBe(2);
+    expect(FacebookMessage::query()->count())->toBe(2);
+    expect(FacebookMessage::query()->orderBy('timestamp_ms')->pluck('content')->all())->toBe([
         'Old message that must survive',
         'Still present later',
     ]);
@@ -271,9 +278,9 @@ it('imports reactions from real archive likes_and_reactions files', function ():
     $result = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
 
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
-    expect(DB::table('facebook_reactions')->count())->toBe(2);
-    expect(DB::table('facebook_people')->where('display_name', 'Anita Strandmark')->exists())->toBeTrue();
-    expect(DB::table('facebook_reactions')->orderBy('published_timestamp')->pluck('reaction')->all())->toBe([
+    expect(FacebookReaction::query()->count())->toBe(2);
+    expect(FacebookPerson::query()->where('display_name', 'Anita Strandmark')->exists())->toBeTrue();
+    expect(FacebookReaction::query()->orderBy('published_timestamp')->pluck('reaction')->all())->toBe([
         'Elsker',
         'Synes godt om',
     ]);
