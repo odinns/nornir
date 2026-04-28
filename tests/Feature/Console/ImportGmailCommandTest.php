@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\GmailMessage;
+use App\Models\IntakeRecord;
 use App\Models\Run;
 use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Gmail\GmailClientFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -49,9 +50,9 @@ it('imports gmail messages from the cli with useful output', function (): void {
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('gmail_messages')->count())->toBe(2);
-    expect(DB::table('runs')->where('status', Run::STATUS_SUCCEEDED)->count())->toBe(1);
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(GmailMessage::query()->count())->toBe(2);
+    expect(Run::query()->where('status', Run::STATUS_SUCCEEDED)->count())->toBe(1);
 });
 
 it('fails when the query flag is missing', function (): void {

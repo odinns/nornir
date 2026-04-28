@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\IntakeRecord;
+use App\Models\LinkedinMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -25,6 +26,6 @@ it('imports linkedin archives from the cli with useful default output', function
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('linkedin_messages')->count())->toBe(2);
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(LinkedinMessage::query()->count())->toBe(2);
 });

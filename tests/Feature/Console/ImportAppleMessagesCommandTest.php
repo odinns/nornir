@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\AppleMessagesMessage;
+use App\Models\AppleMessagesParticipant;
+use App\Models\IntakeRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -58,9 +60,9 @@ it('imports apple messages backups from the cli with useful default output', fun
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('apple_messages_messages')->count())->toBe(2);
-    expect(DB::table('apple_messages_participants')->value('display_name'))->toBe('Console Person');
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(AppleMessagesMessage::query()->count())->toBe(2);
+    expect(AppleMessagesParticipant::query()->value('display_name'))->toBe('Console Person');
 });
 
 it('stays quiet when quiet mode is requested', function (): void {

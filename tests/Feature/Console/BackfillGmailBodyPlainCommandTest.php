@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\GmailAccount;
+use App\Models\GmailMessage;
 use App\Services\Gmail\GmailHtmlBodyTextExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -21,8 +22,8 @@ it('dry runs without writing body plain values', function (): void {
         ->expectsOutputToContain('Dry run: rendered candidates but wrote no rows.')
         ->assertSuccessful();
 
-    expect(DB::table('gmail_messages')->where('message_id', 'msg-001')->value('body_plain'))->toBeNull();
-    expect(DB::table('gmail_messages')->where('message_id', 'msg-empty')->value('body_plain'))->toBeNull();
+    expect(gmailBackfillPlainText('msg-001'))->toBeNull();
+    expect(gmailBackfillPlainText('msg-empty'))->toBeNull();
 });
 
 it('fills only null plain bodies and does not overwrite existing text', function (): void {
@@ -38,15 +39,15 @@ it('fills only null plain bodies and does not overwrite existing text', function
         ->expectsOutputToContain('Updated: 2')
         ->assertSuccessful();
 
-    expect(DB::table('gmail_messages')->where('message_id', 'msg-missing')->value('body_plain'))
+    expect(gmailBackfillPlainText('msg-missing'))
         ->toContain('Rendered text')
-        ->and(DB::table('gmail_messages')->where('message_id', 'msg-empty')->value('body_plain'))
+        ->and(gmailBackfillPlainText('msg-empty'))
         ->toBe('')
-        ->and(DB::table('gmail_messages')->where('message_id', 'msg-blank')->value('body_plain'))
+        ->and(gmailBackfillPlainText('msg-blank'))
         ->toBe(" \n ")
-        ->and(DB::table('gmail_messages')->where('message_id', 'msg-existing')->value('body_plain'))
+        ->and(gmailBackfillPlainText('msg-existing'))
         ->toBe('Original plain text')
-        ->and(DB::table('gmail_messages')->where('message_id', 'msg-no-html')->value('body_plain'))
+        ->and(gmailBackfillPlainText('msg-no-html'))
         ->toBeNull();
 });
 
@@ -59,7 +60,7 @@ it('honors the limit option', function (): void {
         ->expectsOutputToContain('Updated: 1')
         ->assertSuccessful();
 
-    expect(DB::table('gmail_messages')->whereNotNull('body_plain')->count())->toBe(1);
+    expect(GmailMessage::query()->whereNotNull('body_plain')->count())->toBe(1);
 });
 
 it('rolls back a failed batch and stops', function (): void {
@@ -82,7 +83,7 @@ it('rolls back a failed batch and stops', function (): void {
         ->expectsOutputToContain('Failed batch:')
         ->assertFailed();
 
-    expect(DB::table('gmail_messages')->whereNotNull('body_plain')->count())->toBe(0);
+    expect(GmailMessage::query()->whereNotNull('body_plain')->count())->toBe(0);
 });
 
 it('dry run reports conversion failures and writes nothing', function (): void {
@@ -109,34 +110,34 @@ it('dry run reports conversion failures and writes nothing', function (): void {
         ->expectsOutputToContain('Failed batch:')
         ->assertFailed();
 
-    expect(DB::table('gmail_messages')->whereNotNull('body_plain')->count())->toBe(0);
+    expect(GmailMessage::query()->whereNotNull('body_plain')->count())->toBe(0);
 });
 
 function insertGmailBackfillMessage(string $messageId, ?string $bodyPlain, ?string $bodyHtml): void
 {
-    $accountId = DB::table('gmail_accounts')->insertGetId([
+    $account = GmailAccount::query()->create([
         'account_key' => sha1($messageId),
         'account_email' => $messageId.'@example.com',
         'access_mode' => 'api',
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
-    $threadId = DB::table('gmail_threads')->insertGetId([
-        'gmail_account_id' => $accountId,
+    $thread = $account->threads()->create([
         'thread_id' => 'thread-'.$messageId,
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
-    DB::table('gmail_messages')->insert([
-        'gmail_thread_id' => $threadId,
+    $thread->messages()->create([
         'message_id' => $messageId,
         'body_plain' => $bodyPlain,
         'body_html' => $bodyHtml,
-        'raw_headers' => json_encode([], JSON_THROW_ON_ERROR),
-        'raw_payload' => json_encode([], JSON_THROW_ON_ERROR),
-        'created_at' => now(),
-        'updated_at' => now(),
+        'raw_headers' => [],
+        'raw_payload' => [],
     ]);
+}
+
+function gmailBackfillPlainText(string $messageId): ?string
+{
+    return GmailMessage::query()
+        ->where('message_id', $messageId)
+        ->firstOrFail()
+        ->body_plain;
 }

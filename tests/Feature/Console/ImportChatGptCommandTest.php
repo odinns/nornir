@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Models\ChatGptArchive;
+use App\Models\ChatGptConversation;
+use App\Models\ChatGptMessage;
+use App\Models\IntakeRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -32,9 +35,9 @@ it('imports chatgpt exports from the cli with useful default output', function (
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('chatgpt_conversations')->count())->toBe(2);
-    expect(DB::table('chatgpt_messages')->count())->toBe(4);
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(ChatGptConversation::query()->count())->toBe(2);
+    expect(ChatGptMessage::query()->count())->toBe(4);
 });
 
 it('can import an archive path explicitly from the cli', function (): void {
@@ -47,8 +50,8 @@ it('can import an archive path explicitly from the cli', function (): void {
         '--archive-label' => 'console-archive',
     ])->assertSuccessful();
 
-    expect(DB::table('intake_records')->value('access_mode'))->toBe('archive');
-    expect(DB::table('chatgpt_archives')->value('archive_label'))->toBe('console-archive');
+    expect(IntakeRecord::query()->value('access_mode'))->toBe('archive');
+    expect(ChatGptArchive::query()->value('archive_label'))->toBe('console-archive');
 });
 
 it('supports additional allowed roots for local path imports', function (): void {
@@ -63,10 +66,16 @@ it('supports additional allowed roots for local path imports', function (): void
         '--root' => [$secondaryRoot],
     ])->assertSuccessful();
 
-    $scopeSnapshot = DB::table('intake_records')->value('scope_snapshot');
+    $scopeSnapshot = IntakeRecord::query()->firstOrFail()->scope_snapshot;
+    $primaryRootPath = realpath($primaryRoot);
+    $secondaryRootPath = realpath($secondaryRoot);
 
-    expect($scopeSnapshot)->toContain($primaryRoot);
-    expect($scopeSnapshot)->toContain($secondaryRoot);
+    if ($primaryRootPath === false || $secondaryRootPath === false) {
+        throw new RuntimeException('Expected ChatGPT fixture roots to resolve.');
+    }
+
+    expect($scopeSnapshot['accepted_root_paths'] ?? [])->toContain($primaryRootPath);
+    expect($scopeSnapshot['accepted_root_paths'] ?? [])->toContain($secondaryRootPath);
 });
 
 it('stays quiet when quiet mode is requested', function (): void {

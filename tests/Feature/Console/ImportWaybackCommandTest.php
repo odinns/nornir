@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Models\IntakeRecord;
+use App\Models\ProvenanceLink;
 use App\Models\Run;
+use App\Models\RunArtifact;
+use App\Models\WaybackCapture;
+use App\Models\WaybackScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 
@@ -59,10 +63,10 @@ it('dry runs wayback capture counts without writing importer state', function ()
         ->expectsOutputToContain('Would process with current limit: 2')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(0);
-    expect(DB::table('wayback_scopes')->count())->toBe(0);
-    expect(DB::table('wayback_captures')->count())->toBe(0);
-    expect(DB::table('runs')->count())->toBe(0);
+    expect(IntakeRecord::query()->count())->toBe(0);
+    expect(WaybackScope::query()->count())->toBe(0);
+    expect(WaybackCapture::query()->count())->toBe(0);
+    expect(Run::query()->count())->toBe(0);
 });
 
 it('lists paged wayback snapshots by datetime without writing importer state', function (): void {
@@ -120,10 +124,10 @@ it('lists paged wayback snapshots by datetime without writing importer state', f
         ->expectsOutputToContain('http://www.odinns.dk:80/')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(0);
-    expect(DB::table('wayback_scopes')->count())->toBe(0);
-    expect(DB::table('wayback_captures')->count())->toBe(0);
-    expect(DB::table('runs')->count())->toBe(0);
+    expect(IntakeRecord::query()->count())->toBe(0);
+    expect(WaybackScope::query()->count())->toBe(0);
+    expect(WaybackCapture::query()->count())->toBe(0);
+    expect(Run::query()->count())->toBe(0);
 });
 
 it('imports wayback captures from the cli with useful output', function (): void {
@@ -163,24 +167,17 @@ it('imports wayback captures from the cli with useful output', function (): void
         ->expectsOutputToContain('Import complete')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('wayback_scopes')->count())->toBe(1);
-    expect(DB::table('wayback_captures')->count())->toBe(1);
-    expect(DB::table('runs')->where('status', Run::STATUS_SUCCEEDED)->count())->toBe(1);
-    expect(DB::table('run_artifacts')->where('artifact_kind', 'wayback-import-summary')->count())->toBe(1);
-    expect(DB::table('provenance_links')->where('claim_key', 'imported-wayback-biographical-capture')->count())->toBe(1);
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(WaybackScope::query()->count())->toBe(1);
+    expect(WaybackCapture::query()->count())->toBe(1);
+    expect(Run::query()->where('status', Run::STATUS_SUCCEEDED)->count())->toBe(1);
+    expect(RunArtifact::query()->where('artifact_kind', 'wayback-import-summary')->count())->toBe(1);
+    expect(ProvenanceLink::query()->where('claim_key', 'imported-wayback-biographical-capture')->count())->toBe(1);
 
-    $run = DB::table('runs')->first();
-    if ($run === null) {
-        throw new RuntimeException('Expected a Wayback import run to be recorded.');
-    }
-
+    $run = Run::query()->firstOrFail();
     expect(File::exists(base_path('data/imports/wayback/wayback-import-summary-run-'.$run->id.'.json')))->toBeTrue();
 
-    $capture = DB::table('wayback_captures')->first();
-    if ($capture === null) {
-        throw new RuntimeException('Expected a Wayback capture to be recorded.');
-    }
+    $capture = WaybackCapture::query()->firstOrFail();
 
     expect($capture->title)->toBe('About Odinn');
     expect($capture->verdict)->toBe('accepted');

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\GmailMessage;
 use App\Services\Gmail\GmailHtmlBodyTextExtractor;
 use Illuminate\Console\Command;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -119,8 +120,8 @@ class BackfillGmailBodyPlainCommand extends Command
                     $batchUpdated = 0;
 
                     foreach ($rendered as $id => $bodyPlain) {
-                        $batchUpdated += DB::table('gmail_messages')
-                            ->where('id', $id)
+                        $batchUpdated += GmailMessage::query()
+                            ->whereKey($id)
                             ->whereNull('body_plain')
                             ->update([
                                 'body_plain' => $bodyPlain ?? '',
@@ -194,9 +195,12 @@ class BackfillGmailBodyPlainCommand extends Command
         return $integer;
     }
 
+    /**
+     * @return Builder<GmailMessage>
+     */
     private function candidateQuery(): Builder
     {
-        return DB::table('gmail_messages')
+        return GmailMessage::query()
             ->whereNull('body_plain')
             ->whereNotNull('body_html')
             ->whereRaw(self::NON_BLANK_BODY_HTML_SQL);

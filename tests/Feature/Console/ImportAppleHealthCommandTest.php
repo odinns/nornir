@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\AppleHealthRecord;
+use App\Models\AppleHealthWorkout;
+use App\Models\IntakeRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -48,9 +50,9 @@ it('imports apple health exports from the cli with useful default output', funct
         ->expectsOutputToContain('Imported workouts: 1')
         ->assertSuccessful();
 
-    expect(DB::table('intake_records')->count())->toBe(1);
-    expect(DB::table('apple_health_records')->count())->toBe(1);
-    expect(DB::table('apple_health_workouts')->count())->toBe(1);
+    expect(IntakeRecord::query()->count())->toBe(1);
+    expect(AppleHealthRecord::query()->count())->toBe(1);
+    expect(AppleHealthWorkout::query()->count())->toBe(1);
 });
 
 it('stays quiet when quiet mode is requested', function (): void {

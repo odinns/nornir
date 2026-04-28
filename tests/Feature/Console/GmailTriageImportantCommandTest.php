@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\GmailMessage;
 use App\Services\Gmail\GmailApiClientInterface;
 use App\Services\Gmail\GmailClientFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -66,7 +66,7 @@ it('prints triage results as json through the command', function (): void {
     expect($decoded['matched_count'])->toBe(1);
     expect($decoded['items'][0]['message_id'])->toBe('msg-001');
     expect($decoded['items'][0]['urgency'])->toBe('today');
-    expect(DB::table('gmail_messages')->count())->toBe(0);
+    expect(GmailMessage::query()->count())->toBe(0);
 });
 
 it('fails clearly when the Gmail credentials path is missing', function (): void {
