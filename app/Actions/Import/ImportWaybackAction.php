@@ -11,6 +11,7 @@ use App\Data\Import\WaybackImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
+use App\Models\WaybackCapture;
 use App\Services\Nornir\ProvenanceWriter;
 use App\Services\Wayback\WaybackCaptureClassifier;
 use App\Services\Wayback\WaybackClient;
@@ -18,7 +19,6 @@ use App\Services\Wayback\WaybackMirrorDownloader;
 use App\Services\Wayback\WaybackScreenshotter;
 use App\Services\Wayback\WaybackTextExtractor;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 use Throwable;
@@ -328,9 +328,9 @@ class ImportWaybackAction
 
     private function hydrateScreenshot(Run $run, int $captureId, int $scopeId, string $timestamp, string $replayUrl): bool
     {
-        $capture = DB::table('wayback_captures')->where('id', $captureId)->first();
+        $capture = WaybackCapture::query()->findOrFail($captureId);
 
-        if ($capture !== null && is_string($capture->screenshot_path) && is_string($capture->screenshot_hash) && File::exists($capture->screenshot_path)) {
+        if (is_string($capture->screenshot_path) && is_string($capture->screenshot_hash) && File::exists($capture->screenshot_path)) {
             return false;
         }
 
@@ -342,10 +342,9 @@ class ImportWaybackAction
             return false;
         }
 
-        DB::table('wayback_captures')->where('id', $captureId)->update([
+        $capture->update([
             'screenshot_path' => $result['path'],
             'screenshot_hash' => $result['hash'],
-            'updated_at' => now(),
         ]);
 
         $this->provenanceWriter->link(new WriteProvenanceLinkData(
@@ -361,18 +360,17 @@ class ImportWaybackAction
 
     private function hydrateMirror(Run $run, int $captureId, int $scopeId, string $timestamp, string $replayUrl): bool
     {
-        $capture = DB::table('wayback_captures')->where('id', $captureId)->first();
+        $capture = WaybackCapture::query()->findOrFail($captureId);
 
-        if ($capture !== null && is_string($capture->mirror_path) && File::isDirectory($capture->mirror_path)) {
+        if (is_string($capture->mirror_path) && File::isDirectory($capture->mirror_path)) {
             return false;
         }
 
         $path = base_path('data/imports/wayback/mirrors/'.$scopeId.'/'.$timestamp.'-'.$captureId);
         $result = $this->mirrorDownloader->mirror($replayUrl, $path);
 
-        DB::table('wayback_captures')->where('id', $captureId)->update([
+        $capture->update([
             'mirror_path' => $result,
-            'updated_at' => now(),
         ]);
 
         $this->provenanceWriter->link(new WriteProvenanceLinkData(

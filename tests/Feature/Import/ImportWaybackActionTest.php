@@ -6,12 +6,13 @@ use App\Actions\Import\ImportWaybackAction;
 use App\Actions\Intake\RecordIntakeAction;
 use App\Data\Intake\RecordIntakeData;
 use App\Data\Intake\RecordIntakeResultData;
+use App\Models\ProvenanceLink;
 use App\Models\WaybackCapture;
+use App\Models\WaybackScope;
 use App\Services\Wayback\WaybackClient;
 use App\Services\Wayback\WaybackMirrorDownloader;
 use App\Services\Wayback\WaybackScreenshotter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -32,10 +33,10 @@ it('reruns without duplicating captures and refreshes current extraction', funct
 
     $result = app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
 
-    expect(DB::table('wayback_captures')->count())->toBe(1);
+    expect(WaybackCapture::query()->count())->toBe(1);
     expect($result->summary['captures'])->toBe(1);
 
-    $capture = WaybackCapture::firstOrFail();
+    $capture = WaybackCapture::query()->firstOrFail();
     expect($capture->title)->toBe('Updated title');
     expect($capture->extracted_authored_text)->toContain('Updated biography text');
 });
@@ -46,7 +47,7 @@ it('keeps separate scope rows for the same locator with different boundaries', f
     app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
     app(ImportWaybackAction::class)(makeWaybackIntake(matchMode: 'prefix')->dispatchPayload);
 
-    expect(DB::table('wayback_scopes')->count())->toBe(2);
+    expect(WaybackScope::query()->count())->toBe(2);
 });
 
 it('records replay fetch failures without aborting the import run', function (): void {
@@ -96,9 +97,11 @@ it('records replay fetch failures without aborting the import run', function ():
     expect($result->summary['captures'])->toBe(2);
     expect($result->summary['accepted'])->toBe(1);
     expect($result->summary['failed'])->toBe(1);
-    expect(DB::table('wayback_captures')->count())->toBe(2);
-    expect(DB::table('wayback_captures')->where('timestamp', '20051024073048')->value('verdict'))->toBe('failed');
-    expect(DB::table('wayback_captures')->where('timestamp', '20051024073048')->value('reject_reason'))->toBe('replay-fetch-failed');
+    expect(WaybackCapture::query()->count())->toBe(2);
+
+    $failedCapture = WaybackCapture::query()->where('timestamp', '20051024073048')->firstOrFail();
+    expect($failedCapture->verdict)->toBe('failed');
+    expect($failedCapture->reject_reason)->toBe('replay-fetch-failed');
 });
 
 it('normalizes legacy replay html to utf-8 before storing it', function (): void {
@@ -106,7 +109,7 @@ it('normalizes legacy replay html to utf-8 before storing it', function (): void
 
     app(ImportWaybackAction::class)(makeWaybackIntake()->dispatchPayload);
 
-    $capture = WaybackCapture::firstOrFail();
+    $capture = WaybackCapture::query()->firstOrFail();
 
     expect($capture->title)->toBe('Odinn Sørensen');
     expect($capture->raw_replay_html)->toContain('Sørensen');
@@ -149,8 +152,9 @@ it('rejects default excluded counter cgi captures before replay fetch', function
     expect($result->summary['captures'])->toBe(1);
     expect($result->summary['rejected'])->toBe(1);
     expect($client->replayCalls)->toBe(0);
-    expect(DB::table('wayback_captures')->where('timestamp', '20011028141543')->value('verdict'))->toBe('rejected');
-    expect(DB::table('wayback_captures')->where('timestamp', '20011028141543')->value('reject_reason'))->toBe('excluded-url');
+    $rejectedCapture = WaybackCapture::query()->where('timestamp', '20011028141543')->firstOrFail();
+    expect($rejectedCapture->verdict)->toBe('rejected');
+    expect($rejectedCapture->reject_reason)->toBe('excluded-url');
 });
 
 it('hydrates screenshots and mirrors on later reruns without changing capture identity', function (): void {
@@ -194,15 +198,15 @@ it('hydrates screenshots and mirrors on later reruns without changing capture id
 
     $skipped = app(ImportWaybackAction::class)(makeWaybackIntake(withScreenshots: true, mirrorAssets: true)->dispatchPayload);
 
-    expect(DB::table('wayback_captures')->count())->toBe(1);
+    expect(WaybackCapture::query()->count())->toBe(1);
     expect($hydrated->summary['screenshots'])->toBe(1);
     expect($hydrated->summary['mirrors'])->toBe(1);
     expect($skipped->summary['screenshots'])->toBe(0);
     expect($skipped->summary['mirrors'])->toBe(0);
     expect($screenshotter->calls)->toBe(1);
     expect($mirrorDownloader->calls)->toBe(1);
-    expect(DB::table('provenance_links')->where('claim_key', 'hydrated-wayback-screenshot')->count())->toBe(1);
-    expect(DB::table('provenance_links')->where('claim_key', 'hydrated-wayback-mirror')->count())->toBe(1);
+    expect(ProvenanceLink::query()->where('claim_key', 'hydrated-wayback-screenshot')->count())->toBe(1);
+    expect(ProvenanceLink::query()->where('claim_key', 'hydrated-wayback-mirror')->count())->toBe(1);
 });
 
 it('does not abort an import when an optional screenshot fails', function (): void {
@@ -222,8 +226,8 @@ it('does not abort an import when an optional screenshot fails', function (): vo
     expect($result->run->status)->toBe('succeeded');
     expect($result->summary['accepted'])->toBe(1);
     expect($result->summary['screenshots'])->toBe(0);
-    expect(DB::table('wayback_captures')->count())->toBe(1);
-    expect(DB::table('wayback_captures')->value('screenshot_path'))->toBeNull();
+    expect(WaybackCapture::query()->count())->toBe(1);
+    expect(WaybackCapture::query()->firstOrFail()->screenshot_path)->toBeNull();
 });
 
 function makeWaybackIntake(bool $withScreenshots = false, bool $mirrorAssets = false, string $matchMode = 'host'): RecordIntakeResultData

@@ -13,9 +13,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $wayback_scope_id
  * @property string $timestamp
  * @property CarbonImmutable $captured_at
+ * @property string $original_url
+ * @property string $replay_url
  * @property array<string, mixed> $cdx_fields
+ * @property string $verdict
+ * @property string|null $reject_reason
+ * @property string|null $raw_replay_html
+ * @property string|null $extracted_authored_text
+ * @property string|null $title
+ * @property string|null $meta_description
  * @property array<string, mixed> $retrieval_metadata
+ * @property string|null $screenshot_path
+ * @property string|null $screenshot_hash
+ * @property string|null $mirror_path
  * @property array<string, mixed> $raw_cdx_json
+ * @property string|null $biographical_surface
+ * @property string|null $evidence_summary
  */
 class WaybackCapture extends Model
 {
