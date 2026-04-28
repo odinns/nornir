@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $sender_participant_id
  * @property string $canonical_key
  * @property string|null $source_guid
+ * @property int|null $source_row_id
  * @property CarbonImmutable|null $sent_at
  * @property CarbonImmutable|null $read_at
  * @property CarbonImmutable|null $delivered_at
@@ -28,8 +30,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $item_type
  * @property string|null $group_title
  * @property int|null $group_action_type
+ * @property string|null $reaction_to_guid
  * @property int|null $reaction_type
  * @property array<string, mixed>|null $raw_message
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read Collection<int, AppleMessagesAttachment> $attachments
  * @property-read Collection<int, AppleMessagesMessageObservation> $observations
  * @property-read AppleMessagesConversation $conversation
@@ -47,6 +52,7 @@ class AppleMessagesMessage extends Model
             'sent_at' => 'immutable_datetime',
             'read_at' => 'immutable_datetime',
             'delivered_at' => 'immutable_datetime',
+            'source_row_id' => 'integer',
             'from_me' => 'boolean',
             'is_delivered' => 'boolean',
             'is_read' => 'boolean',

@@ -11,6 +11,12 @@ use App\Data\Import\TwitterImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
 use App\Models\Run;
+use App\Models\TwitterAccount;
+use App\Models\TwitterMediaRef;
+use App\Models\TwitterNoteTweet;
+use App\Models\TwitterProfileSnapshot;
+use App\Models\TwitterScreenNameChange;
+use App\Models\TwitterTweet;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +146,7 @@ class ImportTwitterArchiveAction
         $summary['media_refs'] = $tweetCounts['media_refs'];
         $summary['note_tweets'] = $this->importNoteTweets($run, $archiveId, $accountId, $noteTweets);
 
-        $summary['media_refs'] = (int) DB::table('twitter_media_refs')
+        $summary['media_refs'] = TwitterMediaRef::query()
             ->where('account_id', $accountId)
             ->count();
 
@@ -202,7 +208,7 @@ class ImportTwitterArchiveAction
      */
     private function importAccount(int $archiveId, array $accountEntry): int
     {
-        DB::table('twitter_accounts')->updateOrInsert(
+        TwitterAccount::query()->updateOrCreate(
             ['twitter_archive_id' => $archiveId],
             [
                 'account_id' => $this->stringValue($accountEntry['accountId'] ?? '') ?? '',
@@ -210,7 +216,7 @@ class ImportTwitterArchiveAction
                 'display_name' => $this->stringValue($accountEntry['accountDisplayName'] ?? null),
                 'created_at_source' => $this->stringValue($accountEntry['createdAt'] ?? null),
                 'account_created_at' => $this->parseIsoTimestamp($this->stringValue($accountEntry['createdAt'] ?? null)),
-                'raw_account' => json_encode($accountEntry, JSON_THROW_ON_ERROR),
+                'raw_account' => $accountEntry,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -235,7 +241,7 @@ class ImportTwitterArchiveAction
         $avatarMedia = $this->resolveProfileMedia($archivePath, $this->stringValue($profile['avatarMediaUrl'] ?? null));
         $headerMedia = $this->resolveProfileMedia($archivePath, $this->stringValue($profile['headerMediaUrl'] ?? null));
 
-        DB::table('twitter_profile_snapshots')->updateOrInsert(
+        TwitterProfileSnapshot::query()->updateOrCreate(
             ['twitter_archive_id' => $archiveId],
             [
                 'account_id' => $accountId,
@@ -249,11 +255,11 @@ class ImportTwitterArchiveAction
                 'header_path' => $headerMedia['relative_path'],
                 'is_verified' => $this->boolValue($verified['verified'] ?? null),
                 'is_verified_organization' => $this->boolValue($verifiedOrganization['verifiedOrganization'] ?? null),
-                'raw_profile' => json_encode([
+                'raw_profile' => [
                     'profile' => $profile,
                     'verified' => $verified,
                     'verified_organization' => $verifiedOrganization,
-                ], JSON_THROW_ON_ERROR),
+                ],
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -315,7 +321,7 @@ class ImportTwitterArchiveAction
                 ?? $this->stringValue($payload['changedAt'] ?? null);
             $resolvedAccountId = $this->stringValue($payload['accountId'] ?? null) ?? $accountId;
 
-            DB::table('twitter_screen_name_changes')->updateOrInsert(
+            TwitterScreenNameChange::query()->updateOrCreate(
                 [
                     'twitter_archive_id' => $archiveId,
                     'screen_name' => $screenName,
@@ -324,7 +330,7 @@ class ImportTwitterArchiveAction
                 [
                     'account_id' => $resolvedAccountId,
                     'changed_at' => $this->parseIsoTimestamp($changedAtSource),
-                    'raw_change' => json_encode($payload, JSON_THROW_ON_ERROR),
+                    'raw_change' => $payload,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
@@ -363,14 +369,12 @@ class ImportTwitterArchiveAction
                     throw new InvalidArgumentException('Malformed Twitter source file [data/tweets.js].');
                 }
 
-                $existing = DB::table('twitter_tweets')->where('tweet_id', $tweetId)->exists();
+                $existingTweet = TwitterTweet::query()->where('tweet_id', $tweetId)->first();
 
-                DB::table('twitter_tweets')->updateOrInsert(
+                TwitterTweet::query()->updateOrCreate(
                     ['tweet_id' => $tweetId],
                     [
-                        'first_seen_twitter_archive_id' => $existing
-                            ? DB::table('twitter_tweets')->where('tweet_id', $tweetId)->value('first_seen_twitter_archive_id')
-                            : $archiveId,
+                        'first_seen_twitter_archive_id' => $existingTweet->first_seen_twitter_archive_id ?? $archiveId,
                         'account_id' => $accountId,
                         'source_surface' => $group['surface'],
                         'created_at_source' => $this->stringValue($tweet['created_at'] ?? null),
@@ -386,14 +390,14 @@ class ImportTwitterArchiveAction
                         'like_count' => $this->integerValue($tweet['like_count'] ?? null),
                         'quote_count' => $this->integerValue($tweet['quote_count'] ?? null),
                         'bookmark_count' => $this->integerValue($tweet['bookmark_count'] ?? null),
-                        'raw_tweet' => json_encode($tweet, JSON_THROW_ON_ERROR),
+                        'raw_tweet' => $tweet,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ],
                 );
 
                 $importedTweets++;
-                $existing ? $reobservedTweets++ : $insertedTweets++;
+                $existingTweet === null ? $insertedTweets++ : $reobservedTweets++;
 
                 foreach ($this->extractMedia($tweet) as $media) {
                     $this->upsertMediaRef(
@@ -428,7 +432,7 @@ class ImportTwitterArchiveAction
             'tweets' => $importedTweets,
             'inserted_tweets' => $insertedTweets,
             'reobserved_tweets' => $reobservedTweets,
-            'media_refs' => (int) DB::table('twitter_media_refs')->where('account_id', $accountId)->count(),
+            'media_refs' => TwitterMediaRef::query()->where('account_id', $accountId)->count(),
         ];
     }
 
@@ -452,19 +456,19 @@ class ImportTwitterArchiveAction
                 throw new InvalidArgumentException('Malformed Twitter source file [data/note-tweet.js].');
             }
 
-            $existingArchiveId = DB::table('twitter_note_tweets')
+            $existingNoteTweet = TwitterNoteTweet::query()
                 ->where('note_tweet_id', $noteTweetId)
-                ->value('first_seen_twitter_archive_id');
+                ->first();
 
-            DB::table('twitter_note_tweets')->updateOrInsert(
+            TwitterNoteTweet::query()->updateOrCreate(
                 ['note_tweet_id' => $noteTweetId],
                 [
-                    'first_seen_twitter_archive_id' => is_int($existingArchiveId) ? $existingArchiveId : $archiveId,
+                    'first_seen_twitter_archive_id' => $existingNoteTweet->first_seen_twitter_archive_id ?? $archiveId,
                     'account_id' => $accountId,
                     'created_at_source' => $this->stringValue($noteTweet['createdAt'] ?? null),
                     'tweeted_at' => $this->parseIsoTimestamp($this->stringValue($noteTweet['createdAt'] ?? null)),
                     'full_text' => $this->stringValue(data_get($noteTweet, 'core.text')),
-                    'raw_note_tweet' => json_encode($noteTweet, JSON_THROW_ON_ERROR),
+                    'raw_note_tweet' => $noteTweet,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
@@ -499,7 +503,7 @@ class ImportTwitterArchiveAction
         ?string $mediaType,
         array $rawMedia,
     ): void {
-        DB::table('twitter_media_refs')->updateOrInsert(
+        TwitterMediaRef::query()->updateOrCreate(
             ['media_key' => $mediaKey],
             [
                 'twitter_archive_id' => $archiveId,
@@ -510,7 +514,7 @@ class ImportTwitterArchiveAction
                 'relative_path' => $relativePath,
                 'source_url' => $sourceUrl,
                 'media_type' => $mediaType,
-                'raw_media' => json_encode($rawMedia, JSON_THROW_ON_ERROR),
+                'raw_media' => $rawMedia,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

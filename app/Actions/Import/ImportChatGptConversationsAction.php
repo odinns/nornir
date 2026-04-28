@@ -10,6 +10,11 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\ChatGptImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\ChatGptAsset;
+use App\Models\ChatGptConversation;
+use App\Models\ChatGptMessage;
+use App\Models\ChatGptMessagePart;
+use App\Models\ChatGptNode;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use Carbon\CarbonImmutable;
@@ -239,7 +244,7 @@ class ImportChatGptConversationsAction
      */
     private function upsertConversation(int $archiveId, array $conversation): int
     {
-        DB::table('chatgpt_conversations')->updateOrInsert(
+        $conversationModel = ChatGptConversation::query()->updateOrCreate(
             [
                 'conversation_id' => (string) $conversation['id'],
             ],
@@ -251,15 +256,13 @@ class ImportChatGptConversationsAction
                 'conversation_created_at' => $this->normalizeTimestamp($conversation['create_time'] ?? null),
                 'source_update_time' => isset($conversation['update_time']) ? (float) $conversation['update_time'] : null,
                 'conversation_updated_at' => $this->normalizeTimestamp($conversation['update_time'] ?? null),
-                'raw_metadata' => json_encode($conversation, JSON_THROW_ON_ERROR),
+                'raw_metadata' => $conversation,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('chatgpt_conversations')
-            ->where('conversation_id', (string) $conversation['id'])
-            ->value('id');
+        return $conversationModel->id;
     }
 
     /**
@@ -267,24 +270,21 @@ class ImportChatGptConversationsAction
      */
     private function upsertNode(int $conversationId, array $node): int
     {
-        DB::table('chatgpt_nodes')->updateOrInsert(
+        $nodeModel = ChatGptNode::query()->updateOrCreate(
             [
                 'chatgpt_conversation_id' => $conversationId,
                 'node_id' => (string) $node['id'],
             ],
             [
                 'parent_node_id' => isset($node['parent']) && is_string($node['parent']) ? $node['parent'] : null,
-                'child_node_ids' => json_encode(is_array($node['children']) ? $node['children'] : [], JSON_THROW_ON_ERROR),
-                'raw_node' => json_encode($node, JSON_THROW_ON_ERROR),
+                'child_node_ids' => is_array($node['children']) ? $node['children'] : [],
+                'raw_node' => $node,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('chatgpt_nodes')
-            ->where('chatgpt_conversation_id', $conversationId)
-            ->where('node_id', (string) $node['id'])
-            ->value('id');
+        return $nodeModel->id;
     }
 
     /**
@@ -297,12 +297,12 @@ class ImportChatGptConversationsAction
         $metadata = $message['metadata'] ?? [];
         $content = $message['content'] ?? [];
         $messageId = (string) $message['id'];
-        $existingMessageId = DB::table('chatgpt_messages')
+        $existingMessage = ChatGptMessage::query()
             ->where('chatgpt_conversation_id', $conversationId)
             ->where('message_id', $messageId)
-            ->value('id');
+            ->first();
 
-        DB::table('chatgpt_messages')->updateOrInsert(
+        $messageModel = ChatGptMessage::query()->updateOrCreate(
             [
                 'chatgpt_conversation_id' => $conversationId,
                 'message_id' => $messageId,
@@ -320,18 +320,15 @@ class ImportChatGptConversationsAction
                 'source_update_time' => isset($message['update_time']) && is_numeric($message['update_time']) ? (float) $message['update_time'] : null,
                 'message_updated_at' => $this->normalizeTimestamp($message['update_time'] ?? null),
                 'end_turn' => array_key_exists('end_turn', $message) ? (bool) $message['end_turn'] : null,
-                'raw_message' => json_encode($message, JSON_THROW_ON_ERROR),
+                'raw_message' => $message,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
         );
 
         return [
-            'id' => (int) DB::table('chatgpt_messages')
-                ->where('chatgpt_conversation_id', $conversationId)
-                ->where('message_id', $messageId)
-                ->value('id'),
-            'wasRecentlyCreated' => $existingMessageId === null,
+            'id' => $messageModel->id,
+            'wasRecentlyCreated' => $existingMessage === null,
         ];
     }
 
@@ -371,8 +368,8 @@ class ImportChatGptConversationsAction
         $content = $message['content'] ?? [];
         $parts = is_array($content) && is_array($content['parts'] ?? null) ? $content['parts'] : [];
 
-        DB::table('chatgpt_message_parts')->where('chatgpt_message_id', $messageId)->delete();
-        DB::table('chatgpt_assets')->where('chatgpt_message_id', $messageId)->delete();
+        ChatGptMessagePart::query()->where('chatgpt_message_id', $messageId)->delete();
+        ChatGptAsset::query()->where('chatgpt_message_id', $messageId)->delete();
 
         $partIndex = 0;
 
@@ -382,13 +379,13 @@ class ImportChatGptConversationsAction
                     continue;
                 }
 
-                DB::table('chatgpt_message_parts')->insert([
+                ChatGptMessagePart::query()->create([
                     'chatgpt_message_id' => $messageId,
                     'part_index' => $partIndex++,
                     'part_type' => 'text',
                     'text_part' => $part,
                     'asset_pointer' => null,
-                    'raw_part' => json_encode(['text' => $part], JSON_THROW_ON_ERROR),
+                    'raw_part' => ['text' => $part],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -408,11 +405,11 @@ class ImportChatGptConversationsAction
                 continue;
             }
 
-            DB::table('chatgpt_assets')->insert([
+            ChatGptAsset::query()->create([
                 'chatgpt_message_id' => $messageId,
                 'asset_pointer' => $assetPointer,
                 'asset_type' => isset($part['content_type']) ? (string) $part['content_type'] : null,
-                'raw_asset' => json_encode($part, JSON_THROW_ON_ERROR),
+                'raw_asset' => $part,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

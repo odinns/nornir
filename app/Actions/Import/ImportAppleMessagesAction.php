@@ -10,6 +10,10 @@ use App\Actions\Import\Support\SourceObservationStore;
 use App\Data\Import\AppleMessagesImportResultData;
 use App\Data\Intake\ImporterDispatchData;
 use App\Data\Shared\WriteProvenanceLinkData;
+use App\Models\AppleMessagesAttachment;
+use App\Models\AppleMessagesConversation;
+use App\Models\AppleMessagesMessage;
+use App\Models\AppleMessagesParticipant;
 use App\Models\Run;
 use App\Services\Nornir\ProvenanceWriter;
 use DateTimeImmutable;
@@ -669,7 +673,7 @@ class ImportAppleMessagesAction
     {
         $conversationKey = $this->conversationKey($chat);
 
-        DB::table('apple_messages_conversations')->updateOrInsert(
+        $conversation = AppleMessagesConversation::query()->updateOrCreate(
             [
                 'conversation_key' => $conversationKey,
             ],
@@ -681,15 +685,13 @@ class ImportAppleMessagesAction
                 'service' => $chat['service'],
                 'style' => $chat['style'],
                 'is_archived' => $chat['is_archived'],
-                'raw_chat' => json_encode($chat, JSON_THROW_ON_ERROR),
+                'raw_chat' => $chat,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
         );
 
-        return (int) DB::table('apple_messages_conversations')
-            ->where('conversation_key', $conversationKey)
-            ->value('id');
+        return $conversation->id;
     }
 
     /**
@@ -697,11 +699,11 @@ class ImportAppleMessagesAction
      */
     private function upsertParticipant(array $participant, ?string $displayName = null): int
     {
-        $existingParticipant = DB::table('apple_messages_participants')
+        $existingParticipant = AppleMessagesParticipant::query()
             ->where('identifier', $participant['identifier'])
             ->first();
 
-        DB::table('apple_messages_participants')->updateOrInsert(
+        $participantModel = AppleMessagesParticipant::query()->updateOrCreate(
             [
                 'identifier' => $participant['identifier'],
             ],
@@ -714,9 +716,7 @@ class ImportAppleMessagesAction
             ],
         );
 
-        return (int) DB::table('apple_messages_participants')
-            ->where('identifier', $participant['identifier'])
-            ->value('id');
+        return $participantModel->id;
     }
 
     /**
@@ -726,26 +726,24 @@ class ImportAppleMessagesAction
     private function upsertMessage(int $conversationId, ?int $senderParticipantId, array $message): array
     {
         $canonicalKey = $this->messageCanonicalKey($message);
-        $existing = DB::table('apple_messages_messages')
+        $existing = AppleMessagesMessage::query()
             ->where('canonical_key', $canonicalKey)
             ->first();
 
-        $existingConversationId = $existing === null ? null : (int) $existing->apple_messages_conversation_id;
-        $existingSenderParticipantId = $existing === null || $existing->sender_participant_id === null
-            ? null
-            : (int) $existing->sender_participant_id;
-        $existingSourceGuid = $existing === null ? null : $this->nullableString($existing->source_guid);
-        $existingSourceRowId = $existing === null || $existing->source_row_id === null ? null : (int) $existing->source_row_id;
-        $existingSentAt = $existing === null ? null : $this->nullableString($existing->sent_at);
-        $existingReadAt = $existing === null ? null : $this->nullableString($existing->read_at);
-        $existingDeliveredAt = $existing === null ? null : $this->nullableString($existing->delivered_at);
-        $existingService = $existing === null ? null : $this->nullableString($existing->service);
-        $existingTextBody = $existing === null ? null : $this->nullableString($existing->text_body);
-        $existingGroupTitle = $existing === null ? null : $this->nullableString($existing->group_title);
-        $existingReactionToGuid = $existing === null ? null : $this->nullableString($existing->reaction_to_guid);
-        $existingItemType = $existing === null || $existing->item_type === null ? null : (int) $existing->item_type;
-        $existingGroupActionType = $existing === null || $existing->group_action_type === null ? null : (int) $existing->group_action_type;
-        $existingReactionType = $existing === null || $existing->reaction_type === null ? null : (int) $existing->reaction_type;
+        $existingConversationId = $existing?->apple_messages_conversation_id;
+        $existingSenderParticipantId = $existing?->sender_participant_id;
+        $existingSourceGuid = $this->nullableString($existing?->source_guid);
+        $existingSourceRowId = $existing?->source_row_id;
+        $existingSentAt = $existing?->sent_at?->toDateTimeString();
+        $existingReadAt = $existing?->read_at?->toDateTimeString();
+        $existingDeliveredAt = $existing?->delivered_at?->toDateTimeString();
+        $existingService = $this->nullableString($existing?->service);
+        $existingTextBody = $this->nullableString($existing?->text_body);
+        $existingGroupTitle = $this->nullableString($existing?->group_title);
+        $existingReactionToGuid = $this->nullableString($existing?->reaction_to_guid);
+        $existingItemType = $existing?->item_type;
+        $existingGroupActionType = $existing?->group_action_type;
+        $existingReactionType = $existing?->reaction_type;
 
         $payload = [
             'apple_messages_conversation_id' => $existingConversationId ?? $conversationId,
@@ -766,24 +764,20 @@ class ImportAppleMessagesAction
             'group_action_type' => $existingGroupActionType ?? $message['group_action_type'],
             'reaction_to_guid' => $existingReactionToGuid ?: $message['reaction_to_guid'],
             'reaction_type' => $existingReactionType ?? $message['reaction_type'],
-            'raw_message' => json_encode($message, JSON_THROW_ON_ERROR),
+            'raw_message' => $message,
             'updated_at' => now(),
             'created_at' => now(),
         ];
 
-        DB::table('apple_messages_messages')->updateOrInsert(
+        $messageModel = AppleMessagesMessage::query()->updateOrCreate(
             [
                 'canonical_key' => $canonicalKey,
             ],
             $payload,
         );
 
-        $messageId = (int) DB::table('apple_messages_messages')
-            ->where('canonical_key', $canonicalKey)
-            ->value('id');
-
         return [
-            'id' => $messageId,
+            'id' => $messageModel->id,
             'wasRecentlyCreated' => $existing === null,
         ];
     }
@@ -807,7 +801,7 @@ class ImportAppleMessagesAction
                 (string) $attachment['transfer_name'],
             ]));
 
-        DB::table('apple_messages_attachments')->updateOrInsert(
+        AppleMessagesAttachment::query()->updateOrCreate(
             [
                 'attachment_key' => $attachmentKey,
             ],
@@ -819,7 +813,7 @@ class ImportAppleMessagesAction
                 'mime_type' => $attachment['mime_type'],
                 'transfer_name' => $attachment['transfer_name'],
                 'total_bytes' => $attachment['total_bytes'],
-                'raw_attachment' => json_encode($attachment, JSON_THROW_ON_ERROR),
+                'raw_attachment' => $attachment,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
