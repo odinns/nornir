@@ -45,7 +45,7 @@ Produce evidence-bound biographical structure from imported source material.
 
 - event extraction contract
 - timeline assembly contract
-- evidence bundle contract
+- [evidence bundle contract](evidence-bundle-contract.md)
 
 ## Validation and testing
 

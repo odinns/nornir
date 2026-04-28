@@ -81,6 +81,19 @@ it('builds a gmail important evidence bundle from the cli as json', function ():
     expect($decoded['bundle_path'])->toBeString();
     expect($decoded['evidence_run_id'])->toBeInt();
     expect(File::exists($decoded['bundle_path']))->toBeTrue();
+
+    $bundle = json_decode((string) File::get($decoded['bundle_path']), true, flags: JSON_THROW_ON_ERROR);
+
+    if (! is_array($bundle)) {
+        throw new RuntimeException('Evidence bundle JSON did not decode to an object.');
+    }
+
+    expect($bundle)->toMatchArray([
+        'schema_version' => 1,
+        'bundle_type' => 'gmail-important-mail',
+        'source_type' => 'gmail',
+        'source_run_id' => $importResult->run->id,
+    ]);
     expect(RunArtifact::query()
         ->where('run_id', $decoded['evidence_run_id'])
         ->where('artifact_kind', 'gmail-important-evidence-bundle')
