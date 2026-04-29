@@ -195,6 +195,41 @@ it('ignores bulk alerts that only look urgent in the subject line', function ():
     expect($result['matched_count'])->toBe(0);
 });
 
+it('ignores bulk headers case-insensitively before scoring direct prompts', function (): void {
+    bindGmailTriageClient([
+        buildGmailMessage([
+            'id' => 'msg-bulk',
+            'threadId' => 'thread-bulk',
+            'labelIds' => ['INBOX', 'UNREAD'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'Can you confirm today?',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Campaign <campaign@example.com>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Can you confirm today?'],
+                    ['name' => 'list-unsubscribe', 'value' => '<mailto:unsubscribe@example.com>'],
+                ],
+                'body' => ['data' => base64_encode('Can you confirm today?'), 'size' => 22],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    $result = app(TriageImportantMailAction::class)(
+        credentialsPath: '/tmp/fake-credentials.json',
+        since: null,
+        on: null,
+        window: 'last 7 days',
+        limit: 25,
+        query: null,
+        rulesPath: null,
+    );
+
+    expect($result['matched_count'])->toBe(0);
+});
+
 it('treats ase mail as important by default', function (): void {
     bindGmailTriageClient([
         buildGmailMessage([
@@ -267,6 +302,152 @@ it('treats haveforeningenkildebo mail as important by default', function (): voi
     $item = firstGmailTriageItem($result['items']);
     expect($item['message_id'])->toBe('msg-kildebo');
     expect($item['reason'])->toContain('priority sender');
+});
+
+it('lets priority senders and domains override bulk indicators', function (): void {
+    bindGmailTriageClient([
+        buildGmailMessage([
+            'id' => 'msg-kildebo-bulk',
+            'threadId' => 'thread-kildebo-bulk',
+            'labelIds' => ['INBOX', 'CATEGORY_PROMOTIONS'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'Can you confirm today?',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Kildebo <haveforeningenkildebo@gmail.com>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Confirm today'],
+                    ['name' => 'List-Unsubscribe', 'value' => '<mailto:unsubscribe@example.com>'],
+                ],
+                'body' => ['data' => base64_encode('Can you confirm this today?'), 'size' => 27],
+                'parts' => [],
+            ],
+        ]),
+        buildGmailMessage([
+            'id' => 'msg-ase-bulk',
+            'threadId' => 'thread-ase-bulk',
+            'labelIds' => ['INBOX'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'Please approve before 16:00.',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Ase <noreply@ase.dk>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Approval needed'],
+                    ['name' => 'Auto-Submitted', 'value' => 'auto-generated'],
+                ],
+                'body' => ['data' => base64_encode('Please approve before 16:00.'), 'size' => 29],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    $result = app(TriageImportantMailAction::class)(
+        credentialsPath: '/tmp/fake-credentials.json',
+        since: null,
+        on: null,
+        window: 'last 7 days',
+        limit: 25,
+        query: null,
+        rulesPath: null,
+    );
+
+    expect($result['matched_count'])->toBe(2);
+    expect(array_column($result['items'], 'message_id'))->toBe([
+        'msg-kildebo-bulk',
+        'msg-ase-bulk',
+    ]);
+});
+
+it('only treats explicit direct prompts as direct action', function (): void {
+    bindGmailTriageClient([
+        buildGmailMessage([
+            'id' => 'msg-question-mark',
+            'threadId' => 'thread-question-mark',
+            'labelIds' => ['INBOX'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'A note from the archive.',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Sender <sender@example.com>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'FYI'],
+                ],
+                'body' => ['data' => base64_encode("The old note says blue?\nNo action needed."), 'size' => 41],
+                'parts' => [],
+            ],
+        ]),
+        buildGmailMessage([
+            'id' => 'msg-approval',
+            'threadId' => 'thread-approval',
+            'labelIds' => ['INBOX'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'Please approve before 16:00.',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Coordinator <coordinator@example.com>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Approval needed'],
+                ],
+                'body' => ['data' => base64_encode('Please approve before 16:00.'), 'size' => 29],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    $result = app(TriageImportantMailAction::class)(
+        credentialsPath: '/tmp/fake-credentials.json',
+        since: null,
+        on: null,
+        window: 'last 7 days',
+        limit: 25,
+        query: null,
+        rulesPath: null,
+    );
+
+    expect($result['matched_count'])->toBe(1);
+    $item = firstGmailTriageItem($result['items']);
+    expect($item['message_id'])->toBe('msg-approval');
+    expect($item['next_action'])->toBe('Reply today.');
+});
+
+it('does not reject direct human mail only because a footer mentions unsubscribe', function (): void {
+    bindGmailTriageClient([
+        buildGmailMessage([
+            'id' => 'msg-human-footer',
+            'threadId' => 'thread-human-footer',
+            'labelIds' => ['INBOX'],
+            'internalDate' => '1776691800000',
+            'snippet' => 'Can you confirm today?',
+            'payload' => [
+                'mimeType' => 'text/plain',
+                'headers' => [
+                    ['name' => 'From', 'value' => 'Person <person@example.com>'],
+                    ['name' => 'To', 'value' => 'odinn@example.com'],
+                    ['name' => 'Subject', 'value' => 'Confirm today'],
+                ],
+                'body' => ['data' => base64_encode("Can you confirm today?\n\nUnsubscribe from these notices."), 'size' => 55],
+                'parts' => [],
+            ],
+        ]),
+    ]);
+
+    $result = app(TriageImportantMailAction::class)(
+        credentialsPath: '/tmp/fake-credentials.json',
+        since: null,
+        on: null,
+        window: 'last 7 days',
+        limit: 25,
+        query: null,
+        rulesPath: null,
+    );
+
+    expect($result['matched_count'])->toBe(1);
+    expect(firstGmailTriageItem($result['items'])['message_id'])->toBe('msg-human-footer');
 });
 
 it('does not apply a default inspection limit', function (): void {

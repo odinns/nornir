@@ -194,12 +194,8 @@ class GmailImportantMailScorer
             $candidate['snippet'],
             $candidate['body_plain'],
         ]))));
-        $bodyAndSnippetText = strtolower(trim(implode("\n", array_filter([
-            $candidate['snippet'],
-            $candidate['body_plain'],
-        ]))));
+        $directPromptText = $this->directPromptText($candidate);
 
-        $automated = $this->looksAutomated($senderEmail, $candidate['subject'], $candidate['headers'], $normalizedLabels, $rules);
         $score = 0;
         $reasons = [];
         $hasPriorityOverride = false;
@@ -218,14 +214,18 @@ class GmailImportantMailScorer
             $hasPriorityOverride = true;
         }
 
+        if ($this->looksAutomated($candidate, $senderEmail, $normalizedLabels, $rules) && ! $hasPriorityOverride) {
+            return null;
+        }
+
         if (array_intersect($normalizedLabels, $rules['priority_labels']) !== []) {
             $score += 1;
             $reasons[] = 'priority label';
         }
 
-        if ($this->containsDirectQuestion($bodyAndSnippetText)) {
+        if ($this->containsDirectPrompt($directPromptText)) {
             $score += 4;
-            $reasons[] = 'direct question';
+            $reasons[] = 'direct prompt';
         }
 
         if ($this->containsFollowUp($analysisText)) {
@@ -260,10 +260,6 @@ class GmailImportantMailScorer
             $score += 1;
         }
 
-        if ($automated && ! $hasPriorityOverride) {
-            return null;
-        }
-
         if ($score < 3) {
             return null;
         }
@@ -280,7 +276,7 @@ class GmailImportantMailScorer
             'received_at' => $receivedAt->toIso8601String(),
             'urgency' => $urgency,
             'reason' => implode(', ', array_slice(array_values(array_unique($reasons)), 0, 3)),
-            'next_action' => $this->determineNextAction($analysisText, $urgency),
+            'next_action' => $this->determineNextAction($analysisText, $urgency, $directPromptText),
             'confidence' => round(min(0.99, 0.35 + ($score * 0.08)), 2),
             'labels' => $candidate['labels'],
             'snippet' => $candidate['snippet'],
@@ -393,14 +389,13 @@ class GmailImportantMailScorer
     }
 
     /**
-     * @param  array<string, string>  $headers
+     * @param  GmailImportantMailCandidate  $candidate
      * @param  list<string>  $labels
      * @param  GmailImportantMailRules  $rules
      */
     private function looksAutomated(
+        array $candidate,
         string $senderEmail,
-        string $subject,
-        array $headers,
         array $labels,
         array $rules,
     ): bool {
@@ -414,11 +409,13 @@ class GmailImportantMailScorer
             return true;
         }
 
-        if ($labels !== [] && array_intersect($labels, ['category_promotions', 'category_updates', 'category_forums']) !== []) {
+        $headers = $candidate['headers'];
+
+        if ($labels !== [] && array_intersect($labels, ['category_promotions', 'category_updates', 'category_forums', 'category_social']) !== []) {
             return true;
         }
 
-        if (isset($headers['List-Unsubscribe'])) {
+        if ($this->hasBulkHeaderSignal($headers)) {
             return true;
         }
 
@@ -426,7 +423,11 @@ class GmailImportantMailScorer
             return true;
         }
 
-        $normalizedSubject = strtolower($subject);
+        if ($this->looksLikeLegacyBulkMail($candidate, $senderEmail)) {
+            return true;
+        }
+
+        $normalizedSubject = strtolower($candidate['subject']);
 
         foreach ($rules['ignore_subject_keywords'] as $keyword) {
             if ($keyword !== '' && str_contains($normalizedSubject, $keyword)) {
@@ -437,12 +438,95 @@ class GmailImportantMailScorer
         return preg_match('/\b(newsletter|digest|unsubscribe|promo|promotion)\b/i', $normalizedSubject) === 1;
     }
 
-    private function containsDirectQuestion(string $text): bool
+    /**
+     * @param  GmailImportantMailCandidate  $candidate
+     */
+    private function looksLikeLegacyBulkMail(array $candidate, string $senderEmail): bool
     {
-        return preg_match('/\?\s*$/m', $text) === 1
-            || preg_match('/\b(please confirm|can you|could you|would you|do you have|are you able|let me know|reply|respond)\b/i', $text) === 1
+        $senderDomain = $this->extractDomain($senderEmail);
+        $senderLocalPart = explode('@', $senderEmail)[0] ?? '';
+        $senderIdentity = strtolower(implode(' ', array_filter([
+            $candidate['from'],
+            $senderEmail,
+            $senderLocalPart,
+            $senderDomain,
+        ])));
+        $subject = strtolower($candidate['subject']);
+        $bodyText = strtolower(trim(implode("\n", array_filter([
+            $candidate['snippet'],
+            $candidate['body_plain'],
+        ]))));
+
+        $hasSenderCue = preg_match('/\b(newsletter|nyhedsbrev|mailrobot|product-announce|members|reply3|overlords)\b/i', $senderIdentity) === 1;
+        $hasSubjectCue = preg_match('/\b(newsletter|digest|sale|deals?|discount|voucher|top 10 deals)\b|tilbud|nyhedsbrev|karrieremail/i', $subject) === 1;
+
+        if ($hasSenderCue || $hasSubjectCue) {
+            return true;
+        }
+
+        $hasWeakBodyCue = preg_match('/\b(unsubscribe|afmeld|view in browser|tip en ven)\b/i', $bodyText) === 1;
+
+        if (! $hasWeakBodyCue) {
+            return false;
+        }
+
+        return preg_match('/\b(weekly|monthly|weekend|campaign|offers?|updates?|jobs?|karriere|rejser?)\b/i', $subject) === 1;
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     * @return array<string, string>
+     */
+    private function normalizeHeaders(array $headers): array
+    {
+        $normalized = [];
+
+        foreach ($headers as $name => $value) {
+            $normalized[strtolower($name)] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  GmailImportantMailCandidate  $candidate
+     */
+    private function directPromptText(array $candidate): string
+    {
+        return strtolower(trim(implode("\n", array_filter([
+            $candidate['subject'],
+            $candidate['snippet'],
+            mb_substr($candidate['body_plain'], 0, 1000),
+        ]))));
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     */
+    private function hasBulkHeaderSignal(array $headers): bool
+    {
+        $normalizedHeaders = $this->normalizeHeaders($headers);
+
+        if (array_intersect(array_keys($normalizedHeaders), ['list-unsubscribe', 'list-id', 'list-help', 'list-owner']) !== []) {
+            return true;
+        }
+
+        if (in_array(strtolower(trim($normalizedHeaders['precedence'] ?? '')), ['bulk', 'list'], true)) {
+            return true;
+        }
+
+        $autoSubmitted = strtolower(trim($normalizedHeaders['auto-submitted'] ?? ''));
+
+        return $autoSubmitted !== '' && $autoSubmitted !== 'no';
+    }
+
+    private function containsDirectPrompt(string $text): bool
+    {
+        return preg_match('/\b(can|could|would|will)\s+you\b/i', $text) === 1
+            || preg_match('/\b(please\s+(confirm|approve|reply|respond|review|send|sign|update)|do you have|are you able|let me know)\b/i', $text) === 1
             || preg_match('/\b(what do you think|does this work for you|is this okay|can we|could we)\b/i', $text) === 1
-            || preg_match('/\b(confirm|approve|reply|respond)\b.{0,25}\b(today|tomorrow|asap|soon)\b/i', $text) === 1;
+            || preg_match('/\b(confirm|approve|reply|respond|review|send|sign|update)\b.{0,50}\b(today|tomorrow|asap|soon|before \d{1,2}(?::\d{2})?)\b/i', $text) === 1
+            || preg_match('/\b(today|tomorrow|asap|soon|before \d{1,2}(?::\d{2})?)\b.{0,50}\b(confirm|approve|reply|respond|review|send|sign|update)\b/i', $text) === 1;
     }
 
     private function containsFollowUp(string $text): bool
@@ -478,9 +562,9 @@ class GmailImportantMailScorer
         return 'watch';
     }
 
-    private function determineNextAction(string $text, string $urgency): string
+    private function determineNextAction(string $text, string $urgency, string $directPromptText): string
     {
-        if ($this->containsDirectQuestion($text) || $this->containsFollowUp($text)) {
+        if ($this->containsDirectPrompt($directPromptText) || $this->containsFollowUp($text)) {
             return $urgency === 'today' ? 'Reply today.' : 'Reply soon.';
         }
 

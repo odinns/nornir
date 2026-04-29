@@ -140,6 +140,94 @@ it('builds a full body important mail evidence bundle from canonical gmail rows'
     ]);
 });
 
+it('excludes legacy imported marketing and list mail from canonical evidence bundles', function (): void {
+    bindFakeGmailClientForAccount([
+        buildImportantEvidenceMessage(
+            id: 'msg-ebay',
+            threadId: 'thread-ebay',
+            from: 'eBay <reply3@reply3.ebay.com>',
+            subject: 'Top 10 deals ending today?',
+            snippet: 'Voucher deals picked for you.',
+            plainBody: 'Top 10 deals ending today? Use this voucher before midnight. Unsubscribe at any time.',
+            htmlBody: '<p>Top 10 deals ending today? Use this voucher before midnight.</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+        buildImportantEvidenceMessage(
+            id: 'msg-thinkgeek',
+            threadId: 'thread-thinkgeek',
+            from: 'ThinkGeek Newsletter <newsletter@thinkgeek.com>',
+            subject: 'ThinkGeek newsletter: new deals',
+            snippet: 'View in browser for the full digest.',
+            plainBody: 'This week in gadgets. View in browser or unsubscribe.',
+            htmlBody: '<p>This week in gadgets. View in browser or unsubscribe.</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+        buildImportantEvidenceMessage(
+            id: 'msg-weekend',
+            threadId: 'thread-weekend',
+            from: 'Rejsefeber <members@rejsefeber.dk>',
+            subject: 'Weekendtilbud fra AOK og Rejsefeber?',
+            snippet: 'Tilbud på rejser og weekendoplevelser.',
+            plainBody: 'Weekendtilbud fra AOK og Rejsefeber? Afmeld nyhedsbrev nederst.',
+            htmlBody: '<p>Weekendtilbud fra AOK og Rejsefeber? Afmeld nyhedsbrev nederst.</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+        buildImportantEvidenceMessage(
+            id: 'msg-it-jobbank',
+            threadId: 'thread-it-jobbank',
+            from: 'IT-Jobbank mailrobot <mailrobot@it-jobbank.dk>',
+            subject: 'Karrieremail: nye jobs til dig',
+            snippet: 'Are you ready to apply today?',
+            plainBody: 'Are you ready to apply today? Afmeld karrieremail nederst.',
+            htmlBody: '<p>Are you ready to apply today? Afmeld karrieremail nederst.</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+        buildImportantEvidenceMessage(
+            id: 'msg-human',
+            threadId: 'thread-human',
+            from: 'Human <human@example.com>',
+            subject: 'Confirm today',
+            snippet: 'Can you confirm today?',
+            plainBody: 'Can you confirm the plan today?',
+            htmlBody: '<p>Can you confirm the plan today?</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+        buildImportantEvidenceMessage(
+            id: 'msg-admin',
+            threadId: 'thread-admin',
+            from: 'Admin <admin@example.com>',
+            subject: 'Invoice signature needed',
+            snippet: 'Please sign the invoice before 16:00.',
+            plainBody: 'Please sign the invoice before 16:00.',
+            htmlBody: '<p>Please sign the invoice before 16:00.</p>',
+            internalDate: '1776691800000',
+            labels: ['INBOX'],
+        ),
+    ], 'odinn@example.com');
+
+    $importResult = app(ImportGmailAction::class)(makeGmailIntake('label:legacy-marketing')->dispatchPayload);
+    $result = app(BuildGmailImportantEvidenceBundleAction::class)(
+        runId: $importResult->run->id,
+        limit: 50,
+        rulesPath: null,
+    );
+
+    $bundle = decodeEvidenceBundle($result->path);
+    $messageIds = array_column($bundle['items'], 'message_id');
+    sort($messageIds);
+
+    expect($result->matchedCount)->toBe(2);
+    expect($messageIds)->toBe([
+        'msg-admin',
+        'msg-human',
+    ]);
+});
+
 it('writes an empty bundle when canonical gmail rows exist but none score as important', function (): void {
     bindFakeGmailClientForAccount([
         buildImportantEvidenceMessage(
