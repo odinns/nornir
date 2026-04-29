@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\File;
 function cleanupGmailManualAnalysisTestFiles(): void
 {
     $artifactPaths = RunArtifact::query()
-        ->where('artifact_kind', 'manual-analysis-note')
+        ->whereIn('artifact_kind', ['manual-analysis-note', 'muninn-biography-candidates'])
         ->pluck('locator')
         ->filter(static fn (mixed $locator): bool => is_string($locator))
         ->all();

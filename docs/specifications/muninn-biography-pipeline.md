@@ -19,14 +19,28 @@ Produce evidence-bound biographical structure from imported source material.
 
 ## Outputs
 
+- review artifacts under `data/reviews/`
 - `wiki/muninn/` pages
 - optional supporting derived records in MySQL
 
 ## Storage and state
 
 - canonical source truth stays in source tables
+- first-pass biography candidates may be JSON review artifacts before any durable Muninn table exists
 - Muninn may create derived tables for event candidates, timeline links, and evidence bundles
 - generated pages live in `wiki/muninn/`
+
+## Current review artifact slice
+
+`muninn:gmail-biography-candidates` reads a validated `gmail-important-mail` evidence bundle and writes `data/reviews/muninn-biography-candidates-run-{evidence_run_id}.json`.
+
+This artifact is deliberately conservative:
+
+- no AI generation
+- no Markdown parsing
+- no `wiki/muninn/` output
+- no durable derived candidate table
+- one provenance link per chronology candidate
 
 ## Processing rules
 
