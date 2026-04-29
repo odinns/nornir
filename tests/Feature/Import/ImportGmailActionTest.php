@@ -208,9 +208,36 @@ it('refreshes auth and retries once when gmail returns invalid credentials mid-r
     expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
     expect($fake->refreshAuthenticationCalls)->toBe(1);
     expect($fake->getMessageCalls)->toBe(2);
+    expect($fake->calls)->toBe([
+        'getMessage:msg-001',
+        'refreshAuthentication',
+        'getMessage:msg-001',
+    ]);
     expect(GmailMessage::query()->count())->toBe(1);
     expect($result->summary['inserted_messages'])->toBe(1);
     expect($result->summary['reobserved_messages'])->toBe(0);
+});
+
+it('rethrows repeated invalid credentials after one auth refresh and records a failed run', function (): void {
+    bindFakeGmailClient(
+        [buildGmailMessage(['id' => 'msg-001', 'threadId' => 'thread-001'])],
+        ['msg-001' => 2],
+    );
+
+    $fake = app(FakeGmailApiClient::class);
+
+    expect(fn () => app(ImportGmailAction::class)(makeGmailIntake()->dispatchPayload))
+        ->toThrow(RuntimeException::class, 'Invalid Credentials');
+
+    expect($fake->refreshAuthenticationCalls)->toBe(1);
+    expect($fake->getMessageCalls)->toBe(2);
+    expect($fake->calls)->toBe([
+        'getMessage:msg-001',
+        'refreshAuthentication',
+        'getMessage:msg-001',
+    ]);
+    expect(GmailMessage::query()->count())->toBe(0);
+    expect(Run::query()->where('status', Run::STATUS_FAILED)->count())->toBe(1);
 });
 
 it('adds new messages on a subsequent run without losing prior ones', function (): void {

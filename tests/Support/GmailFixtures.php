@@ -15,6 +15,9 @@ class FakeGmailApiClient implements GmailApiClientInterface
 
     public int $refreshAuthenticationCalls = 0;
 
+    /** @var list<string> */
+    public array $calls = [];
+
     /** @param list<array<string, mixed>> $messages */
     public function __construct(
         private readonly array $messages = [],
@@ -51,6 +54,7 @@ class FakeGmailApiClient implements GmailApiClientInterface
     public function getMessage(string $messageId): array
     {
         $this->getMessageCalls++;
+        $this->calls[] = 'getMessage:'.$messageId;
 
         if (($this->authFailuresByMessageId[$messageId] ?? 0) > 0) {
             $this->authFailuresByMessageId[$messageId]--;
@@ -70,6 +74,7 @@ class FakeGmailApiClient implements GmailApiClientInterface
     public function refreshAuthentication(): void
     {
         $this->refreshAuthenticationCalls++;
+        $this->calls[] = 'refreshAuthentication';
     }
 }
 
