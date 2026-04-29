@@ -1,8 +1,10 @@
 # Nornir Detailed Specifications
 
-This directory turns the top-level system spec into implementation-grade contracts.
+This directory turns the top-level system spec into implementation contracts.
 
-Nornir is no longer documentation-only. The current app has working CLI importers, canonical MySQL tables, intake/run/provenance plumbing, source handoff builders, and Scout search projection. Treat these specs as living contracts: when implementation changes source scope, table shape, command behavior, or handoff boundaries, update the relevant spec in the same slice.
+Nornir is not documentation-only anymore. The app has working CLI importers, canonical MySQL tables, intake/run/provenance plumbing, source handoff builders, and Scout search projection.
+
+Read these specs as contracts, not background lore. When implementation changes source scope, table shape, command behavior, handoff boundaries, or provenance rules, update the relevant spec in the same slice. Future-you should not have to diff code against wishful markdown. That is expensive nonsense.
 
 Read in this order:
 
@@ -19,7 +21,7 @@ Read in this order:
 11. subsystem specs
 12. source navigation and importer specs
 
-Implemented importer families today:
+Implemented importer families:
 
 - ChatGPT exports
 - Facebook exports

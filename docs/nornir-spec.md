@@ -1,8 +1,10 @@
-# Nornir System Specification
+# Nornir System Spec
 
-Nornir is a Laravel-based system for importing, processing, understanding, and presenting personal source material.
+Nornir is a local Laravel application for turning personal archives into an evidence store.
 
-It replaces ad-hoc archive scripts with a coherent local application that supports:
+The job is simple: stop treating life exports as one-off piles of JSON, CSV, mailboxes, screenshots, and old databases. Import them once, preserve provenance, then let later biography and judgment work operate on bounded evidence instead of rummaging through raw archives every time.
+
+Nornir supports:
 
 - bounded intake of private and public source material
 - source-specific import into canonical MySQL tables
@@ -11,13 +13,13 @@ It replaces ad-hoc archive scripts with a coherent local application that suppor
 - evidence-bound biography reconstruction
 - evidence-supported personality and pattern work
 - evidence-backed decision and judgment capture
-- eventual web presentation through Mimir
+- planned web presentation through Mimir
 
 Nornir is not a wiki. `wiki/` is generated output. The system of record is the database plus the original source archives and external references.
 
 ## Current Implementation
 
-The current app is backend-first and CLI-first.
+The current app is backend-first and CLI-first. That is deliberate. The evidence contracts need to be boring and correct before a UI starts bending the shape of the system.
 
 Implemented:
 
@@ -32,7 +34,7 @@ Implemented:
 - Pest feature/unit/architecture tests
 - PHPStan, Pint, and Rector gates
 
-Not yet implemented as a polished product surface:
+Still rough or intentionally deferred:
 
 - Mimir web UI
 - durable Muninn biography workbench
@@ -44,7 +46,7 @@ Not yet implemented as a polished product surface:
 
 ### Nornir
 
-The overall application.
+The application itself.
 
 Responsible for:
 
@@ -65,7 +67,7 @@ Intake records:
 - importer options
 - review manifest path
 
-Intake does not normalize source content. It records what was accepted and hands a bounded payload to the importer.
+Intake does not normalize source content. It records what was accepted, then hands a bounded payload to the importer. If this boundary gets vague, everything downstream starts guessing. That way lies spreadsheet archaeology.
 
 ### Import
 
@@ -80,6 +82,8 @@ Importers:
 - remain idempotent across reruns
 - avoid destructive deletion when later exports are thinner
 - emit enough scope for a handoff
+
+Import is source-specific on purpose. A fake universal importer would mostly be a place to hide bugs.
 
 Current source families:
 
@@ -174,7 +178,7 @@ Principles:
 
 ### Mimir
 
-The eventual presentation and interaction surface.
+The planned presentation and interaction surface.
 
 Responsible for:
 
@@ -184,7 +188,7 @@ Responsible for:
 - graph and arc views
 - assembling view data from backend contracts
 
-Mimir does not own core domain logic. It waits for stable backend data products instead of bending the architecture around an early UI.
+Mimir does not own core domain logic. It waits for stable backend data products instead of letting an early UI decide backend shape.
 
 ### Heimdallr
 
@@ -286,7 +290,7 @@ This layer comes after the evidence contracts are solid enough to keep interpret
 
 ### 8. Presentation
 
-Mimir eventually exposes the system through a web UI.
+Mimir will expose the system through a web UI once the backend contracts deserve that much attention.
 
 Until then, the useful surfaces are CLI commands, MySQL, generated handoffs, search, and review artifacts.
 
