@@ -147,3 +147,76 @@ it('scopes twitter handoff rows through source-set observations for thinner late
         'media_refs' => 2,
     ]);
 });
+
+it('includes shared note tweets only for source sets where they were observed', function (): void {
+    $fullArchive = createTwitterFixtureArchive('twitter-handoff-note-full');
+    $noteOnlyArchive = createTwitterFixtureArchive('twitter-handoff-note-shared', [
+        'include_community_tweets' => false,
+        'tweets' => [[
+            'id_str' => '111',
+            'created_at' => 'Tue Feb 17 06:30:43 +0000 2026',
+            'full_text' => 'Hello from the importer',
+            'source' => 'Twitter Web App',
+            'lang' => 'en',
+            'conversation_id_str' => '111',
+        ]],
+    ]);
+    $withoutNoteArchive = createTwitterFixtureArchive('twitter-handoff-note-missing', [
+        'include_community_tweets' => false,
+        'include_note_tweets' => false,
+        'tweets' => [[
+            'id_str' => '111',
+            'created_at' => 'Tue Feb 17 06:30:43 +0000 2026',
+            'full_text' => 'Hello from the importer',
+            'source' => 'Twitter Web App',
+            'lang' => 'en',
+            'conversation_id_str' => '111',
+        ]],
+    ]);
+
+    $recordIntake = app(RecordIntakeAction::class);
+    $importer = app(ImportTwitterArchiveAction::class);
+
+    $fullIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $fullArchive['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fullArchive['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+    $noteOnlyIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $noteOnlyArchive['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$noteOnlyArchive['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+    $withoutNoteIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $withoutNoteArchive['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$withoutNoteArchive['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    $importer($fullIntake->dispatchPayload);
+    $noteOnlyResult = $importer($noteOnlyIntake->dispatchPayload);
+    $withoutNoteResult = $importer($withoutNoteIntake->dispatchPayload);
+
+    $noteOnlyHandoff = app(BuildTwitterSourcePageHandoffAction::class)($noteOnlyResult->run->id);
+    $withoutNoteHandoff = app(BuildTwitterSourcePageHandoffAction::class)($withoutNoteResult->run->id);
+
+    /** @var array{row_counts:array{note_tweets:int}} $noteOnlyScope */
+    $noteOnlyScope = $noteOnlyHandoff->canonicalScope;
+    /** @var array{row_counts:array{note_tweets:int}} $withoutNoteScope */
+    $withoutNoteScope = $withoutNoteHandoff->canonicalScope;
+
+    expect($noteOnlyScope['row_counts']['note_tweets'])->toBe(1)
+        ->and($withoutNoteScope['row_counts']['note_tweets'])->toBe(0);
+});
