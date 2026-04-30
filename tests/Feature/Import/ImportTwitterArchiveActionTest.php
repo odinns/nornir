@@ -125,6 +125,10 @@ it('reruns idempotently for the same twitter archive', function (): void {
     expect(TwitterArchive::query()->count())->toBe(1);
     expect(TwitterTweet::query()->count())->toBe(2);
     expect(TwitterNoteTweet::query()->count())->toBe(1);
+    expect(TwitterMediaRef::query()->count())->toBe(4);
+    expect(TwitterTweetObservation::query()->count())->toBe(2);
+    expect(TwitterNoteTweetObservation::query()->count())->toBe(1);
+    expect(TwitterMediaRefObservation::query()->count())->toBe(4);
     expect($secondResult->summary['inserted_tweets'])->toBe(0);
     expect($secondResult->summary['reobserved_tweets'])->toBe(2);
 });
@@ -175,6 +179,7 @@ it('keeps older canonical twitter rows when a newer archive is missing them', fu
     expect(TwitterNoteTweet::query()->count())->toBe(1);
     expect(TwitterTweetObservation::query()->count())->toBe(3);
     expect(TwitterNoteTweetObservation::query()->count())->toBe(1);
+    expect(TwitterMediaRefObservation::query()->count())->toBe(6);
 });
 
 it('fails clearly when a supported twitter file has the wrong wrapper shape', function (): void {

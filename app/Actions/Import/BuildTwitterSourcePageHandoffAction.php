@@ -76,15 +76,15 @@ class BuildTwitterSourcePageHandoffAction
                 'profile_snapshots' => TwitterProfileSnapshot::query()->whereIn('twitter_archive_id', $sourceSetIds)->count(),
                 'tweets' => TwitterTweetObservation::query()
                     ->whereIn('twitter_archive_id', $sourceSetIds)
-                    ->distinct('twitter_tweet_id')
+                    ->distinct()
                     ->count('twitter_tweet_id'),
                 'note_tweets' => TwitterNoteTweetObservation::query()
                     ->whereIn('twitter_archive_id', $sourceSetIds)
-                    ->distinct('twitter_note_tweet_id')
+                    ->distinct()
                     ->count('twitter_note_tweet_id'),
                 'media_refs' => TwitterMediaRefObservation::query()
                     ->whereIn('twitter_archive_id', $sourceSetIds)
-                    ->distinct('twitter_media_ref_id')
+                    ->distinct()
                     ->count('twitter_media_ref_id'),
             ],
         ];
