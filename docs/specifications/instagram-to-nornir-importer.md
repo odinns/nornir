@@ -28,9 +28,13 @@ For the current archive-backed phase-1 slice, the importer should expect and use
 ## MySQL storage model
 
 - `instagram_accounts`
+- `instagram_source_sets`
 - `instagram_posts`
 - `instagram_media_refs`
 - `instagram_profile_snapshots`
+- `instagram_profile_snapshot_observations`
+- `instagram_post_observations`
+- `instagram_media_ref_observations`
 
 ## Data model
 
@@ -61,6 +65,7 @@ Do not widen the phase-1 data model to include every archive surface just becaus
 
 - rerun by account and stable source identity where available
 - posts should rerun idempotently by stable archive occurrence identity rather than import-run order
+- profile snapshots, posts, and media refs must record one observation per source set where the canonical row is actually present
 - profile snapshots and media refs should tolerate sparse reruns without manufacturing missing data
 
 ## Validation
@@ -77,6 +82,8 @@ Do not widen the phase-1 data model to include every archive surface just becaus
 - produce source pages and timeline-supporting evidence only when data exists
 
 For phase 1, handoff should be limited to imported account/profile and post evidence only.
+
+Handoff scope must come from Instagram source-set observations. A later sparse archive must not inherit older posts or media refs just because they belong to the same account.
 
 ## Forbidden behavior
 

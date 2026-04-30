@@ -5,10 +5,13 @@ declare(strict_types=1);
 use App\Models\TwitterAccount;
 use App\Models\TwitterArchive;
 use App\Models\TwitterMediaRef;
+use App\Models\TwitterMediaRefObservation;
 use App\Models\TwitterNoteTweet;
+use App\Models\TwitterNoteTweetObservation;
 use App\Models\TwitterProfileSnapshot;
 use App\Models\TwitterScreenNameChange;
 use App\Models\TwitterTweet;
+use App\Models\TwitterTweetObservation;
 use Carbon\CarbonImmutable;
 
 it('maps twitter importer tables through explicit eloquent model contracts', function (): void {
@@ -45,6 +48,15 @@ it('maps twitter importer tables through explicit eloquent model contracts', fun
     $mediaRef = new TwitterMediaRef([
         'raw_media' => ['media_key' => 'profile:avatar'],
     ]);
+    $tweetObservation = new TwitterTweetObservation([
+        'source' => 'import',
+    ]);
+    $noteTweetObservation = new TwitterNoteTweetObservation([
+        'source' => 'import',
+    ]);
+    $mediaRefObservation = new TwitterMediaRefObservation([
+        'source' => 'import',
+    ]);
 
     expect($archive->getTable())->toBe('twitter_archives')
         ->and($archive->archive_generated_at)->toBeInstanceOf(CarbonImmutable::class)
@@ -54,7 +66,10 @@ it('maps twitter importer tables through explicit eloquent model contracts', fun
         ->and($archive->screenNameChanges()->getForeignKeyName())->toBe('twitter_archive_id')
         ->and($archive->mediaRefs()->getForeignKeyName())->toBe('twitter_archive_id')
         ->and($archive->tweets()->getForeignKeyName())->toBe('first_seen_twitter_archive_id')
-        ->and($archive->noteTweets()->getForeignKeyName())->toBe('first_seen_twitter_archive_id');
+        ->and($archive->noteTweets()->getForeignKeyName())->toBe('first_seen_twitter_archive_id')
+        ->and($archive->tweetObservations()->getForeignKeyName())->toBe('twitter_archive_id')
+        ->and($archive->noteTweetObservations()->getForeignKeyName())->toBe('twitter_archive_id')
+        ->and($archive->mediaRefObservations()->getForeignKeyName())->toBe('twitter_archive_id');
 
     expect($account->getTable())->toBe('twitter_accounts')
         ->and($account->account_created_at)->toBeInstanceOf(CarbonImmutable::class)
@@ -80,14 +95,29 @@ it('maps twitter importer tables through explicit eloquent model contracts', fun
         ->and($tweet->quote_count)->toBe(5)
         ->and($tweet->bookmark_count)->toBe(6)
         ->and($tweet->raw_tweet)->toBeArray()
-        ->and($tweet->firstSeenArchive()->getForeignKeyName())->toBe('first_seen_twitter_archive_id');
+        ->and($tweet->firstSeenArchive()->getForeignKeyName())->toBe('first_seen_twitter_archive_id')
+        ->and($tweet->observations()->getForeignKeyName())->toBe('twitter_tweet_id');
 
     expect($noteTweet->getTable())->toBe('twitter_note_tweets')
         ->and($noteTweet->tweeted_at)->toBeInstanceOf(CarbonImmutable::class)
         ->and($noteTweet->raw_note_tweet)->toBeArray()
-        ->and($noteTweet->firstSeenArchive()->getForeignKeyName())->toBe('first_seen_twitter_archive_id');
+        ->and($noteTweet->firstSeenArchive()->getForeignKeyName())->toBe('first_seen_twitter_archive_id')
+        ->and($noteTweet->observations()->getForeignKeyName())->toBe('twitter_note_tweet_id');
 
     expect($mediaRef->getTable())->toBe('twitter_media_refs')
         ->and($mediaRef->raw_media)->toBeArray()
-        ->and($mediaRef->archive()->getForeignKeyName())->toBe('twitter_archive_id');
+        ->and($mediaRef->archive()->getForeignKeyName())->toBe('twitter_archive_id')
+        ->and($mediaRef->observations()->getForeignKeyName())->toBe('twitter_media_ref_id');
+
+    expect($tweetObservation->getTable())->toBe('twitter_tweet_observations')
+        ->and($tweetObservation->tweet()->getForeignKeyName())->toBe('twitter_tweet_id')
+        ->and($tweetObservation->archive()->getForeignKeyName())->toBe('twitter_archive_id');
+
+    expect($noteTweetObservation->getTable())->toBe('twitter_note_tweet_observations')
+        ->and($noteTweetObservation->noteTweet()->getForeignKeyName())->toBe('twitter_note_tweet_id')
+        ->and($noteTweetObservation->archive()->getForeignKeyName())->toBe('twitter_archive_id');
+
+    expect($mediaRefObservation->getTable())->toBe('twitter_media_ref_observations')
+        ->and($mediaRefObservation->mediaRef()->getForeignKeyName())->toBe('twitter_media_ref_id')
+        ->and($mediaRefObservation->archive()->getForeignKeyName())->toBe('twitter_archive_id');
 });

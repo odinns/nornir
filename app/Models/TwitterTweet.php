@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -28,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $quote_count
  * @property int|null $bookmark_count
  * @property array<string, mixed>|null $raw_tweet
+ * @property-read Collection<int, TwitterTweetObservation> $observations
  */
 class TwitterTweet extends Model
 {
@@ -54,5 +57,13 @@ class TwitterTweet extends Model
     public function firstSeenArchive(): BelongsTo
     {
         return $this->belongsTo(TwitterArchive::class, 'first_seen_twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterTweetObservation, $this>
+     */
+    public function observations(): HasMany
+    {
+        return $this->hasMany(TwitterTweetObservation::class, 'twitter_tweet_id');
     }
 }

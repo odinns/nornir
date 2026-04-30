@@ -90,3 +90,60 @@ it('builds the twitter handoff from canonical rows without rescanning the raw so
         'media_refs' => 4,
     ]);
 });
+
+it('scopes twitter handoff rows through source-set observations for thinner later exports', function (): void {
+    $fullArchive = createTwitterFixtureArchive('twitter-handoff-full');
+    $truncatedArchive = createTwitterFixtureArchive('twitter-handoff-truncated', [
+        'include_community_tweets' => false,
+        'include_note_tweets' => false,
+        'include_screen_name_changes' => false,
+        'tweets' => [[
+            'id_str' => '111',
+            'created_at' => 'Tue Feb 17 06:30:43 +0000 2026',
+            'full_text' => 'Hello from the importer',
+            'source' => 'Twitter Web App',
+            'lang' => 'en',
+            'conversation_id_str' => '111',
+        ]],
+    ]);
+
+    $recordIntake = app(RecordIntakeAction::class);
+    $importer = app(ImportTwitterArchiveAction::class);
+
+    $fullIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $fullArchive['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fullArchive['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+    $truncatedIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'twitter',
+        accessMode: 'local-path',
+        sourceLocator: $truncatedArchive['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$truncatedArchive['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    $importer($fullIntake->dispatchPayload);
+    $truncatedResult = $importer($truncatedIntake->dispatchPayload);
+
+    $handoff = app(BuildTwitterSourcePageHandoffAction::class)($truncatedResult->run->id);
+
+    /** @var array{source_set_ids:list<int>, row_counts:array{source_sets:int, accounts:int, profile_snapshots:int, tweets:int, note_tweets:int, media_refs:int}} $scope */
+    $scope = $handoff->canonicalScope;
+
+    expect($scope['source_set_ids'])->toHaveCount(1);
+    expect($scope['row_counts'])->toMatchArray([
+        'source_sets' => 1,
+        'accounts' => 1,
+        'profile_snapshots' => 1,
+        'tweets' => 1,
+        'note_tweets' => 0,
+        'media_refs' => 2,
+    ]);
+});
