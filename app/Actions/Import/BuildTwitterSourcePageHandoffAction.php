@@ -8,10 +8,10 @@ use App\Actions\Import\Support\SourcePageHandoffSupport;
 use App\Data\Import\WikiCompilationHandoffData;
 use App\Models\TwitterAccount;
 use App\Models\TwitterArchive;
-use App\Models\TwitterMediaRef;
-use App\Models\TwitterNoteTweet;
+use App\Models\TwitterMediaRefObservation;
+use App\Models\TwitterNoteTweetObservation;
 use App\Models\TwitterProfileSnapshot;
-use App\Models\TwitterTweet;
+use App\Models\TwitterTweetObservation;
 use InvalidArgumentException;
 
 class BuildTwitterSourcePageHandoffAction
@@ -48,8 +48,10 @@ class BuildTwitterSourcePageHandoffAction
             throw new InvalidArgumentException('No canonical Twitter rows were found for the requested run.');
         }
 
+        $sourceSetIds = $archiveIds;
+
         $accountIds = TwitterArchive::query()
-            ->whereIn('id', $archiveIds)
+            ->whereIn('id', $sourceSetIds)
             ->whereNotNull('account_id')
             ->pluck('account_id')
             ->filter(static fn (mixed $value): bool => is_string($value) && $value !== '')
@@ -57,39 +59,33 @@ class BuildTwitterSourcePageHandoffAction
             ->values()
             ->all();
 
-        if ($accountIds !== []) {
-            $archiveIds = TwitterArchive::query()
-                ->whereIn('account_id', $accountIds)
-                ->orderBy('id')
-                ->pluck('id')
-                ->map(static fn (mixed $id): int => (int) $id)
-                ->all();
-        }
-
         $canonicalScope = [
             'source_locator' => $this->sourcePageHandoffSupport->normalizePath($sourceLocator),
             'accepted_root_paths' => $this->sourcePageHandoffSupport->normalizePaths(
                 $scopeSnapshot['accepted_root_paths'] ?? []
             ),
             'tables' => self::CANONICAL_TABLES,
-            'source_set_ids' => $archiveIds,
+            'source_set_ids' => $sourceSetIds,
             'handoff_scope' => [
-                'source_set_ids' => $archiveIds,
+                'source_set_ids' => $sourceSetIds,
                 'account_ids' => $accountIds,
             ],
             'row_counts' => [
-                'source_sets' => count($archiveIds),
-                'accounts' => TwitterAccount::query()->whereIn('twitter_archive_id', $archiveIds)->count(),
-                'profile_snapshots' => TwitterProfileSnapshot::query()->whereIn('twitter_archive_id', $archiveIds)->count(),
-                'tweets' => $accountIds === []
-                    ? 0
-                    : TwitterTweet::query()->whereIn('account_id', $accountIds)->count(),
-                'note_tweets' => $accountIds === []
-                    ? 0
-                    : TwitterNoteTweet::query()->whereIn('account_id', $accountIds)->count(),
-                'media_refs' => $accountIds === []
-                    ? 0
-                    : TwitterMediaRef::query()->whereIn('account_id', $accountIds)->count(),
+                'source_sets' => count($sourceSetIds),
+                'accounts' => TwitterAccount::query()->whereIn('twitter_archive_id', $sourceSetIds)->count(),
+                'profile_snapshots' => TwitterProfileSnapshot::query()->whereIn('twitter_archive_id', $sourceSetIds)->count(),
+                'tweets' => TwitterTweetObservation::query()
+                    ->whereIn('twitter_archive_id', $sourceSetIds)
+                    ->distinct('twitter_tweet_id')
+                    ->count('twitter_tweet_id'),
+                'note_tweets' => TwitterNoteTweetObservation::query()
+                    ->whereIn('twitter_archive_id', $sourceSetIds)
+                    ->distinct('twitter_note_tweet_id')
+                    ->count('twitter_note_tweet_id'),
+                'media_refs' => TwitterMediaRefObservation::query()
+                    ->whereIn('twitter_archive_id', $sourceSetIds)
+                    ->distinct('twitter_media_ref_id')
+                    ->count('twitter_media_ref_id'),
             ],
         ];
 

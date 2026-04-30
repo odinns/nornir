@@ -26,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, TwitterMediaRef> $mediaRefs
  * @property-read Collection<int, TwitterTweet> $tweets
  * @property-read Collection<int, TwitterNoteTweet> $noteTweets
+ * @property-read Collection<int, TwitterTweetObservation> $tweetObservations
+ * @property-read Collection<int, TwitterNoteTweetObservation> $noteTweetObservations
+ * @property-read Collection<int, TwitterMediaRefObservation> $mediaRefObservations
  */
 class TwitterArchive extends Model
 {
@@ -87,5 +90,29 @@ class TwitterArchive extends Model
     public function noteTweets(): HasMany
     {
         return $this->hasMany(TwitterNoteTweet::class, 'first_seen_twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterTweetObservation, $this>
+     */
+    public function tweetObservations(): HasMany
+    {
+        return $this->hasMany(TwitterTweetObservation::class, 'twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterNoteTweetObservation, $this>
+     */
+    public function noteTweetObservations(): HasMany
+    {
+        return $this->hasMany(TwitterNoteTweetObservation::class, 'twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterMediaRefObservation, $this>
+     */
+    public function mediaRefObservations(): HasMany
+    {
+        return $this->hasMany(TwitterMediaRefObservation::class, 'twitter_archive_id');
     }
 }

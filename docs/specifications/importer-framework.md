@@ -36,6 +36,10 @@ Define how source-specific importers plug into Nornir without collapsing into on
 - source-specific flags stay local
 - reruns must be idempotent
 - logical identity and source occurrence identity must be distinguished where needed
+- canonical rows that can reappear across source-set imports must have source-set observation rows
+- handoff builders must scope reappearing canonical rows through observations, not `first_seen_*` metadata or account-wide inference
+- `first_seen_*` columns are historical metadata only; they are not handoff boundaries
+- observation rows should record their source, defaulting to `import`, so replay-created coverage can be distinguished later if needed
 - importer-specific diagnostics belong under `data/imports/<source>/`
 - shared operational summaries and auditable run mirrors belong under `data/runs/`
 - importer-owned canonical datetime fields must be written as UTC instants
@@ -60,8 +64,11 @@ An importer handoff must identify:
 
 - source type
 - canonical row set or scope to compile from
+- source-set ids that bound the handoff
 - whether the handoff is for source pages, evidence bundles, review artifacts, or a narrower downstream slice
 - the owning run id
+
+When canonical rows are deduped across imports, the handoff scope must come from source-set observations. A later thinner export should not inherit older rows just because they share an account, archive family, or `first_seen_*` value.
 
 ## Validation and testing
 

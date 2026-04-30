@@ -82,6 +82,8 @@ Do not pretend the source gives a reliable global LinkedIn account id. In phase 
 - messages rerun idempotently by deterministic row hash rather than import order
 - later thinner exports must not delete earlier valid canonical rows
 - additive reruns must preserve older biography evidence when a newer export omits it
+- canonical rows that can reappear across LinkedIn exports must record one observation per archive where the row is actually present
+- `first_seen_linkedin_archive_id` is retained as historical metadata only
 
 ## Validation
 
@@ -95,6 +97,8 @@ Do not pretend the source gives a reliable global LinkedIn account id. In phase 
 
 - source pages and evidence bundles derive from canonical rows only
 - handoff is built from canonical `linkedin_*` rows, not by rescanning raw CSV files
+- handoff scope for deduped canonical rows must come from source-set observations, not `first_seen_linkedin_archive_id`
+- message attachments must be scoped through observed messages
 
 ## Forbidden behavior
 

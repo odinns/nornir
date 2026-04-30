@@ -9,10 +9,13 @@ use App\Models\Run;
 use App\Models\TwitterAccount;
 use App\Models\TwitterArchive;
 use App\Models\TwitterMediaRef;
+use App\Models\TwitterMediaRefObservation;
 use App\Models\TwitterNoteTweet;
+use App\Models\TwitterNoteTweetObservation;
 use App\Models\TwitterProfileSnapshot;
 use App\Models\TwitterScreenNameChange;
 use App\Models\TwitterTweet;
+use App\Models\TwitterTweetObservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 
@@ -46,6 +49,9 @@ it('imports twitter archive biography slices into canonical twitter tables', fun
     expect(TwitterTweet::query()->count())->toBe(2);
     expect(TwitterNoteTweet::query()->count())->toBe(1);
     expect(TwitterMediaRef::query()->count())->toBe(4);
+    expect(TwitterTweetObservation::query()->count())->toBe(2);
+    expect(TwitterNoteTweetObservation::query()->count())->toBe(1);
+    expect(TwitterMediaRefObservation::query()->count())->toBe(4);
 
     expect(TwitterTweet::query()->orderBy('tweet_id')->pluck('source_surface', 'tweet_id')->all())->toBe([
         '111' => 'tweet',
@@ -167,6 +173,8 @@ it('keeps older canonical twitter rows when a newer archive is missing them', fu
     expect(TwitterArchive::query()->count())->toBe(2);
     expect(TwitterTweet::query()->count())->toBe(2);
     expect(TwitterNoteTweet::query()->count())->toBe(1);
+    expect(TwitterTweetObservation::query()->count())->toBe(3);
+    expect(TwitterNoteTweetObservation::query()->count())->toBe(1);
 });
 
 it('fails clearly when a supported twitter file has the wrong wrapper shape', function (): void {

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -19,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $source_url
  * @property string|null $media_type
  * @property array<string, mixed>|null $raw_media
+ * @property-read Collection<int, TwitterMediaRefObservation> $observations
  */
 class TwitterMediaRef extends Model
 {
@@ -39,5 +42,13 @@ class TwitterMediaRef extends Model
     public function archive(): BelongsTo
     {
         return $this->belongsTo(TwitterArchive::class, 'twitter_archive_id');
+    }
+
+    /**
+     * @return HasMany<TwitterMediaRefObservation, $this>
+     */
+    public function observations(): HasMany
+    {
+        return $this->hasMany(TwitterMediaRefObservation::class, 'twitter_media_ref_id');
     }
 }

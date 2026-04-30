@@ -32,6 +32,9 @@ For the current phase-1 slice, the importer should expect and use these paths wh
 - `twitter_tweets`
 - `twitter_note_tweets`
 - `twitter_media_refs`
+- `twitter_tweet_observations`
+- `twitter_note_tweet_observations`
+- `twitter_media_ref_observations`
 
 ## Data model
 
@@ -69,6 +72,8 @@ Phase 1 must preserve:
 
 - rerun by archive identity plus stable source identity
 - tweets and note tweets must upsert idempotently by stable archive ids, not by import-run order
+- tweets, note tweets, and media refs must record one observation per archive where the canonical row is actually present
+- `first_seen_twitter_archive_id` is retained as historical metadata only
 - later archives may omit optional datasets or older history without implying canonical deletion
 - snapshot-style rows should tolerate sparse reruns without manufacturing fake completeness
 
@@ -86,6 +91,8 @@ Phase 1 must preserve:
 ## Source handoff
 
 - source pages and timeline evidence compile from canonical tweet, note-tweet, and profile rows only
+- tweet, note-tweet, and media-ref handoff counts must be bounded by source-set observations for the requested archive
+- account, profile snapshot, and screen-name change rows remain archive-scoped through `twitter_archive_id`
 - likes, social graph, and deferred archive datasets must not leak into the handoff during phase 1
 
 ## Forbidden behavior

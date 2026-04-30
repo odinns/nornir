@@ -371,7 +371,7 @@ class ImportTwitterArchiveAction
 
                 $existingTweet = TwitterTweet::query()->where('tweet_id', $tweetId)->first();
 
-                TwitterTweet::query()->updateOrCreate(
+                $importedTweet = TwitterTweet::query()->updateOrCreate(
                     ['tweet_id' => $tweetId],
                     [
                         'first_seen_twitter_archive_id' => $existingTweet->first_seen_twitter_archive_id ?? $archiveId,
@@ -395,6 +395,7 @@ class ImportTwitterArchiveAction
                         'updated_at' => now(),
                     ],
                 );
+                $this->recordObservation('twitter_tweet_observations', 'twitter_tweet_id', $importedTweet->id, $archiveId);
 
                 $importedTweets++;
                 $existingTweet === null ? $insertedTweets++ : $reobservedTweets++;
@@ -460,7 +461,7 @@ class ImportTwitterArchiveAction
                 ->where('note_tweet_id', $noteTweetId)
                 ->first();
 
-            TwitterNoteTweet::query()->updateOrCreate(
+            $importedNoteTweet = TwitterNoteTweet::query()->updateOrCreate(
                 ['note_tweet_id' => $noteTweetId],
                 [
                     'first_seen_twitter_archive_id' => $existingNoteTweet->first_seen_twitter_archive_id ?? $archiveId,
@@ -473,6 +474,7 @@ class ImportTwitterArchiveAction
                     'updated_at' => now(),
                 ],
             );
+            $this->recordObservation('twitter_note_tweet_observations', 'twitter_note_tweet_id', $importedNoteTweet->id, $archiveId);
 
             $this->provenanceWriter->link(new WriteProvenanceLinkData(
                 runId: $run->id,
@@ -503,7 +505,7 @@ class ImportTwitterArchiveAction
         ?string $mediaType,
         array $rawMedia,
     ): void {
-        TwitterMediaRef::query()->updateOrCreate(
+        $mediaRef = TwitterMediaRef::query()->updateOrCreate(
             ['media_key' => $mediaKey],
             [
                 'twitter_archive_id' => $archiveId,
@@ -517,6 +519,21 @@ class ImportTwitterArchiveAction
                 'raw_media' => $rawMedia,
                 'created_at' => now(),
                 'updated_at' => now(),
+            ],
+        );
+        $this->recordObservation('twitter_media_ref_observations', 'twitter_media_ref_id', $mediaRef->id, $archiveId);
+    }
+
+    private function recordObservation(string $table, string $canonicalColumn, int $canonicalId, int $archiveId): void
+    {
+        $this->sourceObservationStore->record(
+            table: $table,
+            unique: [
+                $canonicalColumn => $canonicalId,
+                'twitter_archive_id' => $archiveId,
+            ],
+            values: [
+                'source' => 'import',
             ],
         );
     }
