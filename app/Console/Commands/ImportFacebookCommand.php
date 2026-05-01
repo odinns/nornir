@@ -14,7 +14,8 @@ class ImportFacebookCommand extends Command
     use InteractsWithImportConsole;
 
     protected $signature = 'import:facebook
-        {source : Path to a Facebook export archive directory}';
+        {source : Path to a Facebook export archive directory}
+        {--posts-checkins-only : Import only Facebook posts and check-ins}';
 
     protected $description = 'Import Facebook archive biography slices into canonical MySQL tables.';
 
@@ -28,17 +29,27 @@ class ImportFacebookCommand extends Command
     public function handle(): int
     {
         $source = $this->sourceArgument();
+        $postsCheckinsOnly = (bool) $this->option('posts-checkins-only');
 
         $this->info("Recording intake for Facebook source: {$source}");
+
+        $scopeSnapshot = [
+            'accepted_root_paths' => [$source],
+        ];
+        $importerOptions = [];
+
+        if ($postsCheckinsOnly) {
+            $scopeSnapshot['import_scope'] = 'posts-checkins-only';
+            $importerOptions['posts_checkins_only'] = true;
+        }
 
         $intakeResult = $this->recordImportIntake(
             recordIntakeAction: $this->recordIntakeAction,
             sourceType: 'facebook',
             accessMode: 'local-path',
             sourceLocator: $source,
-            scopeSnapshot: [
-                'accepted_root_paths' => [$source],
-            ],
+            scopeSnapshot: $scopeSnapshot,
+            importerOptions: $importerOptions,
         );
 
         $this->printIntakeSummary($intakeResult->intakeRecord->id, $intakeResult->reviewManifestPath);

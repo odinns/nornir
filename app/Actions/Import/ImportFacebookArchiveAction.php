@@ -99,45 +99,56 @@ class ImportFacebookArchiveAction
         $summary['source_set_id'] = $archiveId;
 
         $observedPeople = [];
+        $postsCheckinsOnly = $this->importsPostsCheckinsOnly($dispatchPayload);
 
-        $profilePersonId = DB::transaction(function () use ($archivePath, $archiveId, &$observedPeople): ?int {
-            return $this->importProfileSnapshot($archivePath, $archiveId, $observedPeople);
-        });
+        if (! $postsCheckinsOnly) {
+            $profilePersonId = DB::transaction(function () use ($archivePath, $archiveId, &$observedPeople): ?int {
+                return $this->importProfileSnapshot($archivePath, $archiveId, $observedPeople);
+            });
 
-        if ($profilePersonId !== null) {
-            $observedPeople[$profilePersonId] = true;
+            if ($profilePersonId !== null) {
+                $observedPeople[$profilePersonId] = true;
+            }
+
+            $summary['profile_snapshots'] = FacebookProfileSnapshot::query()
+                ->where('facebook_archive_id', $archiveId)
+                ->count();
+
+            $summary['social_edges'] = DB::transaction(function () use ($archivePath, $archiveId, &$observedPeople): int {
+                return $this->importSocialEdges($archivePath, $archiveId, $observedPeople);
+            });
         }
-
-        $summary['profile_snapshots'] = FacebookProfileSnapshot::query()
-            ->where('facebook_archive_id', $archiveId)
-            ->count();
-
-        $summary['social_edges'] = DB::transaction(function () use ($archivePath, $archiveId, &$observedPeople): int {
-            return $this->importSocialEdges($archivePath, $archiveId, $observedPeople);
-        });
 
         $summary['posts'] = DB::transaction(function () use ($archivePath, $archiveId, $run, &$summary): int {
             return $this->importPosts($archivePath, $archiveId, $run, $summary);
         });
 
-        $summary['comments'] = DB::transaction(function () use ($archivePath, $archiveId, $run): int {
-            return $this->importComments($archivePath, $archiveId, $run);
-        });
+        if (! $postsCheckinsOnly) {
+            $summary['comments'] = DB::transaction(function () use ($archivePath, $archiveId, $run): int {
+                return $this->importComments($archivePath, $archiveId, $run);
+            });
 
-        $summary['reactions'] = DB::transaction(function () use ($archivePath, $archiveId, $run, &$observedPeople): int {
-            return $this->importArchiveReactions($archivePath, $archiveId, $run, $observedPeople);
-        });
+            $summary['reactions'] = DB::transaction(function () use ($archivePath, $archiveId, $run, &$observedPeople): int {
+                return $this->importArchiveReactions($archivePath, $archiveId, $run, $observedPeople);
+            });
 
-        $threadSummary = $this->importThreads($archivePath, $archiveId, $run, $observedPeople, $progress);
-        $summary['threads'] = $threadSummary['threads'];
-        $summary['messages'] = $threadSummary['messages'];
-        $summary['attachments'] = $threadSummary['attachments'] + (int) ($summary['attachments'] ?? 0);
-        $summary['inserted_messages'] = $threadSummary['inserted_messages'];
-        $summary['reobserved_messages'] = $threadSummary['reobserved_messages'];
+            $threadSummary = $this->importThreads($archivePath, $archiveId, $run, $observedPeople, $progress);
+            $summary['threads'] = $threadSummary['threads'];
+            $summary['messages'] = $threadSummary['messages'];
+            $summary['attachments'] = $threadSummary['attachments'] + (int) ($summary['attachments'] ?? 0);
+            $summary['inserted_messages'] = $threadSummary['inserted_messages'];
+            $summary['reobserved_messages'] = $threadSummary['reobserved_messages'];
+        }
+
         $summary['people'] = count($observedPeople);
 
         /** @var array{source_file:string, source_set_id:int, people:int, profile_snapshots:int, social_edges:int, threads:int, messages:int, posts:int, comments:int, reactions:int, attachments:int, inserted_messages:int, reobserved_messages:int} $summary */
         return $summary;
+    }
+
+    private function importsPostsCheckinsOnly(ImporterDispatchData $dispatchPayload): bool
+    {
+        return ($dispatchPayload->scopeSnapshot['import_scope'] ?? null) === 'posts-checkins-only';
     }
 
     private function resolveArchivePath(ImporterDispatchData $dispatchPayload): string
@@ -259,73 +270,182 @@ class ImportFacebookArchiveAction
     {
         $count = 0;
 
-        foreach (File::glob($archivePath.'/your_facebook_activity/posts/*.json') as $path) {
-            $posts = $this->readJsonFile($path)['status_updates_v2'] ?? [];
+        $paths = [
+            ...array_values(File::glob($archivePath.'/your_facebook_activity/posts/your_posts_*.json') ?: []),
+            ...array_values(File::glob($archivePath.'/your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_*.json') ?: []),
+        ];
 
-            if (! is_array($posts)) {
-                continue;
-            }
+        foreach (array_values(array_unique($paths)) as $path) {
+            $posts = $this->extractPostsFromFile($path);
 
             foreach ($posts as $post) {
-                if (! is_array($post)) {
+                if ($this->isCheckInPost($post)) {
+                    $this->importCheckIn($post, $archiveId, $run, basename((string) $path));
+                    $count++;
+
                     continue;
                 }
 
-                $timestamp = $this->integerValue($post['timestamp'] ?? null);
-                $title = $this->normalizeString($post['title'] ?? null);
-                $content = $this->normalizeString(data_get($post, 'data.0.post'));
-                $canonicalKey = sha1(json_encode([$timestamp, $title, $content], JSON_THROW_ON_ERROR));
-
-                $postRow = $this->upsertCanonicalRow(
-                    modelClass: FacebookPost::class,
-                    unique: ['canonical_key' => $canonicalKey],
-                    values: [
-                        'facebook_archive_id' => $archiveId,
-                        'published_timestamp' => $timestamp,
-                        'published_at' => $this->timestampColumnValue($timestamp),
-                        'title' => $title,
-                        'content' => $content,
-                        'raw_post' => $post,
-                    ],
-                );
-
-                $this->sourceObservationStore->record(
-                    table: 'facebook_post_observations',
-                    unique: [
-                        'facebook_post_id' => $postRow['id'],
-                        'facebook_archive_id' => $archiveId,
-                    ],
-                );
-
-                foreach ($this->extractPostAttachments($post) as $attachment) {
-                    $this->upsertAttachment(
-                        sourceContext: 'post',
-                        attachmentType: $attachment['attachment_type'],
-                        relativePath: $attachment['relative_path'],
-                        sourceUri: $attachment['source_uri'],
-                        createdTimestamp: $attachment['created_timestamp'],
-                        fileSizeBytes: $this->resolveAttachmentSize($archivePath, $attachment['relative_path']),
-                        uniqueSeed: $canonicalKey,
-                        messageId: null,
-                        postId: $postRow['id'],
-                        rawAttachment: $attachment['raw_attachment'],
-                    );
-                    $summary['attachments'] = (int) ($summary['attachments'] ?? 0) + 1;
-                }
-
-                $this->provenanceWriter->link(new WriteProvenanceLinkData(
-                    runId: $run->id,
-                    outputTarget: 'facebook_posts:'.$postRow['id'],
-                    claimKey: 'imported-post',
-                    evidenceType: 'source-file',
-                    evidenceRef: basename((string) $path).'#post:'.$canonicalKey,
-                ));
+                $attachmentCount = $this->importStatusPost($archivePath, $post, $archiveId, $run, basename((string) $path));
+                $summary['attachments'] = (int) ($summary['attachments'] ?? 0) + $attachmentCount;
 
                 $count++;
             }
         }
 
+        foreach ($this->extractCheckIns($archivePath.'/your_facebook_activity/posts/check-ins.json') as $checkIn) {
+            $this->importCheckIn($checkIn, $archiveId, $run, 'check-ins.json');
+            $count++;
+        }
+
         return $count;
+    }
+
+    /**
+     * @param  array<string, mixed>  $post
+     */
+    private function importStatusPost(string $archivePath, array $post, int $archiveId, Run $run, string $sourceFile): int
+    {
+        $timestamp = $this->integerValue($post['timestamp'] ?? null);
+        $title = $this->normalizeString($post['title'] ?? null);
+        $content = $this->normalizeString(data_get($post, 'data.0.post'));
+        $canonicalKey = sha1(json_encode([$timestamp, $title, $content], JSON_THROW_ON_ERROR));
+
+        $postRow = $this->upsertCanonicalRow(
+            modelClass: FacebookPost::class,
+            unique: ['canonical_key' => $canonicalKey],
+            values: [
+                'facebook_archive_id' => $archiveId,
+                'published_timestamp' => $timestamp,
+                'published_at' => $this->timestampColumnValue($timestamp),
+                'title' => $title,
+                'content' => $content,
+                'raw_post' => $post,
+            ],
+        );
+
+        $this->sourceObservationStore->record(
+            table: 'facebook_post_observations',
+            unique: [
+                'facebook_post_id' => $postRow['id'],
+                'facebook_archive_id' => $archiveId,
+            ],
+        );
+
+        $attachmentCount = 0;
+
+        foreach ($this->extractPostAttachments($post) as $attachment) {
+            $this->upsertAttachment(
+                sourceContext: 'post',
+                attachmentType: $attachment['attachment_type'],
+                relativePath: $attachment['relative_path'],
+                sourceUri: $attachment['source_uri'],
+                createdTimestamp: $attachment['created_timestamp'],
+                fileSizeBytes: $this->resolveAttachmentSize($archivePath, $attachment['relative_path']),
+                uniqueSeed: $canonicalKey,
+                messageId: null,
+                postId: $postRow['id'],
+                rawAttachment: $attachment['raw_attachment'],
+            );
+            $attachmentCount++;
+        }
+
+        $this->provenanceWriter->link(new WriteProvenanceLinkData(
+            runId: $run->id,
+            outputTarget: 'facebook_posts:'.$postRow['id'],
+            claimKey: 'imported-post',
+            evidenceType: 'source-file',
+            evidenceRef: $sourceFile.'#post:'.$canonicalKey,
+        ));
+
+        return $attachmentCount;
+    }
+
+    /**
+     * @param  array<string, mixed>  $checkIn
+     */
+    private function importCheckIn(array $checkIn, int $archiveId, Run $run, string $sourceFile): void
+    {
+        $timestamp = $this->integerValue($checkIn['timestamp'] ?? null);
+        $labelValues = is_array($checkIn['label_values'] ?? null) ? $checkIn['label_values'] : [];
+        $title = $this->firstLabelValue($labelValues, ['Lokation', 'Location'])
+            ?? $this->firstLabelValue($labelValues, ['Stedtags', 'Tagged Location'])
+            ?? $this->firstLabelValue($labelValues, ['Webadresse', 'Web address', 'URL']);
+        $content = $this->firstLabelValue($labelValues, ['Send besked', 'Message']);
+        $canonicalKey = sha1(json_encode([
+            'check-in',
+            $timestamp,
+            $checkIn['fbid'] ?? null,
+            $title,
+            $content,
+        ], JSON_THROW_ON_ERROR));
+
+        $postRow = $this->upsertCanonicalRow(
+            modelClass: FacebookPost::class,
+            unique: ['canonical_key' => $canonicalKey],
+            values: [
+                'facebook_archive_id' => $archiveId,
+                'published_timestamp' => $timestamp,
+                'published_at' => $this->timestampColumnValue($timestamp),
+                'title' => $title,
+                'content' => $content,
+                'raw_post' => $checkIn,
+            ],
+        );
+
+        $this->sourceObservationStore->record(
+            table: 'facebook_post_observations',
+            unique: [
+                'facebook_post_id' => $postRow['id'],
+                'facebook_archive_id' => $archiveId,
+            ],
+        );
+
+        $this->provenanceWriter->link(new WriteProvenanceLinkData(
+            runId: $run->id,
+            outputTarget: 'facebook_posts:'.$postRow['id'],
+            claimKey: 'imported-post',
+            evidenceType: 'source-file',
+            evidenceRef: $sourceFile.'#check-in:'.$canonicalKey,
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $post
+     */
+    private function isCheckInPost(array $post): bool
+    {
+        return is_array($post['label_values'] ?? null);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function extractPostsFromFile(string $path): array
+    {
+        $payload = $this->readJsonFile($path);
+        $posts = $payload['status_updates_v2'] ?? (array_is_list($payload) ? $payload : []);
+
+        if (! is_array($posts)) {
+            return [];
+        }
+
+        return array_values(array_filter($posts, is_array(...)));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function extractCheckIns(string $path): array
+    {
+        if (! File::exists($path)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->readJsonFile($path),
+            is_array(...),
+        ));
     }
 
     private function importComments(string $archivePath, int $archiveId, Run $run): int
@@ -497,9 +617,9 @@ class ImportFacebookArchiveAction
 
             $reactions[] = [
                 'timestamp' => $this->integerValue($reaction['timestamp'] ?? null),
-                'title' => $this->firstReactionLabelValue($labelValues, ['Webadresse', 'Title', 'Titel']),
-                'reaction' => $this->firstReactionLabelValue($labelValues, ['Reaktion', 'Reaction']),
-                'actor' => $this->firstReactionLabelValue($labelValues, ['Navn', 'Name']),
+                'title' => $this->firstLabelValue($labelValues, ['Webadresse', 'Title', 'Titel']),
+                'reaction' => $this->firstLabelValue($labelValues, ['Reaktion', 'Reaction']),
+                'actor' => $this->firstLabelValue($labelValues, ['Navn', 'Name']),
             ];
         }
 
@@ -510,7 +630,7 @@ class ImportFacebookArchiveAction
      * @param  array<mixed>  $items
      * @param  list<string>  $labels
      */
-    private function firstReactionLabelValue(array $items, array $labels): ?string
+    private function firstLabelValue(array $items, array $labels): ?string
     {
         foreach ($items as $item) {
             if (! is_array($item)) {
@@ -539,7 +659,7 @@ class ImportFacebookArchiveAction
                     continue;
                 }
 
-                $nestedValue = $this->firstReactionLabelValue(
+                $nestedValue = $this->firstLabelValue(
                     is_array($dict['dict'] ?? null) ? $dict['dict'] : [],
                     $labels,
                 );

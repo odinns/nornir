@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\FacebookMessage;
+use App\Models\FacebookPost;
 use App\Models\IntakeRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -68,4 +69,46 @@ it('stays quiet when quiet mode is requested', function (): void {
         'source' => $fixture['archive_path'],
         '--quiet' => true,
     ])->assertSuccessful();
+});
+
+it('records scoped facebook intake when importing only posts and check-ins', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-console-posts-checkins-only', [
+        'posts' => [
+            [
+                'timestamp' => 1_700_800_000,
+                'title' => 'Console scoped post',
+                'post' => 'Console scoped import',
+            ],
+        ],
+        'threads' => [[
+            'category' => 'inbox',
+            'thread_key' => 'quietlyskipped_123',
+            'participants' => ['Odinn Test', 'Alice Friend'],
+            'messages' => [[
+                'sender_name' => 'Alice Friend',
+                'timestamp_ms' => 1_700_800_000_000,
+                'content' => 'This should not appear',
+            ]],
+        ]],
+    ]);
+
+    artisanCommand($this, 'import:facebook', [
+        'source' => $fixture['archive_path'],
+        '--posts-checkins-only' => true,
+    ])
+        ->expectsOutputToContain('Recording intake for Facebook source')
+        ->expectsOutputToContain('Importing Facebook archive')
+        ->doesntExpectOutputToContain('Found 1 threads to import')
+        ->doesntExpectOutputToContain('[1/1] quietlyskipped_123')
+        ->expectsOutputToContain('Import complete')
+        ->assertSuccessful();
+
+    $intake = IntakeRecord::query()->firstOrFail();
+    $scopeSnapshot = $intake->scope_snapshot;
+    $importerOptions = $intake->importer_options ?? [];
+
+    expect($scopeSnapshot)->toHaveKey('import_scope', 'posts-checkins-only');
+    expect($importerOptions)->toHaveKey('posts_checkins_only', true);
+    expect(FacebookPost::query()->count())->toBe(1);
+    expect(FacebookMessage::query()->count())->toBe(0);
 });

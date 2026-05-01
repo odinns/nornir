@@ -144,6 +144,310 @@ it('imports facebook archive biography slices into canonical facebook tables', f
     expect($remoteAttachment->relative_path)->toBeNull();
 });
 
+it('imports only posts and check-ins when facebook intake is scoped to posts and check-ins', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-posts-checkins-only', [
+        'profile' => [
+            'name' => ['full_name' => 'Scoped Profile'],
+        ],
+        'friends' => [
+            ['name' => 'Skipped Friend', 'timestamp' => 1_700_000_000],
+        ],
+        'posts' => [
+            [
+                'timestamp' => 1_700_000_100,
+                'title' => 'Old export post',
+                'post' => 'Old format still matters',
+            ],
+        ],
+        'current_posts' => [
+            [
+                'timestamp' => 1_700_000_200,
+                'title' => 'Current export post',
+                'post' => 'Current format matters more right now',
+            ],
+        ],
+        'checkins' => [
+            [
+                'timestamp' => 1_700_000_300,
+                'fbid' => 'checkin-123',
+                'location' => 'Ringsted Station',
+                'message' => 'Waiting for the train',
+            ],
+        ],
+        'comments' => [
+            [
+                'timestamp' => 1_700_000_400,
+                'title' => 'Skipped comment',
+                'comment' => 'Do not import me in scoped mode',
+            ],
+        ],
+        'reactions' => [
+            [
+                'timestamp' => 1_700_000_500,
+                'title' => 'Skipped reaction',
+                'reaction' => 'LIKE',
+                'actor' => 'Scoped Profile',
+            ],
+        ],
+        'threads' => [[
+            'category' => 'inbox',
+            'thread_key' => 'skippedthread_123',
+            'participants' => ['Scoped Profile', 'Skipped Friend'],
+            'messages' => [[
+                'sender_name' => 'Skipped Friend',
+                'timestamp_ms' => 1_700_000_000_000,
+                'content' => 'Do not import this thread',
+            ]],
+        ]],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+            'import_scope' => 'posts-checkins-only',
+        ],
+        importerOptions: [
+            'posts_checkins_only' => true,
+        ],
+    ));
+
+    $result = app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
+
+    expect($result->run->status)->toBe(Run::STATUS_SUCCEEDED);
+    expect($result->summary['posts'])->toBe(3);
+    expect($result->summary['profile_snapshots'])->toBe(0);
+    expect($result->summary['social_edges'])->toBe(0);
+    expect($result->summary['comments'])->toBe(0);
+    expect($result->summary['reactions'])->toBe(0);
+    expect($result->summary['threads'])->toBe(0);
+    expect($result->summary['messages'])->toBe(0);
+    expect($result->summary['people'])->toBe(0);
+
+    expect(FacebookPost::query()->orderBy('published_timestamp')->pluck('content')->all())->toBe([
+        'Old format still matters',
+        'Current format matters more right now',
+        'Waiting for the train',
+    ]);
+    expect(FacebookProfileSnapshot::query()->count())->toBe(0);
+    expect(FacebookSocialEdge::query()->count())->toBe(0);
+    expect(FacebookThread::query()->count())->toBe(0);
+    expect(FacebookMessage::query()->count())->toBe(0);
+    expect(FacebookComment::query()->count())->toBe(0);
+    expect(FacebookReaction::query()->count())->toBe(0);
+});
+
+it('imports facebook posts from every paginated posts file', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-paginated-posts', [
+        'posts' => [
+            [
+                'timestamp' => 1_700_001_000,
+                'title' => 'First page post',
+                'post' => 'From page one',
+            ],
+        ],
+    ]);
+
+    File::put(
+        $fixture['archive_path'].'/your_facebook_activity/posts/your_posts_2.json',
+        json_encode([
+            'status_updates_v2' => [[
+                'timestamp' => 1_700_001_100,
+                'title' => 'Second page post',
+                'data' => [['post' => 'From page two']],
+            ]],
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
+    );
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+            'import_scope' => 'posts-checkins-only',
+        ],
+        importerOptions: [
+            'posts_checkins_only' => true,
+        ],
+    ));
+
+    app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
+
+    expect(FacebookPost::query()->orderBy('published_timestamp')->pluck('content')->all())->toBe([
+        'From page one',
+        'From page two',
+    ]);
+});
+
+it('maps facebook check-ins into canonical post rows', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-checkin-mapping', [
+        'checkins' => [
+            [
+                'timestamp' => 1_700_002_000,
+                'fbid' => 'checkin-mapping-123',
+                'location' => 'Ringsted Station',
+                'place' => 'Fallback place',
+                'url' => 'https://www.facebook.com/ringsted-station',
+                'message' => 'Train delay archaeology',
+                'language' => 'en',
+            ],
+            [
+                'timestamp' => 1_700_002_100,
+                'fbid' => 'checkin-place-fallback',
+                'place' => 'Only the place label',
+            ],
+            [
+                'timestamp' => 1_700_002_200,
+                'fbid' => 'checkin-url-fallback',
+                'url' => 'https://www.facebook.com/only-url',
+            ],
+        ],
+    ]);
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+            'import_scope' => 'posts-checkins-only',
+        ],
+        importerOptions: [
+            'posts_checkins_only' => true,
+        ],
+    ));
+
+    app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
+
+    $post = FacebookPost::query()->orderBy('published_timestamp')->firstOrFail();
+
+    expect($post->published_timestamp)->toBe(1_700_002_000);
+    expect($post->published_at?->timestamp)->toBe(1_700_002_000);
+    expect($post->title)->toBe('Ringsted Station');
+    expect($post->content)->toBe('Train delay archaeology');
+    expect($post->raw_post['fbid'] ?? null)->toBe('checkin-mapping-123');
+    expect($post->raw_post['label_values'] ?? [])->toHaveCount(4);
+    expect(FacebookPost::query()->orderBy('published_timestamp')->pluck('title')->all())->toBe([
+        'Ringsted Station',
+        'Only the place label',
+        'https://www.facebook.com/only-url',
+    ]);
+    expect(FacebookPost::query()->orderBy('published_timestamp')->pluck('content')->all())->toBe([
+        'Train delay archaeology',
+        null,
+        null,
+    ]);
+});
+
+it('deduplicates check-ins that appear in current posts and check-ins files', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-duplicate-checkins', [
+        'checkins' => [
+            [
+                'timestamp' => 1_700_002_500,
+                'fbid' => 'duplicate-checkin-123',
+                'location' => 'Duplicate Station',
+                'message' => 'Same check-in, two files',
+            ],
+        ],
+    ]);
+
+    File::put(
+        $fixture['archive_path'].'/your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_1.json',
+        json_encode([[
+            'timestamp' => 1_700_002_500,
+            'fbid' => 'duplicate-checkin-123',
+            'label_values' => [
+                [
+                    'label' => 'Lokation',
+                    'value' => 'Duplicate Station',
+                ],
+                [
+                    'label' => 'Send besked',
+                    'value' => 'Same check-in, two files',
+                ],
+            ],
+        ]], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
+    );
+
+    $intake = app(RecordIntakeAction::class)(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+            'import_scope' => 'posts-checkins-only',
+        ],
+        importerOptions: [
+            'posts_checkins_only' => true,
+        ],
+    ));
+
+    app(ImportFacebookArchiveAction::class)($intake->dispatchPayload);
+
+    expect(FacebookPost::query()->count())->toBe(1);
+    expect(FacebookPost::query()->firstOrFail()->content)->toBe('Same check-in, two files');
+});
+
+it('keeps scoped facebook post imports idempotent without colliding with full imports', function (): void {
+    $fixture = createFacebookFixtureArchive('facebook-import-scoped-idempotency', [
+        'posts' => [
+            [
+                'timestamp' => 1_700_003_000,
+                'title' => 'Scoped idempotency',
+                'post' => 'One post, one canonical row',
+            ],
+        ],
+        'threads' => [[
+            'category' => 'inbox',
+            'thread_key' => 'fullthread_123',
+            'participants' => ['Odinn Test', 'Alice Friend'],
+            'messages' => [[
+                'sender_name' => 'Alice Friend',
+                'timestamp_ms' => 1_700_003_000_000,
+                'content' => 'Only the full import should see this',
+            ]],
+        ]],
+    ]);
+    $recordIntake = app(RecordIntakeAction::class);
+    $importer = app(ImportFacebookArchiveAction::class);
+
+    $scopedIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+            'import_scope' => 'posts-checkins-only',
+        ],
+        importerOptions: [
+            'posts_checkins_only' => true,
+        ],
+    ));
+    $fullIntake = $recordIntake(new RecordIntakeData(
+        sourceType: 'facebook',
+        accessMode: 'local-path',
+        sourceLocator: $fixture['archive_path'],
+        scopeSnapshot: [
+            'accepted_root_paths' => [$fixture['archive_path']],
+        ],
+        importerOptions: [],
+    ));
+
+    $firstScopedResult = $importer($scopedIntake->dispatchPayload);
+    $secondScopedResult = $importer($scopedIntake->dispatchPayload);
+    $fullResult = $importer($fullIntake->dispatchPayload);
+
+    expect($secondScopedResult->run->is($firstScopedResult->run))->toBeTrue();
+    expect($fullResult->run->is($firstScopedResult->run))->toBeFalse();
+    expect(Run::query()->count())->toBe(2);
+    expect(FacebookPost::query()->count())->toBe(1);
+    expect(FacebookThread::query()->count())->toBe(1);
+    expect(FacebookMessage::query()->count())->toBe(1);
+});
+
 it('reruns idempotently for the same facebook archive', function (): void {
     $fixture = createFacebookFixtureArchive('facebook-import-repeat', [
         'threads' => [[

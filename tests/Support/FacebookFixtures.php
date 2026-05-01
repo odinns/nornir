@@ -16,6 +16,21 @@ use Illuminate\Support\Facades\File;
  *         post?:string|null,
  *         uri?:string|null
  *     }>,
+ *     current_posts?:list<array{
+ *         title?:string,
+ *         timestamp:int,
+ *         post?:string|null,
+ *         uri?:string|null
+ *     }>,
+ *     checkins?:list<array{
+ *         timestamp:int,
+ *         fbid?:string,
+ *         location?:string|null,
+ *         place?:string|null,
+ *         url?:string|null,
+ *         message?:string|null,
+ *         language?:'da'|'en'
+ *     }>,
  *     comments?:list<array{
  *         timestamp:int,
  *         title?:string,
@@ -112,6 +127,54 @@ function createFacebookFixtureArchive(string $name, array $dataset): array
             ], $dataset['posts'] ?? []),
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
     );
+
+    if (array_key_exists('current_posts', $dataset)) {
+        File::put(
+            $archivePath.'/your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_1.json',
+            json_encode(array_map(static fn (array $post): array => [
+                'timestamp' => $post['timestamp'],
+                'title' => $post['title'] ?? 'Post',
+                'data' => [['post' => $post['post'] ?? null]],
+                'attachments' => isset($post['uri']) ? [[
+                    'data' => [[
+                        'media' => [
+                            'uri' => $post['uri'],
+                            'creation_timestamp' => $post['timestamp'],
+                        ],
+                    ]],
+                ]] : [],
+            ], $dataset['current_posts']), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
+        );
+    }
+
+    if (array_key_exists('checkins', $dataset)) {
+        File::put(
+            $archivePath.'/your_facebook_activity/posts/check-ins.json',
+            json_encode(array_map(static fn (array $checkin): array => [
+                'timestamp' => $checkin['timestamp'],
+                'fbid' => $checkin['fbid'] ?? (string) $checkin['timestamp'],
+                'label_values' => array_values(array_filter([
+                    isset($checkin['location']) ? [
+                        'label' => ($checkin['language'] ?? 'da') === 'en' ? 'Location' : 'Lokation',
+                        'value' => $checkin['location'],
+                    ] : null,
+                    isset($checkin['place']) ? [
+                        'label' => ($checkin['language'] ?? 'da') === 'en' ? 'Tagged Location' : 'Stedtags',
+                        'value' => $checkin['place'],
+                    ] : null,
+                    isset($checkin['url']) ? [
+                        'label' => ($checkin['language'] ?? 'da') === 'en' ? 'URL' : 'Webadresse',
+                        'value' => $checkin['url'],
+                        'href' => $checkin['url'],
+                    ] : null,
+                    isset($checkin['message']) ? [
+                        'label' => ($checkin['language'] ?? 'da') === 'en' ? 'Message' : 'Send besked',
+                        'value' => $checkin['message'],
+                    ] : null,
+                ])),
+            ], $dataset['checkins']), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
+        );
+    }
 
     File::ensureDirectoryExists($archivePath.'/your_facebook_activity/comments_and_reactions');
     File::put(
