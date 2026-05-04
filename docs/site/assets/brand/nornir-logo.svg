@@ -3,12 +3,12 @@
   <desc id="desc">Three evidence threads converging beside the Nornir wordmark.</desc>
   <defs>
     <style>
-      .grid { stroke: #1b2832; stroke-width: 1.4; }
-      .thread-a { fill: none; stroke: #7dd3fc; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
-      .thread-b { fill: none; stroke: #b7f36b; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
-      .thread-c { fill: none; stroke: #ff8c6b; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
-      .node { fill: #f3f6f8; }
-      .text { fill: #f3f6f8; font-family: "IBM Plex Sans", "Inter", "Segoe UI", Arial, sans-serif; font-size: 82px; font-weight: 680; letter-spacing: 0; }
+      .grid { stroke: #d8cbb7; stroke-width: 1.4; }
+      .thread-a { fill: none; stroke: #276f86; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .thread-b { fill: none; stroke: #7b4f19; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .thread-c { fill: none; stroke: #b84a35; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .node { fill: #29231a; }
+      .text { fill: #29231a; font-family: "IBM Plex Sans", "Inter", "Segoe UI", Arial, sans-serif; font-size: 82px; font-weight: 680; letter-spacing: 0; }
     </style>
   </defs>
   <g transform="translate(10 10)">

@@ -32,13 +32,15 @@ const run = async () => {
   assert(html.includes('src="/nornir/assets/site.js"'), 'JS uses the GitHub Pages base path.');
   assert(html.includes('href="/nornir/assets/brand/favicon.svg"'), 'Favicon uses the GitHub Pages base path.');
   assert(html.includes('href="#sources"') && html.includes('id="sources"'), 'Navigation anchor for sources exists.');
+  assert(html.includes('href="#layers"') && html.includes('id="layers"'), 'Navigation anchor for layers exists.');
   assert(html.includes('href="#pipeline"') && html.includes('id="pipeline"'), 'Navigation anchor for pipeline exists.');
   assert(html.includes('href="#evidence"') && html.includes('id="evidence"'), 'Navigation anchor for evidence exists.');
-  assert(html.includes('href="#handoffs"') && html.includes('id="handoffs"'), 'Navigation anchor for handoffs exists.');
   assert(html.includes('href="#boundaries"') && html.includes('id="boundaries"'), 'Navigation anchor for boundaries exists.');
   assert(html.includes('https://github.com/odinns/nornir'), 'External links point to the GitHub repo.');
   assert(html.includes('php artisan import:gmail'), 'Gmail import command specimen is present.');
   assert(html.includes('evidence-first memory system'), 'Nornir positioning copy is present.');
+  assert(html.includes('Mimir - planned'), 'Presentation layer is marked as planned.');
+  assert(html.includes('Heimdallr - planned'), 'Access boundary is marked as planned.');
   assert(html.includes('MySQL is canonical'), 'Storage boundary copy is present.');
   assert(html.includes('Heimdallr is read-only'), 'Access boundary copy is present.');
   assert(css.includes('@media (prefers-reduced-motion: reduce)'), 'Reduced-motion CSS is present.');

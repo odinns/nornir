@@ -8,7 +8,7 @@
     <meta property="og:title" content="Nornir - Turn personal archives into traceable memory.">
     <meta property="og:description" content="Nornir imports personal source archives into MySQL, keeps evidence attached, and produces bounded handoffs for biography, search, and AI-assisted synthesis.">
     <meta property="og:type" content="website">
-    <meta name="theme-color" content="#07090d">
+    <meta name="theme-color" content="#f7f4ed">
     <link rel="icon" href="/nornir/assets/brand/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/nornir/assets/site.css">
   </head>
@@ -20,10 +20,9 @@
   </a>
   <nav class="site-nav" aria-label="Main navigation">
     <a class="nav-link" href="#sources">Sources</a>
+<a class="nav-link" href="#layers">Layers</a>
 <a class="nav-link" href="#pipeline">Pipeline</a>
 <a class="nav-link" href="#evidence">Evidence</a>
-<a class="nav-link" href="#handoffs">Handoffs</a>
-<a class="nav-link" href="#search">Search</a>
 <a class="nav-link" href="#boundaries">Boundaries</a>
 <a class="nav-link" href="#why-nornir">Name</a>
   </nav>
@@ -78,6 +77,35 @@ $ php artisan search:rebuild</code></pre>
 <article class="handoff-card">
       <h3>Files and captures</h3>
       <p>Media collections, Apple Health records, Wayback captures, screenshots, extracted text, and provenance links.</p>
+    </article>
+  </div>
+</section>
+<section class="section-shell feature-section" id="layers" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">System layers</p>
+    <h2>Some parts work. Some are still scaffolding.</h2>
+    <p>Nornir is the working storehouse today. The named companion layers are the direction of travel, not all finished product.</p>
+  </div>
+  <div class="feature-grid feature-grid-5">
+    <article class="handoff-card">
+      <h3>Nornir - working</h3>
+      <p>Importers, canonical MySQL tables, runs, artifacts, provenance, search documents, and source handoffs are real code now.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Muninn - partial</h3>
+      <p>Evidence-first biography work has early Gmail slices: important-mail bundles, candidate artifacts, and manual analysis notes.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Heimdallr - planned</h3>
+      <p>The read-only access boundary is specified, but not built yet. Today, code still reads through models and services directly.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Mimir - planned</h3>
+      <p>The presentation layer will handle UI, query surfaces, timelines, source exploration, graph views, and arc views.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Huginn - planned</h3>
+      <p>The synthesis layer is specified, but future work. It must write only from traceable evidence, not confident smoke.</p>
     </article>
   </div>
 </section>

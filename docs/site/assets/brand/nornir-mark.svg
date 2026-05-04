@@ -3,12 +3,12 @@
   <desc id="desc">Three evidence threads crossing a small grid.</desc>
   <defs>
     <style>
-      .bg { fill: #07090d; }
-      .grid { stroke: #1b2832; stroke-width: 1.5; }
-      .a { fill: none; stroke: #7dd3fc; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
-      .b { fill: none; stroke: #b7f36b; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
-      .c { fill: none; stroke: #ff8c6b; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
-      .node { fill: #f3f6f8; }
+      .bg { fill: #fffdf8; }
+      .grid { stroke: #d8cbb7; stroke-width: 1.5; }
+      .a { fill: none; stroke: #276f86; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .b { fill: none; stroke: #7b4f19; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .c { fill: none; stroke: #b84a35; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .node { fill: #29231a; }
     </style>
   </defs>
   <rect class="bg" width="140" height="140" rx="18"/>

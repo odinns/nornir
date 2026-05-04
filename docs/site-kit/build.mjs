@@ -132,7 +132,7 @@ const showcaseFrames = (frames) =>
 const ensureRequiredFiles = async () => {
   await Promise.all([
     readFile(join(kitDir, 'templates', 'page.html'), 'utf8'),
-    readFile(join(kitDir, 'skins', 'odinn-dark.css'), 'utf8'),
+    readFile(join(kitDir, 'skins', 'nornir-light.css'), 'utf8'),
     readFile(join(kitDir, 'assets', 'site.js'), 'utf8'),
     readFile(configPath, 'utf8'),
   ]);

@@ -7,7 +7,7 @@
     "licenseUrl": "https://github.com/odinns/nornir/blob/main/LICENSE",
     "tagline": "Turn personal archives into traceable memory.",
     "description": "Nornir imports personal source archives into MySQL, keeps evidence attached, and produces bounded handoffs for biography, search, and AI-assisted synthesis.",
-    "skin": "odinn-dark",
+    "skin": "nornir-light",
     "logo": {
       "mark": "assets/brand/nornir-mark.svg",
       "wordmark": "assets/brand/nornir-logo.svg",
@@ -16,10 +16,9 @@
   },
   "nav": [
     { "label": "Sources", "href": "#sources" },
+    { "label": "Layers", "href": "#layers" },
     { "label": "Pipeline", "href": "#pipeline" },
     { "label": "Evidence", "href": "#evidence" },
-    { "label": "Handoffs", "href": "#handoffs" },
-    { "label": "Search", "href": "#search" },
     { "label": "Boundaries", "href": "#boundaries" },
     { "label": "Name", "href": "#why-nornir" }
   ],
@@ -59,6 +58,19 @@
         { "title": "Chats and exports", "body": "ChatGPT conversations, Apple Messages, Facebook, Instagram, Twitter, LinkedIn, and their source-specific media references." },
         { "title": "Old networks", "body": "FidoNet areas, participants, messages, threads, cleanup notes, and observations kept separate from authored text." },
         { "title": "Files and captures", "body": "Media collections, Apple Health records, Wayback captures, screenshots, extracted text, and provenance links." }
+      ]
+    },
+    {
+      "id": "layers",
+      "kicker": "System layers",
+      "title": "Some parts work. Some are still scaffolding.",
+      "body": "Nornir is the working storehouse today. The named companion layers are the direction of travel, not all finished product.",
+      "items": [
+        { "title": "Nornir - working", "body": "Importers, canonical MySQL tables, runs, artifacts, provenance, search documents, and source handoffs are real code now." },
+        { "title": "Muninn - partial", "body": "Evidence-first biography work has early Gmail slices: important-mail bundles, candidate artifacts, and manual analysis notes." },
+        { "title": "Heimdallr - planned", "body": "The read-only access boundary is specified, but not built yet. Today, code still reads through models and services directly." },
+        { "title": "Mimir - planned", "body": "The presentation layer will handle UI, query surfaces, timelines, source exploration, graph views, and arc views." },
+        { "title": "Huginn - planned", "body": "The synthesis layer is specified, but future work. It must write only from traceable evidence, not confident smoke." }
       ]
     },
     {
