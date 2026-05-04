@@ -39,6 +39,7 @@ const run = async () => {
   assert(html.includes('https://github.com/odinns/nornir'), 'External links point to the GitHub repo.');
   assert(html.includes('php artisan import:gmail'), 'Gmail import command specimen is present.');
   assert(html.includes('evidence-first memory system'), 'Nornir positioning copy is present.');
+  assert(html.includes('LLM-WIKI'), 'LLM-WIKI inspiration is present.');
   assert(html.includes('Mimir - planned'), 'Presentation layer is marked as planned.');
   assert(html.includes('Heimdallr - planned'), 'Access boundary is marked as planned.');
   assert(html.includes('MySQL is canonical'), 'Storage boundary copy is present.');

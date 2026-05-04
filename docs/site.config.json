@@ -64,7 +64,7 @@
       "id": "layers",
       "kicker": "System layers",
       "title": "Some parts work. Some are still scaffolding.",
-      "body": "Nornir is the working storehouse today. The named companion layers are the direction of travel, not all finished product.",
+      "body": "Nornir is inspired by the LLM-WIKI idea: give a model a durable, structured knowledge surface instead of asking it to remember everything from chat. The working storehouse exists today. The companion layers are the direction of travel, not all finished product.",
       "items": [
         { "title": "Nornir - working", "body": "Importers, canonical MySQL tables, runs, artifacts, provenance, search documents, and source handoffs are real code now." },
         { "title": "Muninn - partial", "body": "Evidence-first biography work has early Gmail slices: important-mail bundles, candidate artifacts, and manual analysis notes." },
