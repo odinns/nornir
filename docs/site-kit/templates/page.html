@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{site.name}} - {{site.tagline}}</title>
+    <meta name="description" content="{{site.description}}">
+    <meta property="og:title" content="{{site.name}} - {{site.tagline}}">
+    <meta property="og:description" content="{{site.description}}">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#07090d">
+    <link rel="icon" href="{{asset:site.logo.favicon}}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{asset:assets/site.css}}">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    {{> header}}
+    <main id="main">
+      {{> hero}}
+      {{> sections}}
+      {{> pipeline}}
+      {{> skills}}
+      {{> ai-handoff}}
+      {{> showcase}}
+      {{> quick-start}}
+      {{> boundary}}
+      {{> name-story}}
+      {{> cta}}
+    </main>
+    {{> footer}}
+    <script src="{{asset:assets/site.js}}" defer></script>
+  </body>
+</html>

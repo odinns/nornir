@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nornir - Turn personal archives into traceable memory.</title>
+    <meta name="description" content="Nornir imports personal source archives into MySQL, keeps evidence attached, and produces bounded handoffs for biography, search, and AI-assisted synthesis.">
+    <meta property="og:title" content="Nornir - Turn personal archives into traceable memory.">
+    <meta property="og:description" content="Nornir imports personal source archives into MySQL, keeps evidence attached, and produces bounded handoffs for biography, search, and AI-assisted synthesis.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#07090d">
+    <link rel="icon" href="/nornir/assets/brand/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/nornir/assets/site.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" data-reveal>
+  <a class="brand" href="/nornir/" aria-label="Nornir home">
+    <img class="brand-wordmark" src="/nornir/assets/brand/nornir-logo.svg" alt="Nornir" width="410" height="130">
+  </a>
+  <nav class="site-nav" aria-label="Main navigation">
+    <a class="nav-link" href="#sources">Sources</a>
+<a class="nav-link" href="#pipeline">Pipeline</a>
+<a class="nav-link" href="#evidence">Evidence</a>
+<a class="nav-link" href="#handoffs">Handoffs</a>
+<a class="nav-link" href="#search">Search</a>
+<a class="nav-link" href="#boundaries">Boundaries</a>
+<a class="nav-link" href="#why-nornir">Name</a>
+  </nav>
+</header>
+
+    <main id="main">
+      <section class="hero section-shell" data-reveal>
+  <div class="hero-copy">
+    <p class="kicker">Personal archive infrastructure for Laravel</p>
+    <h1>Turn personal archives into traceable memory.</h1>
+    <p class="lede">Nornir is an evidence-first memory system. It imports mail, chats, social exports, health records, archived websites, and old message bases into clean Laravel models so later synthesis has receipts instead of vibes.</p>
+    <div class="hero-actions">
+      <a class="button button-primary" href="https://github.com/odinns/nornir">View on GitHub</a>
+      <a class="button button-secondary" href="https://github.com/odinns/nornir#readme">Read the README</a>
+    </div>
+  </div>
+  <div class="terminal-stack" aria-label="Nornir command examples">
+    <div class="terminal">
+  <div class="terminal-title">Importer flow</div>
+  <pre><code>$ php artisan import:gmail
+$ php artisan import:chatgpt
+$ php artisan import:fidonet</code></pre>
+</div>
+<div class="terminal">
+  <div class="terminal-title">Evidence handoff flow</div>
+  <pre><code>$ php artisan handoff:gmail-source-pages
+$ php artisan gmail:triage-important
+$ php artisan search:rebuild</code></pre>
+</div>
+  </div>
+</section>
+
+      <section class="section-shell feature-section" id="sources" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Sources</p>
+    <h2>Messy history goes in. Named records come out.</h2>
+    <p>Nornir treats each archive as a source with its own shape, not as generic text mulch.</p>
+  </div>
+  <div class="feature-grid feature-grid-4">
+    <article class="handoff-card">
+      <h3>Mail and threads</h3>
+      <p>Gmail messages, labels, attachments, thread links, important-mail triage, and source-page handoffs.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Chats and exports</h3>
+      <p>ChatGPT conversations, Apple Messages, Facebook, Instagram, Twitter, LinkedIn, and their source-specific media references.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Old networks</h3>
+      <p>FidoNet areas, participants, messages, threads, cleanup notes, and observations kept separate from authored text.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Files and captures</h3>
+      <p>Media collections, Apple Health records, Wayback captures, screenshots, extracted text, and provenance links.</p>
+    </article>
+  </div>
+</section>
+<section class="section-shell feature-section" id="evidence" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Evidence</p>
+    <h2>The claim is not enough.</h2>
+    <p>Muninn work is evidence-first. Nornir keeps observations, source handoffs, artifacts, and provenance attached so future biography work can show where each claim came from.</p>
+  </div>
+  <div class="feature-grid feature-grid-3">
+    <article class="handoff-card">
+      <h3>Source handoffs</h3>
+      <p>Each importer can write bounded artifacts that describe what a source page proves, what it suggests, and what still needs human judgment.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Observations</h3>
+      <p>Derived facts live beside raw imported records. They do not overwrite the source or pretend interpretation is capture.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Provenance</h3>
+      <p>Runs, artifacts, and links make it possible to trace a result back to source material instead of trusting a generated paragraph.</p>
+    </article>
+  </div>
+</section>
+<section class="section-shell feature-section" id="boundaries" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Boundaries</p>
+    <h2>Good fences. Fewer haunted conclusions.</h2>
+    <p>Nornir is deliberately boring at the storage boundary because personal memory work gets dangerous when the machinery starts improvising.</p>
+  </div>
+  <div class="feature-grid feature-grid-3">
+    <article class="handoff-card">
+      <h3>MySQL is canonical</h3>
+      <p>Imported source material belongs in MySQL. Compiled markdown is output, not the source of truth.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Heimdallr is read-only</h3>
+      <p>Access work can inspect. It does not mutate the memory store or smuggle writes through a convenient back door.</p>
+    </article>
+<article class="handoff-card">
+      <h3>Huginn needs receipts</h3>
+      <p>Synthesis can write, but not without traceable support. Pretty lies are still lies, just wearing nicer shoes.</p>
+    </article>
+  </div>
+</section>
+
+      <section class="section-shell section-band" id="pipeline" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Pipeline</p>
+    <h2>From archive dump to usable memory.</h2>
+  </div>
+  <ol class="pipeline-list">
+    <li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Record intake</h3>
+    <p>Capture source labels, paths, importer choices, run metadata, and enough context to replay or explain the import.</p>
+  </div>
+</li>
+<li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Import records</h3>
+    <p>Map each source into focused Laravel tables and models instead of flattening everything into vague blobs.</p>
+  </div>
+</li>
+<li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Preserve evidence</h3>
+    <p>Keep attachments, media references, timestamps, participants, labels, URLs, and source-specific identifiers intact.</p>
+  </div>
+</li>
+<li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Observe carefully</h3>
+    <p>Write derived observations as their own layer, with the source record still visible underneath.</p>
+  </div>
+</li>
+<li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Build handoffs</h3>
+    <p>Produce bounded artifacts for source navigation, important evidence bundles, and biography candidate work.</p>
+  </div>
+</li>
+<li>
+  <span class="step-marker" aria-hidden="true"></span>
+  <div>
+    <h3>Search and synthesize</h3>
+    <p>Rebuild search documents and feed later Muninn or Huginn work with evidence, not an undifferentiated text swamp.</p>
+  </div>
+</li>
+  </ol>
+</section>
+
+      <section class="section-shell skills-section" id="muninn" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Muninn</p>
+    <h2>Biography work needs a paper trail.</h2>
+    <p>Nornir is the storehouse below the synthesis layer. It gives Muninn enough structured evidence to write cautiously, revise cleanly, and avoid turning memory into fan fiction.</p>
+  </div>
+  <div class="handoff-grid">
+    <article class="handoff-card">
+  <h3>Candidate artifacts</h3>
+  <p>Biography candidates can be built from important mail bundles and source handoffs, with support kept close.</p>
+</article>
+<article class="handoff-card">
+  <h3>Manual notes</h3>
+  <p>Human analysis can be saved as artifacts instead of disappearing into chat history.</p>
+</article>
+<article class="handoff-card">
+  <h3>Traceable scope</h3>
+  <p>Each handoff names the slice it covers. No pretending a few records explain a whole life.</p>
+</article>
+  </div>
+</section>
+
+      <section class="section-shell ai-handoff" id="handoffs" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">AI handoffs</p>
+    <h2>Give the model rails.</h2>
+    <p>Nornir does not ask an AI to rummage through raw exports and improvise. It builds scoped, evidence-backed handoffs so a model can help without quietly inventing the load-bearing parts.</p>
+  </div>
+  <div class="handoff-grid">
+    <article class="handoff-card">
+  <h3>Bounded context</h3>
+  <p>Source-page handoffs keep the relevant records together and leave unrelated archive noise outside the prompt.</p>
+</article>
+<article class="handoff-card">
+  <h3>Explicit uncertainty</h3>
+  <p>Artifacts can carry misses, gaps, and weak signals instead of sanding every edge into false confidence.</p>
+</article>
+<article class="handoff-card">
+  <h3>Reusable outputs</h3>
+  <p>The same evidence can support search, biography, review, and later synthesis without starting from scratch every time.</p>
+</article>
+  </div>
+</section>
+
+      <section class="section-shell showcase" id="search" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Search</p>
+    <h2>Find the thread before pulling it.</h2>
+    <p>Search documents are built from source-specific models. That keeps retrieval useful without erasing the structure that made the record meaningful.</p>
+  </div>
+  <div class="showcase-grid">
+    <article class="showcase-frame">
+  <div class="frame-placeholder">
+    <span>Mail</span>
+  </div>
+  <h3>Thread evidence</h3>
+  <p>Messages, labels, attachments, sender context, and important-mail scoring stay connected.</p>
+</article>
+<article class="showcase-frame">
+  <div class="frame-placeholder">
+    <span>Social</span>
+  </div>
+  <h3>Export structure</h3>
+  <p>Posts, reactions, comments, profile snapshots, and media references keep their source-specific roles.</p>
+</article>
+<article class="showcase-frame">
+  <div class="frame-placeholder">
+    <span>Archive</span>
+  </div>
+  <h3>Old-source context</h3>
+  <p>Wayback, FidoNet, and media imports keep enough provenance to explain where a record came from.</p>
+</article>
+  </div>
+</section>
+
+      <section class="section-shell quick-start" id="quick-start" data-reveal>
+  <div class="section-intro">
+    <p class="kicker">Quick start</p>
+    <h2>Run it locally first.</h2>
+  </div>
+  <div class="terminal terminal-wide">
+    <div class="terminal-title">Commands</div>
+    <pre><code>$ composer install
+$ cp .env.example .env
+$ php artisan key:generate
+$ php artisan migrate
+$ php artisan search:rebuild</code></pre>
+  </div>
+</section>
+
+      <section class="section-shell boundary" id="storage-boundary" data-reveal>
+  <p class="kicker">Storage rule</p>
+  <h2>MySQL is canonical. Markdown is compiled output.</h2>
+  <p>Nornir keeps imported source material in the database, writes compiled markdown under `wiki/`, and keeps private source dumps under ignored local storage. The public repo gets the machinery, not the diary.</p>
+</section>
+
+      <section class="section-shell name-story" id="why-nornir" data-reveal>
+  <p class="kicker">Why Nornir?</p>
+  <h2>Threads, fate, memory. Fine, one myth reference.</h2>
+  <p>The Norns tend the threads. That fits a project that turns scattered personal archives into traceable memory without pretending the thread explains itself.</p>
+</section>
+
+      <section class="section-shell cta" data-reveal>
+  <div>
+    <h2>Build from the receipts.</h2>
+    <p>Nornir is for the unglamorous part of personal AI work: importing the sources, keeping the boundaries clean, and making later synthesis answerable to evidence.</p>
+  </div>
+  <div class="cta-links">
+    <a class="button button-secondary" href="https://github.com/odinns/nornir">GitHub repo</a>
+<a class="button button-secondary" href="https://github.com/odinns/nornir#readme">README</a>
+<a class="button button-secondary" href="https://github.com/odinns/nornir/blob/main/LICENSE">MIT license</a>
+  </div>
+</section>
+
+    </main>
+    <footer class="site-footer">
+  <span>Built as a static project site. No Laravel runtime. No Jekyll. No archive leakage.</span>
+  <a href="https://github.com/odinns/nornir">github.com/odinns/nornir</a>
+</footer>
+
+    <script src="/nornir/assets/site.js" defer></script>
+  </body>
+</html>

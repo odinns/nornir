@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" role="img" aria-labelledby="title desc">
+  <title id="title">Nornir mark</title>
+  <desc id="desc">Three evidence threads crossing a small grid.</desc>
+  <defs>
+    <style>
+      .bg { fill: #07090d; }
+      .grid { stroke: #1b2832; stroke-width: 1.5; }
+      .a { fill: none; stroke: #7dd3fc; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .b { fill: none; stroke: #b7f36b; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .c { fill: none; stroke: #ff8c6b; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+      .node { fill: #f3f6f8; }
+    </style>
+  </defs>
+  <rect class="bg" width="140" height="140" rx="18"/>
+  <path class="grid" d="M20 28H120M20 70H120M20 112H120M28 20V120M70 20V120M112 20V120"/>
+  <path class="a" d="M22 34C50 34 46 70 72 70S92 106 118 106"/>
+  <path class="b" d="M22 106C50 106 46 70 72 70S92 34 118 34"/>
+  <path class="c" d="M22 70H118"/>
+  <circle class="node" cx="22" cy="34" r="6"/>
+  <circle class="node" cx="22" cy="70" r="6"/>
+  <circle class="node" cx="22" cy="106" r="6"/>
+  <circle class="node" cx="72" cy="70" r="7"/>
+  <circle class="node" cx="118" cy="34" r="6"/>
+  <circle class="node" cx="118" cy="70" r="6"/>
+  <circle class="node" cx="118" cy="106" r="6"/>
+</svg>

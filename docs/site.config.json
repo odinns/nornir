@@ -1,0 +1,169 @@
+{
+  "site": {
+    "name": "Nornir",
+    "basePath": "/nornir/",
+    "repoUrl": "https://github.com/odinns/nornir",
+    "readmeUrl": "https://github.com/odinns/nornir#readme",
+    "licenseUrl": "https://github.com/odinns/nornir/blob/main/LICENSE",
+    "tagline": "Turn personal archives into traceable memory.",
+    "description": "Nornir imports personal source archives into MySQL, keeps evidence attached, and produces bounded handoffs for biography, search, and AI-assisted synthesis.",
+    "skin": "odinn-dark",
+    "logo": {
+      "mark": "assets/brand/nornir-mark.svg",
+      "wordmark": "assets/brand/nornir-logo.svg",
+      "favicon": "assets/brand/favicon.svg"
+    }
+  },
+  "nav": [
+    { "label": "Sources", "href": "#sources" },
+    { "label": "Pipeline", "href": "#pipeline" },
+    { "label": "Evidence", "href": "#evidence" },
+    { "label": "Handoffs", "href": "#handoffs" },
+    { "label": "Search", "href": "#search" },
+    { "label": "Boundaries", "href": "#boundaries" },
+    { "label": "Name", "href": "#why-nornir" }
+  ],
+  "hero": {
+    "eyebrow": "Personal archive infrastructure for Laravel",
+    "title": "Turn personal archives into traceable memory.",
+    "body": "Nornir is an evidence-first memory system. It imports mail, chats, social exports, health records, archived websites, and old message bases into clean Laravel models so later synthesis has receipts instead of vibes.",
+    "primaryCta": { "label": "View on GitHub", "href": "https://github.com/odinns/nornir" },
+    "secondaryCta": { "label": "Read the README", "href": "https://github.com/odinns/nornir#readme" }
+  },
+  "terminals": [
+    {
+      "title": "Importer flow",
+      "lines": [
+        "php artisan import:gmail",
+        "php artisan import:chatgpt",
+        "php artisan import:fidonet"
+      ]
+    },
+    {
+      "title": "Evidence handoff flow",
+      "lines": [
+        "php artisan handoff:gmail-source-pages",
+        "php artisan gmail:triage-important",
+        "php artisan search:rebuild"
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "sources",
+      "kicker": "Sources",
+      "title": "Messy history goes in. Named records come out.",
+      "body": "Nornir treats each archive as a source with its own shape, not as generic text mulch.",
+      "items": [
+        { "title": "Mail and threads", "body": "Gmail messages, labels, attachments, thread links, important-mail triage, and source-page handoffs." },
+        { "title": "Chats and exports", "body": "ChatGPT conversations, Apple Messages, Facebook, Instagram, Twitter, LinkedIn, and their source-specific media references." },
+        { "title": "Old networks", "body": "FidoNet areas, participants, messages, threads, cleanup notes, and observations kept separate from authored text." },
+        { "title": "Files and captures", "body": "Media collections, Apple Health records, Wayback captures, screenshots, extracted text, and provenance links." }
+      ]
+    },
+    {
+      "id": "evidence",
+      "kicker": "Evidence",
+      "title": "The claim is not enough.",
+      "body": "Muninn work is evidence-first. Nornir keeps observations, source handoffs, artifacts, and provenance attached so future biography work can show where each claim came from.",
+      "items": [
+        { "title": "Source handoffs", "body": "Each importer can write bounded artifacts that describe what a source page proves, what it suggests, and what still needs human judgment." },
+        { "title": "Observations", "body": "Derived facts live beside raw imported records. They do not overwrite the source or pretend interpretation is capture." },
+        { "title": "Provenance", "body": "Runs, artifacts, and links make it possible to trace a result back to source material instead of trusting a generated paragraph." }
+      ]
+    },
+    {
+      "id": "boundaries",
+      "kicker": "Boundaries",
+      "title": "Good fences. Fewer haunted conclusions.",
+      "body": "Nornir is deliberately boring at the storage boundary because personal memory work gets dangerous when the machinery starts improvising.",
+      "items": [
+        { "title": "MySQL is canonical", "body": "Imported source material belongs in MySQL. Compiled markdown is output, not the source of truth." },
+        { "title": "Heimdallr is read-only", "body": "Access work can inspect. It does not mutate the memory store or smuggle writes through a convenient back door." },
+        { "title": "Huginn needs receipts", "body": "Synthesis can write, but not without traceable support. Pretty lies are still lies, just wearing nicer shoes." }
+      ]
+    }
+  ],
+  "pipeline": {
+    "id": "pipeline",
+    "kicker": "Pipeline",
+    "title": "From archive dump to usable memory.",
+    "steps": [
+      { "title": "Record intake", "body": "Capture source labels, paths, importer choices, run metadata, and enough context to replay or explain the import." },
+      { "title": "Import records", "body": "Map each source into focused Laravel tables and models instead of flattening everything into vague blobs." },
+      { "title": "Preserve evidence", "body": "Keep attachments, media references, timestamps, participants, labels, URLs, and source-specific identifiers intact." },
+      { "title": "Observe carefully", "body": "Write derived observations as their own layer, with the source record still visible underneath." },
+      { "title": "Build handoffs", "body": "Produce bounded artifacts for source navigation, important evidence bundles, and biography candidate work." },
+      { "title": "Search and synthesize", "body": "Rebuild search documents and feed later Muninn or Huginn work with evidence, not an undifferentiated text swamp." }
+    ]
+  },
+  "skills": {
+    "id": "muninn",
+    "kicker": "Muninn",
+    "title": "Biography work needs a paper trail.",
+    "body": "Nornir is the storehouse below the synthesis layer. It gives Muninn enough structured evidence to write cautiously, revise cleanly, and avoid turning memory into fan fiction.",
+    "items": [
+      { "title": "Candidate artifacts", "body": "Biography candidates can be built from important mail bundles and source handoffs, with support kept close." },
+      { "title": "Manual notes", "body": "Human analysis can be saved as artifacts instead of disappearing into chat history." },
+      { "title": "Traceable scope", "body": "Each handoff names the slice it covers. No pretending a few records explain a whole life." }
+    ]
+  },
+  "aiHandoff": {
+    "id": "handoffs",
+    "kicker": "AI handoffs",
+    "title": "Give the model rails.",
+    "body": "Nornir does not ask an AI to rummage through raw exports and improvise. It builds scoped, evidence-backed handoffs so a model can help without quietly inventing the load-bearing parts.",
+    "items": [
+      { "title": "Bounded context", "body": "Source-page handoffs keep the relevant records together and leave unrelated archive noise outside the prompt." },
+      { "title": "Explicit uncertainty", "body": "Artifacts can carry misses, gaps, and weak signals instead of sanding every edge into false confidence." },
+      { "title": "Reusable outputs", "body": "The same evidence can support search, biography, review, and later synthesis without starting from scratch every time." }
+    ]
+  },
+  "showcase": {
+    "id": "search",
+    "kicker": "Search",
+    "title": "Find the thread before pulling it.",
+    "body": "Search documents are built from source-specific models. That keeps retrieval useful without erasing the structure that made the record meaningful.",
+    "frames": [
+      { "label": "Mail", "title": "Thread evidence", "body": "Messages, labels, attachments, sender context, and important-mail scoring stay connected." },
+      { "label": "Social", "title": "Export structure", "body": "Posts, reactions, comments, profile snapshots, and media references keep their source-specific roles." },
+      { "label": "Archive", "title": "Old-source context", "body": "Wayback, FidoNet, and media imports keep enough provenance to explain where a record came from." }
+    ]
+  },
+  "quickStart": {
+    "id": "quick-start",
+    "kicker": "Quick start",
+    "title": "Run it locally first.",
+    "commands": [
+      "composer install",
+      "cp .env.example .env",
+      "php artisan key:generate",
+      "php artisan migrate",
+      "php artisan search:rebuild"
+    ]
+  },
+  "boundary": {
+    "id": "storage-boundary",
+    "kicker": "Storage rule",
+    "title": "MySQL is canonical. Markdown is compiled output.",
+    "body": "Nornir keeps imported source material in the database, writes compiled markdown under `wiki/`, and keeps private source dumps under ignored local storage. The public repo gets the machinery, not the diary."
+  },
+  "nameStory": {
+    "id": "why-nornir",
+    "kicker": "Why Nornir?",
+    "title": "Threads, fate, memory. Fine, one myth reference.",
+    "body": "The Norns tend the threads. That fits a project that turns scattered personal archives into traceable memory without pretending the thread explains itself."
+  },
+  "cta": {
+    "title": "Build from the receipts.",
+    "body": "Nornir is for the unglamorous part of personal AI work: importing the sources, keeping the boundaries clean, and making later synthesis answerable to evidence.",
+    "links": [
+      { "label": "GitHub repo", "href": "https://github.com/odinns/nornir" },
+      { "label": "README", "href": "https://github.com/odinns/nornir#readme" },
+      { "label": "MIT license", "href": "https://github.com/odinns/nornir/blob/main/LICENSE" }
+    ]
+  },
+  "footer": {
+    "text": "Built as a static project site. No Laravel runtime. No Jekyll. No archive leakage."
+  }
+}

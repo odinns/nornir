@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 130" role="img" aria-labelledby="title desc">
+  <title id="title">Nornir logo</title>
+  <desc id="desc">Three evidence threads converging beside the Nornir wordmark.</desc>
+  <defs>
+    <style>
+      .grid { stroke: #1b2832; stroke-width: 1.4; }
+      .thread-a { fill: none; stroke: #7dd3fc; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .thread-b { fill: none; stroke: #b7f36b; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .thread-c { fill: none; stroke: #ff8c6b; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+      .node { fill: #f3f6f8; }
+      .text { fill: #f3f6f8; font-family: "IBM Plex Sans", "Inter", "Segoe UI", Arial, sans-serif; font-size: 82px; font-weight: 680; letter-spacing: 0; }
+    </style>
+  </defs>
+  <g transform="translate(10 10)">
+    <path class="grid" d="M8 16H122M8 55H122M8 94H122M22 6V108M62 6V108M102 6V108"/>
+    <path class="thread-a" d="M16 22C44 22 42 55 70 55S90 88 118 88"/>
+    <path class="thread-b" d="M16 88C46 88 44 55 72 55S90 22 118 22"/>
+    <path class="thread-c" d="M18 55H118"/>
+    <circle class="node" cx="16" cy="22" r="6"/>
+    <circle class="node" cx="16" cy="55" r="6"/>
+    <circle class="node" cx="16" cy="88" r="6"/>
+    <circle class="node" cx="70" cy="55" r="7"/>
+    <circle class="node" cx="118" cy="22" r="6"/>
+    <circle class="node" cx="118" cy="55" r="6"/>
+    <circle class="node" cx="118" cy="88" r="6"/>
+  </g>
+  <g transform="translate(160 20)">
+    <text class="text" x="0" y="80">Nornir</text>
+  </g>
+</svg>

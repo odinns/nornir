@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "site:build": "node docs/site-kit/build.mjs",
+        "site:check": "node docs/site-kit/check.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
