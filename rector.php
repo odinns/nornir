@@ -20,5 +20,6 @@ return static function (RectorConfig $rectorConfig): void {
 
     $rectorConfig->skip([
         AddOverrideAttributeToOverriddenMethodsRector::class,
+        __DIR__.'/bootstrap/cache',
     ]);
 };
